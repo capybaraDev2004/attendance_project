@@ -1,5 +1,5 @@
 // attendance_project/frontend/src/pages/Login.js
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css'; // Import CSS mới
 
@@ -11,16 +11,29 @@ const LoginPage = () => {
   const [form, setForm] = useState({ username: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(''); // Thông báo đăng nhập thành công
+  const [isRedirecting, setIsRedirecting] = useState(false); // Trạng thái đang chờ điều hướng
+  const redirectTimerRef = useRef(null); // Giữ id timeout để cleanup
+
+  // Dọn dẹp timeout khi unmount trang
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
 
   // Xử lý input
   const onChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // Đăng nhập và điều hướng theo role
+  // Đăng nhập và điều hướng theo role (sau 3 giây)
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setSubmitting(true);
     try {
       const res = await fetch(`${API_URL}/api/auth/login`, {
@@ -43,15 +56,19 @@ const LoginPage = () => {
         role: data.role
       }));
 
-      // Điều hướng theo role
-      if (data.role === 'admin') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+      // Thông báo thành công và chờ 3 giây trước khi điều hướng
+      const targetPath = data.role === 'admin' ? '/admin' : '/';
+      setSuccess('Đăng nhập thành công! Vui lòng chờ một chút để chúng tôi điều hướng...');
+      setIsRedirecting(true);
+
+      // Đặt hẹn giờ 3 giây rồi điều hướng
+      redirectTimerRef.current = setTimeout(() => {
+        navigate(targetPath, { replace: true });
+      }, 3000);
     } catch (err) {
       setError(err.message || 'Có lỗi xảy ra');
     } finally {
+      // Giải phóng trạng thái "đang gửi"; vẫn giữ isRedirecting để disable form trong lúc chờ điều hướng
       setSubmitting(false);
     }
   };
@@ -71,6 +88,13 @@ const LoginPage = () => {
           </div>
         ) : null}
 
+        {success ? (
+          <div className="success-message">
+            <span className="success-icon">✅</span>
+            {success}
+          </div>
+        ) : null}
+
         <form onSubmit={onSubmit} className="login-form">
           <div className="form-group">
             <label htmlFor="username" className="form-label">
@@ -86,6 +110,7 @@ const LoginPage = () => {
               onChange={onChange}
               required
               className="form-input"
+              disabled={submitting || isRedirecting}
             />
           </div>
 
@@ -103,21 +128,24 @@ const LoginPage = () => {
               onChange={onChange}
               required
               className="form-input"
+              disabled={submitting || isRedirecting}
             />
           </div>
 
           {/* Nút "Áp dụng" để cập nhật trạng thái đăng nhập */}
           <button 
             type="submit" 
-            disabled={submitting} 
+            disabled={submitting || isRedirecting} 
             className="login-button"
           >
-            {submitting ? (
+            {submitting || isRedirecting ? (
               <span className="loading-spinner">⏳</span>
             ) : (
               <span className="button-icon"></span>
             )}
-            {submitting ? 'Đang xử lý...' : 'Áp dụng / Đăng nhập'}
+            {isRedirecting
+              ? 'Đang điều hướng...'
+              : (submitting ? 'Đang xử lý...' : 'Áp dụng / Đăng nhập')}
           </button>
         </form>
 

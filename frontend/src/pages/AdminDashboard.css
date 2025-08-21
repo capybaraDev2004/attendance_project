@@ -424,6 +424,94 @@
   font-weight: 500;
 }
 
+/* Badge trạng thái user active/inactive dùng lại bảng */
+.status-badge.status-active {
+  background: #E6F4EA;
+  color: #137333;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.status-badge.status-inactive {
+  background: #FCE8E6;
+  color: #A61B1B;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Ô cột nhận diện khuôn mặt */
+.face-setup-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.face-status-installed {
+  color: #28a745; /* xanh */
+  font-weight: 700;
+}
+.face-status-not {
+  color: #dc3545; /* đỏ */
+  font-weight: 700;
+}
+.btn-install {
+  background: linear-gradient(135deg, #5865F2, #4752C4);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-install:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(88, 101, 242, 0.3);
+}
+
+/* Modal đơn giản cho cài đặt nhận diện */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: white;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+.modal-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.btn-confirm {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-cancel {
+  background: #e9ecef;
+  color: #495057;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .sidebar {

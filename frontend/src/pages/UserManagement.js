@@ -274,9 +274,6 @@ const UserManagement = () => {
             <button className="btn-column-control" onClick={showAllColumns}>
               👁️ Hiện tất cả
             </button>
-            <button className="btn-column-control" onClick={hideMostColumns}>
-              🙈 Ẩn bớt cột
-            </button>
           </div>
         </div>
         
