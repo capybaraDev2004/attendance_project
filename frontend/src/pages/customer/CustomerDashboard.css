@@ -1,0 +1,106 @@
+.customer-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f6f8fb;
+}
+
+.customer-sidebar {
+  width: 240px;
+  background: #111827;
+  color: #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-brand {
+  padding: 16px 20px;
+  font-weight: 700;
+  font-size: 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.customer-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+}
+
+.customer-nav a {
+  color: #e5e7eb;
+  padding: 12px 20px;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.customer-nav a:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.customer-nav a.active {
+  background: #1f2937;
+  color: #fff;
+}
+
+.customer-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.customer-main {
+  padding: 20px;
+}
+
+.topbar-user {
+  color: #374151;
+  font-size: 14px;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.qa-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.qa-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.qa-desc {
+  margin: 0 0 12px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.qa-btn {
+  background: #111827;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.qa-btn:hover {
+  opacity: 0.95;
+}
+
+

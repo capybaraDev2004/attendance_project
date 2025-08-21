@@ -3,17 +3,28 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/Login';
-import HomePage from './pages/HomePage';
 import AdminDashboard from './pages/AdminDashboard';
+import CustomerDashboard from './pages/customer/CustomerDashboard';
+import CustomerHome from './pages/customer/CustomerHome';
+import CustomerUsers from './pages/customer/CustomerUsers';
+import CustomerAttendance from './pages/customer/CustomerAttendance';
+import CustomerTimekeeping from './pages/customer/CustomerTimekeeping';
+import CustomerLogout from './pages/customer/CustomerLogout';
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Trang chủ cho customer */}
+      {/* Khu vực customer: dùng layout và route lồng */}
       <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<CustomerDashboard />}>
+          <Route index element={<CustomerHome />} />
+          <Route path="users" element={<CustomerUsers />} />
+          <Route path="attendance" element={<CustomerAttendance />} />
+          <Route path="timekeeping" element={<CustomerTimekeeping />} />
+          <Route path="logout" element={<CustomerLogout />} />
+        </Route>
       </Route>
 
       {/* Trang quản lý cho admin */}
