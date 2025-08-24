@@ -25,6 +25,9 @@ const CustomerDashboard = () => {
           <NavLink to="users" className={({ isActive }) => (isActive ? 'active' : undefined)}>
             👥 Quản lý người dùng
           </NavLink>
+          <NavLink to="face-scan" className={({ isActive }) => (isActive ? 'active' : undefined)}>
+            🔍 Quét Khuôn Mặt
+          </NavLink>
           <NavLink to="attendance" className={({ isActive }) => (isActive ? 'active' : undefined)}>
             🕒 Lịch sử ra vào
           </NavLink>

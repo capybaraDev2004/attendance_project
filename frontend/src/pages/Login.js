@@ -1,6 +1,7 @@
 // attendance_project/frontend/src/pages/Login.js
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import './Login.css'; // Import CSS mới
 
 // Chú ý: API_URL có thể cấu hình qua biến môi trường REACT_APP_API_URL
@@ -58,7 +59,7 @@ const LoginPage = () => {
 
       // Thông báo thành công và chờ 3 giây trước khi điều hướng
       const targetPath = data.role === 'admin' ? '/admin' : '/';
-      setSuccess('Đăng nhập thành công! Vui lòng chờ một chút để chúng tôi điều hướng...');
+      setSuccess('Đăng nhập thành công! Đang vào trang chủ admin...');
       setIsRedirecting(true);
 
       // Đặt hẹn giờ 3 giây rồi điều hướng
@@ -73,35 +74,123 @@ const LoginPage = () => {
     }
   };
 
+  // Animation variants cho Framer Motion
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.8,
+        staggerChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, scale: 0.9, y: 50 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      transition: {
+        duration: 0.8,
+        ease: "easeOut"
+      }
+    }
+  };
+
   return (
     <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
+      {/* Ảnh nền với overlay */}
+      <div className="background-overlay"></div>
+      
+      {/* Tài khoản demo ở góc trái trên cùng */}
+      <motion.div 
+        className="demo-accounts-corner"
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+      >
+        <div className="demo-title-corner">Demo Accounts</div>
+        <div className="account-item-corner">
+          <span className="account-role-corner">Admin:</span>
+          <span className="account-details-corner">capybara / 123456</span>
+        </div>
+        <div className="account-item-corner">
+          <span className="account-role-corner">User:</span>
+          <span className="account-details-corner">quandoggy / 123456</span>
+        </div>
+      </motion.div>
+      
+      {/* Thông báo lỗi/thành công ở góc phải trên cùng */}
+      <AnimatePresence mode="wait">
+        {error && (
+          <motion.div 
+            className="notification-corner error"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+          >
+            <span className="notification-icon">⚠️</span>
+            <span className="notification-text">{error}</span>
+          </motion.div>
+        )}
+
+        {success && (
+          <motion.div 
+            className="notification-corner success"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+          >
+            <span className="notification-icon">✅</span>
+            <span className="notification-text">{success}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <motion.div 
+        className="login-card"
+        variants={cardVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div 
+          className="login-header"
+          variants={itemVariants}
+        >
           <h1 className="login-title">Chào mừng trở lại!</h1>
           <p className="login-subtitle">Đăng nhập để tiếp tục</p>
-        </div>
+        </motion.div>
 
-        {error ? (
-          <div className="error-message">
-            <span className="error-icon">⚠️</span>
-            {error}
-          </div>
-        ) : null}
-
-        {success ? (
-          <div className="success-message">
-            <span className="success-icon">✅</span>
-            {success}
-          </div>
-        ) : null}
-
-        <form onSubmit={onSubmit} className="login-form">
-          <div className="form-group">
+        <motion.form 
+          onSubmit={onSubmit} 
+          className="login-form"
+          variants={itemVariants}
+        >
+          <motion.div 
+            className="form-group"
+            variants={itemVariants}
+          >
             <label htmlFor="username" className="form-label">
-              <span className="label-icon">👤</span>
+              <span className="label-icon" data-icon="user"></span>
               Tên đăng nhập
             </label>
-            <input
+            <motion.input
               id="username"
               name="username"
               type="text"
@@ -111,15 +200,20 @@ const LoginPage = () => {
               required
               className="form-input"
               disabled={submitting || isRedirecting}
+              whileFocus={{ scale: 1.02 }}
+              transition={{ duration: 0.2 }}
             />
-          </div>
+          </motion.div>
 
-          <div className="form-group">
+          <motion.div 
+            className="form-group"
+            variants={itemVariants}
+          >
             <label htmlFor="password" className="form-label">
-              <span className="label-icon">🔒</span>
+              <span className="label-icon" data-icon="lock"></span>
               Mật khẩu
             </label>
-            <input
+            <motion.input
               id="password"
               name="password"
               type="password"
@@ -129,38 +223,38 @@ const LoginPage = () => {
               required
               className="form-input"
               disabled={submitting || isRedirecting}
+              whileFocus={{ scale: 1.02 }}
+              transition={{ duration: 0.2 }}
             />
-          </div>
+          </motion.div>
 
-          {/* Nút "Áp dụng" để cập nhật trạng thái đăng nhập */}
-          <button 
+          {/* Nút đăng nhập */}
+          <motion.button 
             type="submit" 
             disabled={submitting || isRedirecting} 
             className="login-button"
+            variants={itemVariants}
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.2 }}
           >
             {submitting || isRedirecting ? (
-              <span className="loading-spinner">⏳</span>
+              <motion.span 
+                className="loading-spinner"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              >
+                ⏳
+              </motion.span>
             ) : (
               <span className="button-icon"></span>
             )}
             {isRedirecting
               ? 'Đang điều hướng...'
-              : (submitting ? 'Đang xử lý...' : 'Áp dụng / Đăng nhập')}
-          </button>
-        </form>
-
-        <div className="demo-accounts">
-          <h3 className="demo-title"> Tài khoản demo:</h3>
-          <div className="account-item">
-            <span className="account-role">👑 Admin:</span>
-            <span className="account-details">user: <code>capybara</code> / pass: <code>123456</code></span>
-          </div>
-          <div className="account-item">
-            <span className="account-role">👤 Customer:</span>
-            <span className="account-details">user: <code>quandoggy</code> / pass: <code>123456</code></span>
-          </div>
-        </div>
-      </div>
+              : (submitting ? 'Đang xử lý...' : 'Đăng nhập')}
+          </motion.button>
+        </motion.form>
+      </motion.div>
     </div>
   );
 };

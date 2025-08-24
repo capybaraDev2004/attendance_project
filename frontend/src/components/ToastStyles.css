@@ -1,0 +1,62 @@
+/* Tùy chỉnh toast notification */
+.Toastify__toast {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  padding: 12px !important;
+}
+
+.Toastify__toast--success {
+  background: linear-gradient(to right, #4ade80, #22c55e) !important;
+  color: white !important;
+}
+
+.Toastify__toast-body {
+  font-family: var(--font-secondary) !important;
+  font-size: var(--font-size-sm) !important;
+  padding: 6px 8px !important;
+}
+
+.Toastify__close-button {
+  color: white !important;
+  opacity: 0.8 !important;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1 !important;
+}
+
+.Toastify__progress-bar {
+  background: rgba(255, 255, 255, 0.7) !important;
+  height: 4px !important;
+}
+
+/* Animation cho toast */
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.Toastify__toast--rtl {
+  animation-name: toastSlideIn !important;
+}
+
+.Toastify__toast--rtl.Toastify__toast--exit {
+  animation-name: toastSlideOut !important;
+}
