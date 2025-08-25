@@ -130,7 +130,6 @@ async function history(req, res, next) {
         a.attendance_id,
         a.user_id,
         u.fullName,
-        u.rfid_code,
         a.work_date,
         a.check_in,
         a.check_out,

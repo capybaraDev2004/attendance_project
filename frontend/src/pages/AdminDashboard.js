@@ -14,8 +14,9 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('manage-users');
 
-  // Lấy thông tin auth từ localStorage
+  // Lấy thông tin auth từ localStorage (không sử dụng nhưng giữ lại để sau này)
   const raw = localStorage.getItem('auth');
+  // eslint-disable-next-line no-unused-vars
   const auth = raw ? JSON.parse(raw) : null;
 
   // Menu items cho sidebar
@@ -23,7 +24,7 @@ const AdminDashboard = () => {
     { id: 'manage-users', label: '👥 Quản lý người dùng', active: true },
     { id: 'face-setup', label: '🧠 Cài đặt nhận diện', active: false },
     { id: 'history', label: '📊 Lịch sử ra vào', active: false },
-    { id: 'calculate', label: '📋 Tính công', active: false },
+    { id: 'calculate', label: '📋 Quản lý chấm công', active: false },
     { id: 'devices', label: '⚙️ Quản lý thiết bị', active: false },
     { id: 'work-hours', label: '⏰ Giờ làm việc', active: false },
     { id: 'positions', label: '👔 Chức vụ', active: false },
@@ -71,31 +72,27 @@ const AdminDashboard = () => {
           <ul className="sidebar-menu">
             {menuItems.map((item) => (
               <li key={item.id} className="menu-item">
-                <a
-                  href="#"
+                <button
+                  type="button"
                   className={`menu-link ${item.id === activeTab ? 'active' : ''}`}
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={() => {
                     setActiveTab(item.id);
                   }}
                 >
                   {item.label}
-                </a>
+                </button>
               </li>
             ))}
-            {/* Menu đăng xuất */}
-            <li className="menu-item">
-              <a
-                href="#"
-                className="menu-link logout"
-                onClick={(e) => {
-                  e.preventDefault();
-                  logout();
-                }}
-              >
-                🚪 Đăng xuất
-              </a>
-            </li>
+                         {/* Menu đăng xuất */}
+             <li className="menu-item">
+               <button
+                 type="button"
+                 className="menu-link logout"
+                 onClick={logout}
+               >
+                 🚪 Đăng xuất
+               </button>
+             </li>  
           </ul>
         </nav>
       </div>

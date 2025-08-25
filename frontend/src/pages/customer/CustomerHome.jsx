@@ -18,7 +18,7 @@ const CustomerHome = () => {
           <a className="qa-btn" href="attendance">Mở</a>
         </div>
         <div className="qa-card">
-          <h3 className="qa-title">Tính công</h3>
+          <h3 className="qa-title">Quản lý chấm công</h3>
           <p className="qa-desc">Tổng hợp công theo kỳ.</p>
           <a className="qa-btn" href="timekeeping">Mở</a>
         </div>

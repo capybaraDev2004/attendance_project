@@ -29,7 +29,7 @@ const CustomerDashboard = () => {
             🕒 Lịch sử ra vào
           </NavLink>
           <NavLink to="timekeeping" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-            📅 Tính công
+            📅 Quản lý chấm công
           </NavLink>
           <NavLink to="logout" className={({ isActive }) => (isActive ? 'active' : undefined)}>
             🚪 Đăng xuất

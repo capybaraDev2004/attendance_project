@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Đăng Ký Tham Gia Khóa Học</title>
+  <style>
+    /* ============ Layout / Theme ============ */
+    body{
+      font-family: Arial, sans-serif;
+      background: #eef3fb;
+      margin: 0;
+      color: #333;
+    }
+    .container{
+      max-width: 820px;
+      margin: 28px auto 40px;
+      background: #fff;
+      border: 2px solid #2196f3;
+      border-radius: 10px;
+      padding: 24px 28px 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,.08);
+    }
+    .title{
+      text-align: center;
+      font-size: 26px;
+      font-weight: bold;
+      color: #0d6efd;
+      margin: 6px 0 20px;
+      letter-spacing: .5px;
+    }
+    label{
+      display:block;
+      font-weight: 700;
+      margin: 10px 0 6px;
+    }
+    input[type="text"],
+    input[type="number"],
+    select{
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cfd7e6;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      transition: border .15s;
+      background: #fbfdff;
+    }
+    input:focus, select:focus{ border-color:#0d6efd; }
+
+    .row{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .row .col{ width: 100%; }
+
+    .gender-group, .priority-group{
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      margin: 5px 0 8px;
+    }
+    .gender-group input{ margin-right: 6px; }
+    .priority-group input{ margin-right: 6px; }
+
+    .btns{
+      display:flex; gap:12px; flex-wrap: wrap;
+      justify-content: center;
+      margin: 14px 0 6px;
+    }
+    .btn{
+      min-width:120px; padding:10px 14px; border:none; border-radius:8px;
+      color:#fff; font-weight:700; cursor:pointer; font-size:14px;
+      transition: transform .02s ease-in-out, filter .15s;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn-add{ background:#2196f3; }
+    .btn-edit{ background:#ffca28; color:#000; }
+    .btn-delete{ background:#f44336; }
+    .btn-calc{ background:#4caf50; }
+    .btn-reset{ background:#ff9800; }
+    .btn-exit{ background:#b71c1c; }
+    .error{ color:#f44336; font-size:13px; min-height:18px; }
+
+    /* ============ Table ============ */
+    .table-wrap{
+      margin-top: 18px;
+    }
+    .table-title{
+      font-weight: 800; font-size:18px; margin: 6px 0 10px; color:#0d6efd;
+    }
+    table{ width:100%; border-collapse: collapse; }
+    th, td{
+      border:1px solid #e3e8f1; padding:10px; text-align: center; font-size:14px;
+    }
+    th{
+      background: #0d6efd; color:#fff; font-weight:700;
+    }
+    tbody tr:nth-child(odd){ background:#fafcff; }
+    tbody tr:hover{ background:#eef5ff; }
+
+    .row-action .btn{
+      min-width: 70px; padding:6px 10px; font-size: 12px; border-radius: 6px;
+    }
+
+    /* small screen */
+    @media (max-width: 860px){
+      .row{ grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="title">ĐĂNG KÝ THAM GIA KHÓA HỌC</div>
+
+  <form id="registerForm" onsubmit="return false;">
+    <label for="fullname">Họ và Tên:</label>
+    <input type="text" id="fullname" placeholder="Nguyễn Thị C">
+    <div id="errFullname" class="error"></div>
+
+    <div class="row">
+      <div class="col">
+        <label for="address">Địa chỉ:</label>
+        <input type="text" id="address" placeholder="789 Đường XYZ">
+        <div id="errAddress" class="error"></div>
+      </div>
+      <div class="col">
+        <label for="phone">Số Điện Thoại:</label>
+        <input type="text" id="phone" placeholder="0987123456">
+        <div id="errPhone" class="error"></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <label for="cccd">Số CCCD:</label>
+        <input type="text" id="cccd" placeholder="987654321012">
+        <div id="errCCCD" class="error"></div>
+      </div>
+      <div class="col">
+        <label for="course">Khóa Học:</label>
+        <select id="course">
+          <option value="">-- Chọn Khóa Học --</option>
+          <option value="Lập Trình Web">Lập Trình Web</option>
+          <option value="Tin Học Văn Phòng">Tin Học Văn Phòng</option>
+          <option value="Lập Trình Python">Lập Trình Python</option>
+        </select>
+        <div id="errCourse" class="error"></div>
+      </div>
+    </div>
+
+    <label>Giới Tính:</label>
+    <div class="gender-group">
+      <label><input type="radio" name="gender" value="Nam"> Nam</label>
+      <label><input type="radio" name="gender" value="Nữ"> Nữ</label>
+    </div>
+    <div id="errGender" class="error"></div>
+
+    <div class="priority-group">
+      <label><input type="checkbox" id="priority" value="yes"> Ưu Tiên</label>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <label for="age">Tuổi:</label>
+        <input type="number" id="age" min="18" max="60" />
+        <div id="errAge" class="error"></div>
+      </div>
+      <div class="col">
+        <label for="tuition">Học Phí:</label>
+        <input type="text" id="tuition" placeholder="VND" readonly>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="btn btn-add" type="button" onclick="addStudent()">Thêm</button>
+      <button class="btn btn-edit" type="button" onclick="saveEdit()">Sửa</button>
+      <button class="btn btn-delete" type="button" onclick="deleteLast()">Xóa</button>
+      <button class="btn btn-calc" type="button" onclick="calcTuition()">Tính Học Phí</button>
+      <button class="btn btn-reset" type="reset">Làm Mới</button>
+      <button class="btn btn-exit" type="button" onclick="exitForm()">Thoát</button>
+    </div>
+  </form>
+
+  <div class="table-wrap">
+    <div class="table-title">Danh sách học viên</div>
+    <table id="studentTable">
+      <thead>
+      <tr>
+        <th>Họ tên</th>
+        <th>Địa chỉ</th>
+        <th>SĐT</th>
+        <th>CCCD</th>
+        <th>Khóa học</th>
+        <th>Giới tính</th>
+        <th>Ưu tiên</th>
+        <th>Tuổi</th>
+        <th>Học phí</th>
+        <th>Thao tác</th>
+      </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  // ========= STATE =========
+  const LS_KEY = 'students';
+  let editingIndex = null;
+
+  // ========= UTIL =========
+  function VND(n){ return (n||0).toLocaleString('vi-VN') + ' VND'; }
+
+  // ========= VALIDATION =========
+  function validateForm(){
+    let fullname = document.getElementById('fullname').value.trim();
+    let address  = document.getElementById('address').value.trim();
+    let phone    = document.getElementById('phone').value.trim();
+    let cccd     = document.getElementById('cccd').value.trim();
+    let course   = document.getElementById('course').value;
+    let gender   = document.querySelector('input[name="gender"]:checked');
+    let age      = document.getElementById('age').value;
+
+    let ok = true;
+    document.querySelectorAll('.error').forEach(e => e.textContent = '');
+
+    if (!fullname || fullname.length < 5 || fullname.length > 50 || !/^[A-Za-zÀ-ỹ\s]+$/.test(fullname)){
+      document.getElementById('errFullname').textContent = 'Họ tên từ 5-50 ký tự, chỉ chứa chữ và khoảng trắng';
+      ok = false;
+    }
+    if (!address || address.length < 10 || address.length > 100 || !/^[A-Za-zÀ-ỹ0-9\s,\/]+$/.test(address)){
+      document.getElementById('errAddress').textContent = 'Địa chỉ 10-100 ký tự, cho phép chữ, số, dấu "," "/"';
+      ok = false;
+    }
+    if (!/^0\d{9,10}$/.test(phone)){
+      document.getElementById('errPhone').textContent = 'SĐT phải bắt đầu bằng 0, 10-11 chữ số';
+      ok = false;
+    }
+    if (!/^\d{12}$/.test(cccd)){
+      document.getElementById('errCCCD').textContent = 'CCCD phải đủ 12 chữ số';
+      ok = false;
+    }
+    if (!course){
+      document.getElementById('errCourse').textContent = 'Vui lòng chọn khóa học';
+      ok = false;
+    }
+    if (!gender){
+      document.getElementById('errGender').textContent = 'Vui lòng chọn giới tính';
+      ok = false;
+    }
+    age = Number(age);
+    if (!(age >= 18 && age <= 60)){
+      document.getElementById('errAge').textContent = 'Tuổi phải từ 18 đến 60';
+      ok = false;
+    }
+    return ok;
+  }
+
+  // ========= CALC TUITION =========
+  function calcTuition(){
+    if (!validateForm()) return;
+    let course = document.getElementById('course').value;
+    let priority = document.getElementById('priority').checked;
+
+    let fee = 0;
+    if (course === 'Lập Trình Web') fee = 5000000;
+    else if (course === 'Tin Học Văn Phòng') fee = 4000000;
+    else if (course === 'Lập Trình Python') fee = 4500000;
+
+    if (priority) fee *= 0.9;
+    document.getElementById('tuition').value = VND(fee);
+    alert('Tính học phí OK: ' + VND(fee));
+  }
+
+  // ========= CRUD HELPERS =========
+  function getList(){
+    try{ return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
+    catch(e){ return []; }
+  }
+  function saveList(arr){
+    localStorage.setItem(LS_KEY, JSON.stringify(arr));
+  }
+  function renderTable(){
+    const tbody = document.querySelector('#studentTable tbody');
+    const list = getList();
+    tbody.innerHTML = list.map((s,idx)=>`
+      <tr>
+        <td>${s.fullname}</td>
+        <td>${s.address}</td>
+        <td>${s.phone}</td>
+        <td>${s.cccd}</td>
+        <td>${s.course}</td>
+        <td>${s.gender}</td>
+        <td>${s.priority ? 'Có':'Không'}</td>
+        <td>${s.age}</td>
+        <td>${s.tuition}</td>
+        <td class="row-action">
+          <button class="btn btn-edit" data-idx="${idx}">Sửa</button>
+          <button class="btn btn-delete" data-idx="${idx}">Xóa</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ========= ADD =========
+  function collectForm(){
+    const genderEl = document.querySelector('input[name="gender"]:checked');
+    return {
+      fullname: document.getElementById('fullname').value.trim(),
+      address : document.getElementById('address').value.trim(),
+      phone   : document.getElementById('phone').value.trim(),
+      cccd    : document.getElementById('cccd').value.trim(),
+      course  : document.getElementById('course').value,
+      gender  : genderEl ? genderEl.value : '',
+      priority: document.getElementById('priority').checked,
+      age     : Number(document.getElementById('age').value),
+      tuition : document.getElementById('tuition').value.trim()
+    };
+  }
+  function setForm(s){
+    document.getElementById('fullname').value = s.fullname || '';
+    document.getElementById('address').value  = s.address  || '';
+    document.getElementById('phone').value    = s.phone    || '';
+    document.getElementById('cccd').value     = s.cccd     || '';
+    document.getElementById('course').value   = s.course   || '';
+    const g = s.gender || '';
+    document.querySelectorAll('input[name="gender"]').forEach(r => r.checked = (r.value === g));
+    document.getElementById('priority').checked = !!s.priority;
+    document.getElementById('age').value = s.age ?? '';
+    document.getElementById('tuition').value = s.tuition || '';
+  }
+  function addStudent(){
+    if (!validateForm()) return;
+    calcTuition();
+    const s = collectForm();
+    const list = getList();
+    list.push(s);
+    saveList(list);
+    renderTable();
+    alert('Thêm thành công!');
+    document.getElementById('registerForm').reset();
+    // giữ tuổi mặc định sau reset
+    document.getElementById('age').value = 25;
+  }
+
+  // ========= EDIT (inline chọn -> bấm nút Sửa ở dưới để lưu) =========
+  document.querySelector('#studentTable tbody').addEventListener('click', (e)=>{
+    const t = e.target;
+    if (t.classList.contains('btn-edit')){
+      editingIndex = Number(t.getAttribute('data-idx'));
+      const s = getList()[editingIndex];
+      setForm(s);
+      alert('Đã nạp dữ liệu vào form. Hãy chỉnh sửa và bấm nút Sửa để lưu.');
+    }
+    if (t.classList.contains('btn-delete')){
+      const idx = Number(t.getAttribute('data-idx'));
+      if (confirm('Bạn có chắc muốn xóa học viên này?')){
+        const list = getList();
+        list.splice(idx,1);
+        saveList(list);
+        renderTable();
+        alert('Đã xóa!');
+      }
+    }
+  });
+
+  function saveEdit(){
+    if (editingIndex === null){
+      alert('Vui lòng chọn dòng để sửa (bấm nút Sửa ở cột thao tác).');
+      return;
+    }
+    if (!validateForm()) return;
+    calcTuition();
+    const list = getList();
+    list[editingIndex] = collectForm();
+    saveList(list);
+    renderTable();
+    alert('Cập nhật thành công!');
+    editingIndex = null;
+    document.getElementById('registerForm').reset();
+    document.getElementById('age').value = 25;
+  }
+
+  function deleteLast(){
+    const list = getList();
+    if (!list.length){ alert('Không có bản ghi để xóa'); return; }
+    if (confirm('Bạn có chắc muốn xóa học viên cuối cùng?')){
+      list.pop();
+      saveList(list);
+      renderTable();
+      alert('Đã xóa!');
+    }
+  }
+
+  // ========= EXIT =========
+  function exitForm(){
+    if (confirm('Thoát khỏi form?')) window.location.href = 'index.html';
+  }
+
+  // ========= SEED + AUTOFILL ON LOAD =========
+  function seedIfEmpty(){
+    let list = getList();
+    if (list.length === 0){
+      const seed = {
+        fullname: 'Nguyễn Văn B',
+        address : '10 Đường ABC, Hà Nội',
+        phone   : '0910000001',
+        cccd    : '100000000001',
+        course  : 'Lập Trình Web',
+        gender  : 'Nữ',
+        priority: false,
+        age     : 25,
+      };
+      // tính học phí theo seed
+      let fee = 5000000; // Lập Trình Web
+      if (seed.priority) fee *= 0.9;
+      seed.tuition = VND(fee);
+      list = [seed];
+      saveList(list);
+    }
+    renderTable();
+
+    // Auto-fill form (luôn điền sẵn)
+    const first = list[0] || {
+      fullname:'Nguyễn Văn B',
+      address:'10 Đường ABC, Hà Nội',
+      phone:'0910000001',
+      cccd:'100000000001',
+      course:'Lập Trình Web',
+      gender:'Nữ',
+      priority:false,
+      age:25,
+      tuition:''
+    };
+    setForm(first);
+    // đảm bảo tuổi có giá trị khi mở
+    if (!document.getElementById('age').value) document.getElementById('age').value = 25;
+  }
+
+  document.addEventListener('DOMContentLoaded', seedIfEmpty);
+</script>
+
+</body>
+</html>
