@@ -1,0 +1,82 @@
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.face-scan-btn {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: var(--font-size-md);
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-semibold);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+}
+
+.face-scan-btn:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(37, 99, 235, 0.4);
+}
+
+.face-scan-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.4);
+}
+
+.scan-icon {
+  font-size: var(--font-size-lg);
+}
+
+.highlight-card {
+  background-color: #f0f9ff;
+  border: 2px solid #3b82f6;
+  position: relative;
+  overflow: hidden;
+}
+
+.highlight-card:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 30px 30px 0;
+  border-color: transparent #3b82f6 transparent transparent;
+}
+
+.highlight-card .qa-title {
+  color: #1e40af;
+}
+
+.highlight-card .qa-btn {
+  background-color: #3b82f6;
+}
+
+.highlight-card .qa-btn:hover {
+  background-color: #2563eb;
+}
+
+@media (max-width: 768px) {
+  .home-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .face-scan-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

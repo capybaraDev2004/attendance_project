@@ -1,4 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import AdminLayout from '../../components/AdminLayout';
+import AdminButton from '../../components/AdminButton';
+import { FaHistory, FaCalendarAlt, FaUsers, FaDesktop, FaSearch, FaFileExcel } from 'react-icons/fa';
+import './AttendanceHistory.css';
 
 // Lịch sử ra/vào với bộ lọc theo ngày, user, thiết bị
 const AttendanceHistory = () => {
@@ -77,126 +81,182 @@ const AttendanceHistory = () => {
     return <span className="status-complete">Hoàn thành</span>;
   };
 
+  if (loading) {
+    return (
+      <AdminLayout
+        title="Lịch sử truy cập người dùng"
+        subtitle="Theo dõi lịch sử ra vào của nhân viên"
+        icon={FaHistory}
+      >
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Đang tải dữ liệu...</p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
-    <>
-      {/* Page Header */}
-      <div className="page-header">
-        <h1 className="page-title">LỊCH SỬ TRUY CẬP NGƯỜI DÙNG</h1>
-      </div>
-
-      {/* Filters Section */}
-      <div className="filters-section">
-        {/* Lọc theo ngày */}
-        <div className="filter-group">
-          <div className="filter-title">Lọc theo ngày</div>
-          <div className="date-row">
-            <div className="input-group">
-              <label className="input-label">Ngày bắt đầu:</label>
-              <input
-                type="date"
-                className="form-input"
-                value={filters.startDate}
-                onChange={(e) => handleFilterChange('startDate', e.target.value)}
-              />
+    <AdminLayout
+      title="Lịch sử truy cập người dùng"
+      subtitle="Theo dõi lịch sử ra vào của nhân viên"
+      icon={FaHistory}
+    >
+      <div className="attendance-history-container">
+        {/* Filters Section */}
+        <div className="filters-container">
+          <div className="filters-card">
+            <h3 className="filters-title">
+              <FaSearch className="filters-icon" />
+              Bộ lọc dữ liệu
+            </h3>
+            
+            {/* Lọc theo ngày */}
+            <div className="filter-group">
+              <div className="filter-title">Lọc theo ngày</div>
+              <div className="date-row">
+                <div className="input-group">
+                  <label className="input-label">Ngày bắt đầu:</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={filters.startDate}
+                    onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                  />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Ngày kết thúc:</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={filters.endDate}
+                    onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="input-group">
-              <label className="input-label">Ngày kết thúc:</label>
-              <input
-                type="date"
-                className="form-input"
-                value={filters.endDate}
-                onChange={(e) => handleFilterChange('endDate', e.target.value)}
-              />
+
+            {/* Lọc theo User và thiết bị */}
+            <div className="filter-group">
+              <div className="select-row">
+                <div className="input-group">
+                  <label className="input-label">Lọc theo User:</label>
+                  <select
+                    className="form-select"
+                    value={filters.selectedUser}
+                    onChange={(e) => handleFilterChange('selectedUser', e.target.value)}
+                  >
+                    <option value="all">Tất cả người dùng</option>
+                    {users.map((user) => (
+                      <option key={user.userID} value={user.userID}>
+                        {user.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Lọc theo thiết bị:</label>
+                  <select
+                    className="form-select"
+                    value={filters.selectedDevice}
+                    onChange={(e) => handleFilterChange('selectedDevice', e.target.value)}
+                  >
+                    <option value="all">Tất cả thiết bị</option>
+                    {devices.map((device) => (
+                      <option key={device.device_id} value={device.device_id}>
+                        {device.device_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="filter-actions">
+              <AdminButton
+                variant="success"
+                size="medium"
+                onClick={handleFilter}
+                icon={FaSearch}
+              >
+                Lọc dữ liệu
+              </AdminButton>
+              <AdminButton
+                variant="outline"
+                size="medium"
+                onClick={() => alert('Tính năng xuất Excel sẽ được triển khai!')}
+                icon={FaFileExcel}
+              >
+                Xuất File Excel
+              </AdminButton>
             </div>
           </div>
         </div>
 
-        {/* Lọc theo User và thiết bị */}
-        <div className="filter-group">
-          <div className="select-row">
-            <div className="input-group">
-              <label className="input-label">Lọc theo User:</label>
-              <select
-                className="form-select"
-                value={filters.selectedUser}
-                onChange={(e) => handleFilterChange('selectedUser', e.target.value)}
-              >
-                <option value="all">Tất cả người dùng</option>
-                {users.map((user) => (
-                  <option key={user.userID} value={user.userID}>
-                    {user.fullName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Lọc theo thiết bị:</label>
-              <select
-                className="form-select"
-                value={filters.selectedDevice}
-                onChange={(e) => handleFilterChange('selectedDevice', e.target.value)}
-              >
-                <option value="all">Tất cả thiết bị</option>
-                {devices.map((device) => (
-                  <option key={device.device_id} value={device.device_id}>
-                    {device.device_name}
-                  </option>
-                ))}
-              </select>
-            </div>
+        {/* Data Table */}
+        <div className="table-container">
+          <div className="table-header">
+            <h3 className="table-title">
+              <FaHistory className="table-icon" />
+              Dữ liệu lịch sử
+            </h3>
+            <p className="table-subtitle">
+              Tổng cộng: {attendanceData.length} bản ghi
+            </p>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="action-buttons">
-          <button className="btn-filter" onClick={handleFilter}>
-            🔍 Lọc dữ liệu
-          </button>
-          <button
-            className="btn-export"
-            onClick={() => alert('Tính năng xuất Excel sẽ được triển khai!')}
-          >
-            📊 Xuất File Excel
-          </button>
+          {attendanceData.length === 0 ? (
+            <div className="no-data-container">
+              <div className="no-data-card">
+                <FaHistory className="no-data-icon" />
+                <h3>Chưa có dữ liệu lịch sử</h3>
+                <p>Vui lòng chọn khoảng thời gian và nhấn "Lọc dữ liệu" để xem kết quả</p>
+              </div>
+            </div>
+          ) : (
+            <div className="table-wrapper">
+              <table className="data-table">
+                <thead className="table-header-row">
+                  <tr>
+                    <th>ID</th>
+                    <th>HỌ TÊN</th>
+                    <th>NGÀY</th>
+                    <th>THỜI GIAN VÀO</th>
+                    <th>THIẾT BỊ VÀO</th>
+                    <th>THỜI GIAN RA</th>
+                    <th>THIẾT BỊ RA</th>
+                    <th>TRẠNG THÁI</th>
+                  </tr>
+                </thead>
+                <tbody className="table-body">
+                  {attendanceData.map((record) => (
+                    <tr key={record.attendance_id}>
+                      <td className="record-id">{record.attendance_id}</td>
+                      <td className="record-name">{record.fullName}</td>
+                      <td className="record-date">
+                        {new Date(record.work_date).toLocaleDateString('vi-VN')}
+                      </td>
+                      <td className="record-time-in">
+                        {record.check_in ? new Date(record.check_in).toLocaleTimeString('vi-VN') : '--'}
+                      </td>
+                      <td className="record-device-in">{record.device_in_name || '--'}</td>
+                      <td className="record-time-out">
+                        {record.check_out ? new Date(record.check_out).toLocaleTimeString('vi-VN') : '--'}
+                      </td>
+                      <td className="record-device-out">{record.device_out_name || '--'}</td>
+                      <td className="record-status">
+                        {renderStatusBadge(record.check_in, record.check_out)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Data Table */}
-      <div className="table-container">
-        {loading ? (
-          <div className="loading">Đang tải dữ liệu...</div>
-        ) : (
-          <table className="data-table">
-            <thead className="table-header">
-              <tr>
-                <th>ID</th>
-                <th>HỌ TÊN</th>
-                <th>NGÀY</th>
-                <th>THỜI GIAN VÀO</th>
-                <th>THIẾT BỊ VÀO</th>
-                <th>THỜI GIAN RA</th>
-                <th>THIẾT BỊ RA</th>
-                <th>TRẠNG THÁI</th>
-              </tr>
-            </thead>
-            <tbody className="table-body">
-              {attendanceData.map((record) => (
-                <tr key={record.attendance_id}>
-                  <td>{record.attendance_id}</td>
-                  <td>{record.fullName}</td>
-                  <td>{new Date(record.work_date).toLocaleDateString('vi-VN')}</td>
-                  <td>{record.check_in ? new Date(record.check_in).toLocaleTimeString('vi-VN') : '--'}</td>
-                  <td>{record.device_in_name || '--'}</td>
-                  <td>{record.check_out ? new Date(record.check_out).toLocaleTimeString('vi-VN') : '--'}</td>
-                  <td>{record.device_out_name || '--'}</td>
-                  <td>{renderStatusBadge(record.check_in, record.check_out)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </>
+    </AdminLayout>
   );
 };
 

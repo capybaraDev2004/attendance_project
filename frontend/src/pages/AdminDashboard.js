@@ -3,10 +3,14 @@ import React, { useState, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
 
-// Lazy load các trang/khối chức năng
-const UserManagement = lazy(() => import('./UserManagement'));
+// Lazy load các trang/khối chức năng - chỉ tải khi cần thiết
+const UserManagement = lazy(() => import('./UserManagement')); // Sửa đường dẫn import
 const FaceSetup = lazy(() => import('./admin/FaceSetup'));
 const AttendanceHistory = lazy(() => import('./admin/AttendanceHistory'));
+const PayrollCalculation = lazy(() => import('./admin/PayrollCalculation'));
+const DeviceManagement = lazy(() => import('./admin/DeviceManagement'));
+const WorkHours = lazy(() => import('./admin/WorkHours'));
+const Positions = lazy(() => import('./admin/Positions'));
 const UnderConstruction = lazy(() => import('./admin/UnderConstruction'));
 
 // Trang quản lý dành cho admin với giao diện hiện đại
@@ -14,29 +18,33 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('manage-users');
 
-  // Lấy thông tin auth từ localStorage
-  const raw = localStorage.getItem('auth');
-  const auth = raw ? JSON.parse(raw) : null;
+  // Lấy thông tin auth từ localStorage (có thể sử dụng sau này)
+  // const raw = localStorage.getItem('auth');
+  // const auth = raw ? JSON.parse(raw) : null;
 
-  // Menu items cho sidebar
+  // Menu items cho sidebar - cấu trúc rõ ràng
   const menuItems = [
-    { id: 'manage-users', label: '👥 Quản lý người dùng', active: true },
-    { id: 'face-setup', label: '🧠 Cài đặt nhận diện', active: false },
-    { id: 'history', label: '📊 Lịch sử ra vào', active: false },
-    { id: 'calculate', label: '📋 Tính công', active: false },
-    { id: 'devices', label: '⚙️ Quản lý thiết bị', active: false },
-    { id: 'work-hours', label: '⏰ Giờ làm việc', active: false },
-    { id: 'positions', label: '👔 Chức vụ', active: false },
-    { id: 'employee-status', label: '📈 Trang thái nhân viên', active: false }
+    { id: 'manage-users', label: 'Quản lý người dùng', icon: 'users', active: true },
+    { id: 'face-setup', label: 'Cài đặt nhận diện', icon: 'face', active: false },
+    { id: 'history', label: 'Lịch sử ra vào', icon: 'history', active: false },
+    { id: 'calculate', label: 'Tính công', icon: 'calculate', active: false },
+    { id: 'devices', label: 'Quản lý thiết bị', icon: 'devices', active: false },
+    { id: 'work-hours', label: 'Giờ làm việc', icon: 'time', active: false },
+    { id: 'positions', label: 'Chức vụ', icon: 'position', active: false },
   ];
 
-  // Hàm đăng xuất
-  const logout = () => {
+  // Hàm đăng xuất - xóa auth và chuyển về trang login
+  const handleLogout = () => {
     localStorage.removeItem('auth');
     navigate('/login', { replace: true });
   };
 
-  // Render nội dung theo tab, chỉ tải component khi cần (lazy)
+  // Hàm chuyển đổi tab - cập nhật state activeTab
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+  };
+
+  // Render nội dung theo tab, chỉ tải component khi cần (lazy loading)
   const renderTabContent = () => {
     switch (activeTab) {
       case 'manage-users':
@@ -46,15 +54,13 @@ const AdminDashboard = () => {
       case 'history':
         return <AttendanceHistory />;
       case 'calculate':
-        return <UnderConstruction title="TÍNH NĂNG TÍNH CÔNG ĐANG PHÁT TRIỂN" />;
+        return <PayrollCalculation />;
       case 'devices':
-        return <UnderConstruction title="TÍNH NĂNG QUẢN LÝ THIẾT BỊ ĐANG PHÁT TRIỂN" />;
+        return <DeviceManagement />;
       case 'work-hours':
-        return <UnderConstruction title="TÍNH NĂNG GIỜ LÀM VIỆC ĐANG PHÁT TRIỂN" />;
+        return <WorkHours />;
       case 'positions':
-        return <UnderConstruction title="TÍNH NĂNG CHỨC VỤ ĐANG PHÁT TRIỂN" />;
-      case 'employee-status':
-        return <UnderConstruction title="TÍNH NĂNG TRẠNG THÁI NHÂN VIÊN ĐANG PHÁT TRIỂN" />;
+        return <Positions />;
       default:
         return <UnderConstruction title="TÍNH NĂNG ĐANG PHÁT TRIỂN" />;
     }
@@ -62,45 +68,44 @@ const AdminDashboard = () => {
 
   return (
     <div className="admin-container">
-      {/* Sidebar */}
+      {/* Sidebar - Menu điều hướng chính */}
       <div className="sidebar">
         <div className="sidebar-header">
           <div className="admin-badge">ADMIN</div>
         </div>
+        
         <nav className="sidebar-nav">
           <ul className="sidebar-menu">
+            {/* Menu chính */}
             {menuItems.map((item) => (
               <li key={item.id} className="menu-item">
-                <a
-                  href="#"
+                <button
+                  type="button"
                   className={`menu-link ${item.id === activeTab ? 'active' : ''}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveTab(item.id);
-                  }}
+                  onClick={() => handleTabChange(item.id)}
                 >
+                  <span className={`menu-icon icon-${item.icon}`}></span>
                   {item.label}
-                </a>
+                </button>
               </li>
             ))}
+            
             {/* Menu đăng xuất */}
             <li className="menu-item">
-              <a
-                href="#"
+              <button
+                type="button"
                 className="menu-link logout"
-                onClick={(e) => {
-                  e.preventDefault();
-                  logout();
-                }}
+                onClick={handleLogout}
               >
-                🚪 Đăng xuất
-              </a>
+                <span className="menu-icon icon-logout"></span>
+                Đăng xuất
+              </button>
             </li>
           </ul>
         </nav>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - Nội dung chính của từng tab */}
       <div className="main-content">
         <Suspense fallback={<div className="loading">Đang tải thành phần...</div>}>
           {renderTabContent()}

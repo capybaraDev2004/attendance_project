@@ -14,8 +14,9 @@
 
 .customer-brand {
   padding: 16px 20px;
-  font-weight: 700;
-  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  font-family: var(--font-primary);
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
