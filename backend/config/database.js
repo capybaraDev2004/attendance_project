@@ -1,6 +1,5 @@
 // backend/config/database.js
 const mysql = require('mysql2/promise');
-require('dotenv').config();
 
 // Pool kết nối MySQL dùng chung
 const pool = mysql.createPool({

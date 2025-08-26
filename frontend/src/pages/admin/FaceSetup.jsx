@@ -1,4 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import AdminLayout from '../../components/AdminLayout';
+import AdminButton from '../../components/AdminButton';
+import { FaUserFriends, FaCamera, FaPlus, FaEdit, FaTrash, FaEye, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import './FaceSetup.css';
 
 const FaceSetup = () => {
   const [users, setUsers] = useState([]);
@@ -167,7 +171,6 @@ const FaceSetup = () => {
               // Sử dụng file weights local từ backend
               let loaded = false;
               let workingUrl = '';
-              let lastError = null;
               
               for (const modelUrl of MODEL_URLS) {
                 try {
@@ -201,7 +204,6 @@ const FaceSetup = () => {
                   workingUrl = modelUrl;
                   break; // Dừng ngay khi thành công
                 } catch (urlError) {
-                  lastError = urlError;
                   console.warn(`⚠️ Không thể load ${modelName} từ ${modelUrl}:`, urlError.message);
                   continue;
                 }
@@ -403,7 +405,7 @@ const FaceSetup = () => {
 
   const openInstallModal = (user) => {
     setSelectedUserForInstall(user);
-      setSelectedImage(null);
+    setSelectedImage(null);
     setErrorMsg('');
     setInstallModalOpen(true);
   };
@@ -434,11 +436,13 @@ const FaceSetup = () => {
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
-      console.log('📖 File read successfully, dataUrl length:', reader.result.length);
+
+    reader.onload = (e) => {
+      const result = (e && e.target && e.target.result) ? e.target.result : reader.result; // dùng reader.result nếu e không có target
+      console.log('📖 File read successfully, dataUrl length:', result ? String(result).length : 0);
       setSelectedImage({
         fileName: file.name,
-        dataUrl: reader.result,
+        dataUrl: result,
         size: file.size
       });
       setErrorMsg('');
@@ -571,14 +575,6 @@ const FaceSetup = () => {
     });
     
     const loadedNets = modelStatus.filter(status => status.isLoaded);
-    const missingNets = modelStatus.filter(status => !status.isLoaded);
-    
-    console.log('🔍 Model status check:', {
-      required: requiredNets.length,
-      loaded: loadedNets.length,
-      loadedNets: loadedNets.map(s => s.modelName),
-      missingNets: missingNets.map(s => s.modelName)
-    });
     
     // Chỉ cần ít nhất 1 model để hoạt động
     const hasWorkingModel = loadedNets.length > 0;
@@ -608,18 +604,18 @@ const FaceSetup = () => {
       console.log('🔄 Bắt đầu xử lý ảnh...');
       console.log('📊 dataUrl length:', dataUrl.length);
       
-              // Test face-api.js trước
-        await testFaceApi();
-        
-        // Kiểm tra model status trước khi xử lý
-        const modelStatus = checkModelStatus();
-        console.log(`📊 Model status trước khi xử lý: ${modelStatus ? '✅ Ready' : '❌ Not Ready'}`);
-        
-        if (!modelStatus) {
-          console.warn('⚠️ Models chưa load đầy đủ, sử dụng fallback method');
-          return await extractDescriptorSimple(dataUrl);
-        }
+      // Test face-api.js trước
+      await testFaceApi();
       
+      // Kiểm tra model status trước khi xử lý
+      const modelStatus = checkModelStatus();
+      console.log(`📊 Model status trước khi xử lý: ${modelStatus ? '✅ Ready' : '❌ Not Ready'}`);
+      
+      if (!modelStatus) {
+        console.warn('⚠️ Models chưa load đầy đủ, sử dụng fallback method');
+        return await extractDescriptorSimple(dataUrl);
+      }
+    
       // Tạo HTMLImageElement để kiểm soát việc load ảnh
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -665,7 +661,7 @@ const FaceSetup = () => {
       // Detect với timeout và error handling chi tiết
       const result = await Promise.race([
         fa.detectSingleFace(processImg, options)
-      .withFaceLandmarks()
+          .withFaceLandmarks()
           .withFaceDescriptor(),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout detect face (>30s)')), 30000)
@@ -685,8 +681,8 @@ const FaceSetup = () => {
       console.log('✅ Detect thành công, descriptor length:', result.descriptor.length);
       console.log('📊 Descriptor sample (first 5):', Array.from(result.descriptor).slice(0, 5));
 
-    // descriptor là Float32Array 128 phần tử
-    return Array.from(result.descriptor);
+      // descriptor là Float32Array 128 phần tử
+      return Array.from(result.descriptor);
     } catch (error) {
       console.error('❌ Lỗi extractDescriptor:', error);
       console.error('❌ Error stack:', error.stack);
@@ -868,7 +864,6 @@ const FaceSetup = () => {
       setErrorMsg('Vui lòng chọn một ảnh khuôn mặt trước khi áp dụng.');
       return;
     }
-
     if (!modelsLoaded) {
       setErrorMsg('Model nhận diện chưa sẵn sàng. Vui lòng đợi hoặc tải lại trang.');
       return;
@@ -920,7 +915,7 @@ const FaceSetup = () => {
         }
       } catch (e) {
         console.warn('⚠️ Không parse được JSON response:', e);
-        console.warn('⚠️ Response text:', await res.text());
+        // Không gọi res.text() lần 2 để tránh stream rỗng
       }
 
       if (!res.ok || !data.success) {
@@ -937,7 +932,7 @@ const FaceSetup = () => {
       };
 
       setFaceEnrollments(prev => ({
-          ...prev,
+        ...prev,
         [selectedUserForInstall.userID]: newEnrollment
       }));
 
@@ -951,6 +946,32 @@ const FaceSetup = () => {
       setErrorMsg(`${err.message}`);
     }
   };
+
+  // Xóa dữ liệu nhận diện (chưa hiển thị nút trong UI)
+  const deleteFaceData = (userID) => {
+    if (!window.confirm('Bạn có chắc muốn xóa dữ liệu nhận diện của user này?')) return;
+    // TODO: Gọi API backend để xóa theo userID, sau đó cập nhật state faceEnrollments
+  };
+
+  // Xem ảnh đã đăng ký (nếu có lưu kèm ảnh)
+  const viewFaceImage = (userID) => {
+    // TODO: Nếu backend có lưu ảnh, mở URL ảnh tại đây
+  };
+
+  if (loading) {
+    return (
+      <AdminLayout
+        title="Cài đặt nhận diện khuôn mặt"
+        subtitle="Quản lý dữ liệu nhận diện cho từng người dùng"
+        icon={FaUserFriends}
+      >
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Đang tải dữ liệu...</p>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <>
@@ -1242,81 +1263,84 @@ const FaceSetup = () => {
       </div>
 
       {/* Bảng nhân viên với cột trạng thái nhận diện */}
-      <div className="table-container">
-        {loading ? (
-          <div className="loading">Đang tải dữ liệu...</div>
-        ) : (
-          <table className="data-table">
-            <thead className="table-header">
-              <tr>
-                <th>STT</th>
-                <th>ID</th>
-                <th>HỌ TÊN</th>
-                <th>CHỨC VỤ</th>
-                <th>VAI TRÒ</th>
-                <th>TRẠNG THÁI</th>
-                <th>NHẬN DIỆN KHUÔN MẶT</th>
-                <th>NGÀY ĐĂNG KÝ</th>
-              </tr>
-            </thead>
-            <tbody className="table-body">
-              {users.length === 0 ? (
+      {/* Bọc bằng wrapper để cô lập CSS, tránh xung đột với trang khác */}
+      <div className="face-setup-page">
+        <div className="table-container">
+          {loading ? (
+            <div className="loading">Đang tải dữ liệu...</div>
+          ) : (
+            <table className="data-table">
+              <thead className="table-header">
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', color: '#6c757d' }}>
-                    Không có dữ liệu người dùng
-                  </td>
+                  <th>STT</th>
+                  <th>ID</th>
+                  <th>HỌ TÊN</th>
+                  <th>CHỨC VỤ</th>
+                  <th>VAI TRÒ</th>
+                  <th>TRẠNG THÁI</th>
+                  <th>NHẬN DIỆN KHUÔN MẶT</th>
+                  <th>NGÀY ĐĂNG KÝ</th>
                 </tr>
-              ) : (
-                users.map((user, index) => {
-                  const installed = isUserFaceInstalled(user);
-                  const enrollment = getUserFaceEnrollment(user);
-                  return (
-                    <tr key={user.userID}>
-                      <td>{index + 1}</td>
-                      <td>{user.userID}</td>
-                      <td>{user.fullName}</td>
-                      <td>{user.position || '--'}</td>
-                      <td>{user.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}</td>
-                      <td>
-                        <span className={`status-badge ${user.status === 'active' ? 'status-active' : 'status-inactive'}`}>
-                          {user.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="face-setup-cell">
-                          <span className={installed ? 'face-status-installed' : 'face-status-not'}>
-                            {installed ? 'ĐÃ CÀI ĐẶT' : 'CHƯA CÀI ĐẶT'}
+              </thead>
+              <tbody className="table-body">
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', color: '#6c757d' }}>
+                      Không có dữ liệu người dùng
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((user, index) => {
+                    const installed = isUserFaceInstalled(user);
+                    const enrollment = getUserFaceEnrollment(user);
+                    return (
+                      <tr key={user.userID}>
+                        <td>{index + 1}</td>
+                        <td>{user.userID}</td>
+                        <td>{user.fullName}</td>
+                        <td>{user.position || '--'}</td>
+                        <td>{user.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}</td>
+                        <td style={{textAlign:'center'}}>
+                          <span className={`fs-status-badge ${user.status === 'active' ? 'fs-status-active' : 'fs-status-inactive'}`}>
+                            {user.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
                           </span>
-                          <button 
-                            className="btn-install" 
-                            onClick={() => openInstallModal(user)}
-                            disabled={installed || !modelsLoaded}
-                          >
-                            {installed ? 'Đã cài đặt' : 'Cài đặt'}
-                          </button>
-                        </div>
-                      </td>
-                      <td>
-                        {enrollment ? (
-                          <div>
-                            <div style={{ fontSize: '12px', color: '#28a745' }}>
-                              {new Date(enrollment.createdAt).toLocaleDateString('vi-VN')}
-                            </div>
-                            <div style={{ fontSize: '11px', color: '#6c757d' }}>
-                              {new Date(enrollment.createdAt).toLocaleTimeString('vi-VN')}
-                            </div>
+                        </td>
+                        <td>
+                          <div className="face-setup-cell">
+                            <span className={installed ? 'fs-installed' : 'fs-not-installed'}>
+                              {installed ? 'ĐÃ CÀI ĐẶT' : 'CHƯA CÀI ĐẶT'}
+                            </span>
+                            <button 
+                              className="btn-install" 
+                              onClick={() => openInstallModal(user)}
+                              disabled={installed || !modelsLoaded}
+                            >
+                              {installed ? 'Đã cài đặt' : 'Cài đặt'}
+                            </button>
                           </div>
-                        ) : (
-                          <span style={{ color: '#6c757d', fontSize: '12px' }}>--</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        )}
+                        </td>
+                        <td>
+                          {enrollment ? (
+                            <div>
+                              <div style={{ fontSize: '12px', color: '#28a745' }}>
+                                {new Date(enrollment.createdAt).toLocaleDateString('vi-VN')}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6c757d' }}>
+                                {new Date(enrollment.createdAt).toLocaleTimeString('vi-VN')}
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ color: '#6c757d', fontSize: '12px' }}>--</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
       {/* Modal cài đặt nhận diện khuôn mặt */}
@@ -1357,27 +1381,20 @@ const FaceSetup = () => {
                         Kích thước: {(selectedImage.size / (1024 * 1024)).toFixed(2)} MB
                       </div>
                     ) : null}
-                    <button
-                      className="btn-cancel"
-                      style={{ marginTop: 12 }}
-                      onClick={() => setSelectedImage(null)}
-                    >
-                      Xóa ảnh đã chọn
-                    </button>
+
+                    <div className="modal-actions" style={{ marginTop: 16 }}>
+                      <button
+                        className="btn-confirm"
+                        onClick={applyInstallForSelectedUser}
+                        disabled={saving || !selectedImage?.dataUrl || !modelsLoaded}
+                      >
+                        {saving ? 'Đang lưu...' : 'Áp dụng'}
+                      </button>
+                      <button className="btn-cancel" onClick={closeInstallModal}>Đóng</button>
+                    </div>
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="modal-actions" style={{ marginTop: 16 }}>
-              <button
-                className="btn-confirm"
-                onClick={applyInstallForSelectedUser}
-                disabled={saving || !selectedImage?.dataUrl || !modelsLoaded}
-              >
-                {saving ? 'Đang lưu...' : 'Áp dụng'}
-              </button>
-              <button className="btn-cancel" onClick={closeInstallModal}>Đóng</button>
             </div>
           </div>
         </div>
