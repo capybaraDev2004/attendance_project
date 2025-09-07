@@ -14,7 +14,7 @@ const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(bodyParser.json());
 
-// Serve static files cho face-api weights
+// Serve static files cho face-api weights (dùng ở frontend)
 app.use('/api/face_api/weights', express.static(path.join(__dirname, 'api/face_api/weights')));
 
 // Định tuyến

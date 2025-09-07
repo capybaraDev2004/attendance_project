@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import AdminButton from '../../components/AdminButton';
-import { FaHistory, FaCalendarAlt, FaUsers, FaDesktop, FaSearch, FaFileExcel } from 'react-icons/fa';
+import { FaHistory, FaCalendarAlt, FaSearch, FaFileExcel } from 'react-icons/fa';
 import './AttendanceHistory.css';
 
 // Lịch sử ra/vào với bộ lọc theo ngày, user, thiết bị
@@ -11,10 +11,55 @@ const AttendanceHistory = () => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Bộ lọc: giữ định dạng input chuẩn HTML; hiển thị ra bảng dùng vi-VN (dd/mm/yyyy)
+  // refs cho input date ẩn (dùng để mở calendar native)
+  const startHiddenRef = useRef(null);
+  const endHiddenRef = useRef(null);
+
+  // ===== Helpers xử lý ngày dd/MM/yyyy <-> ISO yyyy-MM-dd =====
+  const formatDisplayDate = (dateObj) => {
+    // Trả về chuỗi dd/MM/yyyy
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const yyyy = dateObj.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  const displayToISO = (displayStr) => {
+    // Chuyển "dd/MM/yyyy" -> "yyyy-MM-dd" để gọi API hoặc gán cho input type="date"
+    const parts = displayStr.split('/');
+    if (parts.length !== 3) return '';
+    const [dd, mm, yyyy] = parts;
+    if (!dd || !mm || !yyyy) return '';
+    return `${yyyy.padStart(4, '0')}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  };
+
+  const isoToDisplay = (isoStr) => {
+    // Chuyển "yyyy-MM-dd" -> "dd/MM/yyyy" khi chọn từ calendar
+    if (!isoStr) return '';
+    const parts = isoStr.split('-');
+    if (parts.length !== 3) return '';
+    const [yyyy, mm, dd] = parts;
+    return `${dd.padStart(2, '0')}/${mm.padStart(2, '0')}/${yyyy.padStart(4, '0')}`;
+  };
+
+  const normalizeDateInput = (value) => {
+    // Chuẩn hoá chuỗi nhập thành định dạng dd/MM/yyyy khi gõ
+    // - Lấy tối đa 8 chữ số
+    // - Chèn dấu "/" sau 2 và 4 chữ số
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  };
+
+  // Mặc định: ngày bắt đầu = ngày 01 của tháng hiện tại, ngày kết thúc = hôm nay
+  const today = new Date();
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  // Bộ lọc: lưu chuỗi hiển thị dd/MM/yyyy
   const [filters, setFilters] = useState({
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: formatDisplayDate(firstDayOfMonth),
+    endDate: formatDisplayDate(today),
     selectedUser: 'all',
     selectedDevice: 'all'
   });
@@ -41,16 +86,31 @@ const AttendanceHistory = () => {
   }, []);
 
   const handleFilterChange = (key, value) => {
+    // Với trường ngày thì áp dụng định dạng dd/MM/yyyy khi người dùng nhập
+    if (key === 'startDate' || key === 'endDate') {
+      value = normalizeDateInput(value);
+    }
     setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Khi chọn ngày từ calendar (input type="date" ẩn)
+  const handleCalendarPick = (key, isoValue) => {
+    // Chuyển ISO -> dd/MM/yyyy để hiển thị đẹp
+    const display = isoToDisplay(isoValue);
+    setFilters((prev) => ({ ...prev, [key]: display }));
   };
 
   // Gọi API lấy lịch sử theo filter hiện tại
   const fetchAttendanceHistory = async () => {
     setLoading(true);
     try {
+      // Chuyển ngày hiển thị dd/MM/yyyy -> ISO yyyy-MM-dd để backend nhận đúng
+      const startISO = displayToISO(filters.startDate);
+      const endISO = displayToISO(filters.endDate);
+
       const queryParams = new URLSearchParams({
-        start_date: filters.startDate,
-        end_date: filters.endDate,
+        start_date: startISO,
+        end_date: endISO,
         user_id: filters.selectedUser,
         device_id: filters.selectedDevice
       });
@@ -115,23 +175,87 @@ const AttendanceHistory = () => {
             <div className="filter-group">
               <div className="filter-title">Lọc theo ngày</div>
               <div className="date-row">
+                {/* Ô ngày bắt đầu: text dd/MM/yyyy + nút mở calendar + input date ẩn */}
                 <div className="input-group">
                   <label className="input-label">Ngày bắt đầu:</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={filters.startDate}
-                    onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                  />
+                  <div className="date-input-with-button">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="dd/mm/yyyy"
+                      className="form-input"
+                      value={filters.startDate}
+                      onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="calendar-button"
+                      aria-label="Chọn ngày bắt đầu"
+                      onClick={() => {
+                        // Mở calendar của input date ẩn (nếu trình duyệt hỗ trợ)
+                        if (startHiddenRef.current) {
+                          // Đặt giá trị hiện tại theo ISO để trỏ đúng ngày
+                          startHiddenRef.current.value = displayToISO(filters.startDate) || '';
+                          if (startHiddenRef.current.showPicker) {
+                            startHiddenRef.current.showPicker();
+                          } else {
+                            startHiddenRef.current.click();
+                          }
+                        }
+                      }}
+                    >
+                      <FaCalendarAlt />
+                    </button>
+                    {/* input date ẩn (calendar native) */}
+                    <input
+                      ref={startHiddenRef}
+                      type="date"
+                      className="hidden-date-input"
+                      defaultValue=""
+                      onChange={(e) => handleCalendarPick('startDate', e.target.value)}
+                      tabIndex={-1}
+                    />
+                  </div>
                 </div>
+
+                {/* Ô ngày kết thúc: text dd/MM/yyyy + nút mở calendar + input date ẩn */}
                 <div className="input-group">
                   <label className="input-label">Ngày kết thúc:</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={filters.endDate}
-                    onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                  />
+                  <div className="date-input-with-button">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="dd/mm/yyyy"
+                      className="form-input"
+                      value={filters.endDate}
+                      onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="calendar-button"
+                      aria-label="Chọn ngày kết thúc"
+                      onClick={() => {
+                        if (endHiddenRef.current) {
+                          endHiddenRef.current.value = displayToISO(filters.endDate) || '';
+                          if (endHiddenRef.current.showPicker) {
+                            endHiddenRef.current.showPicker();
+                          } else {
+                            endHiddenRef.current.click();
+                          }
+                        }
+                      }}
+                    >
+                      <FaCalendarAlt />
+                    </button>
+                    <input
+                      ref={endHiddenRef}
+                      type="date"
+                      className="hidden-date-input"
+                      defaultValue=""
+                      onChange={(e) => handleCalendarPick('endDate', e.target.value)}
+                      tabIndex={-1}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

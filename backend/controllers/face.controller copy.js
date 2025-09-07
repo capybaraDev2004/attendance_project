@@ -111,99 +111,35 @@ async function faceAttendanceCurrent(req, res, next) {
   try {
     const { userID, descriptor } = req.body;
 
-    // KIỂM TRA NGHIÊM NGẶT userID
-    if (userID === undefined || userID === null || userID === '') {
-      console.error('❌ Thiếu userID trong request body');
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Thiếu thông tin người dùng. Vui lòng đăng nhập lại.' 
-      });
+    if (userID === undefined || userID === null) {
+      return res.status(400).json({ success: false, message: 'Thiếu userID hiện tại.' });
     }
-
-    // Chuẩn hóa userID để đảm bảo consistency
-    const normalizedUserID = Number.isFinite(Number(userID)) ? Number(userID) : String(userID);
-    console.log('👤 UserID được chuẩn hóa:', normalizedUserID, 'type:', typeof normalizedUserID);
-    console.log('📥 Descriptor nhận được:', {
-      length: descriptor?.length,
-      sample: descriptor?.slice(0, 5),
-      type: typeof descriptor,
-      isArray: Array.isArray(descriptor)
-    });
 
     const vector128 = validateDescriptor(descriptor);
     if (!vector128) {
-      console.error('❌ Descriptor không hợp lệ');
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Dữ liệu khuôn mặt không hợp lệ. Vui lòng thử lại.' 
-      });
+      return res.status(400).json({ success: false, message: 'descriptor phải là mảng 128 số hợp lệ.' });
     }
-    
-    console.log('✅ Descriptor đã được validate thành công, length:', vector128.length);
 
-    console.log('🔌 Đang kết nối MongoDB...');
     const db = await Promise.race([
       getDb(),
       new Promise((_, reject) => setTimeout(() => reject(new Error('MongoDB connection timeout')), 10000))
     ]);
-    console.log('✅ Đã kết nối MongoDB thành công');
-    
     const collection = db.collection('face_templates');
-    console.log('📋 Đã lấy collection face_templates');
 
-    // Tìm template khuôn mặt cho userID cụ thể
-    console.log('🔍 Tìm kiếm template khuôn mặt cho userID:', normalizedUserID);
-    console.log('🔍 Query MongoDB:', { userID: normalizedUserID });
-    
+    const key = Number.isFinite(Number(userID)) ? Number(userID) : String(userID);
     const template = await collection.findOne(
-      { userID: normalizedUserID },
+      { userID: key },
       { projection: { userID: 1, fullName: 1, descriptor: 1 } }
     );
-    
-    console.log('🔍 Kết quả tìm kiếm template:', template ? 'Tìm thấy' : 'Không tìm thấy');
-    if (template) {
-      console.log('📋 Chi tiết template tìm thấy:', {
-        userID: template.userID,
-        fullName: template.fullName,
-        descriptorLength: template.descriptor?.length
-      });
-    }
 
-    if (!template) {
-      console.error('❌ Không tìm thấy template khuôn mặt cho userID:', normalizedUserID);
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Chưa có dữ liệu khuôn mặt cho tài khoản này. Vui lòng đăng ký khuôn mặt trước.' 
-      });
+    if (!template || !template.descriptor || template.descriptor.length !== 128) {
+      return res.status(404).json({ success: false, message: 'Không có dữ liệu khuôn mặt cho người dùng hiện tại.' });
     }
-
-    if (!template.descriptor || template.descriptor.length !== 128) {
-      console.error('❌ Template khuôn mặt không hợp lệ cho userID:', normalizedUserID);
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Dữ liệu khuôn mặt không hợp lệ. Vui lòng đăng ký lại khuôn mặt.' 
-      });
-    }
-
-    console.log('✅ Tìm thấy template khuôn mặt cho:', template.fullName, '(userID:', template.userID, ')');
-    console.log('📊 Thông tin template:', {
-      templateUserID: template.userID,
-      requestedUserID: normalizedUserID,
-      templateLength: template.descriptor?.length,
-      templateSample: template.descriptor?.slice(0, 5)
-    });
 
     // Chuẩn hóa L2 hai vector để đồng bộ hóa scale giữa các lần suy luận
     const l2 = (arr) => Math.sqrt(arr.reduce((s, v) => s + v * v, 0)) || 1;
     const v1n = vector128.map(v => v / l2(vector128));
     const v2n = template.descriptor.map(v => v / l2(template.descriptor));
-    
-    console.log('🔢 Thông tin vector:', {
-      inputVectorLength: vector128.length,
-      templateVectorLength: template.descriptor.length,
-      inputVectorSample: vector128.slice(0, 5),
-      templateVectorSample: template.descriptor.slice(0, 5)
-    });
 
     // Khoảng cách Euclidean trên vector đã chuẩn hóa
     let distance = 0;
@@ -217,108 +153,18 @@ async function faceAttendanceCurrent(req, res, next) {
     let dot = 0;
     for (let i = 0; i < 128; i++) dot += v1n[i] * v2n[i];
     const cosineSim = dot; // đã chuẩn hóa → dot = cosine similarity
-    
-    // KIỂM TRA TÍNH HỢP LỆ CỦA KẾT QUẢ
-    if (!Number.isFinite(distance) || !Number.isFinite(cosineSim)) {
-      console.error('🚨 LỖI TÍNH TOÁN: Kết quả so khớp không hợp lệ!', {
-        distance,
-        cosineSim,
-        inputVectorSample: vector128.slice(0, 5),
-        templateVectorSample: template.descriptor.slice(0, 5)
-      });
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Lỗi hệ thống: Kết quả so khớp không hợp lệ' 
-      });
-    }
-    
-    console.log('🧮 Kết quả tính toán:', {
-      euclideanDistance: distance,
-      cosineSimilarity: cosineSim,
-      isValid: Number.isFinite(distance) && Number.isFinite(cosineSim)
-    });
 
-    // Cho phép cấu hình ngưỡng qua ENV, có giá trị mặc định CỰC KỲ NGHIÊM NGẶT
-    const thresholdEu = Number(process.env.FACE_THRESHOLD_EUCLIDEAN) || 0.25; // CỰC KỲ NGHIÊM NGẶT: giảm từ 0.4 xuống 0.25
-    const thresholdCos = Number(process.env.FACE_THRESHOLD_COSINE) || 0.85;  // CỰC KỲ NGHIÊM NGẶT: tăng từ 0.7 lên 0.85
+    // Cho phép cấu hình ngưỡng qua ENV, có giá trị mặc định an toàn
+    const thresholdEu = Number(process.env.FACE_THRESHOLD_EUCLIDEAN) || 0.8;
+    const thresholdCos = Number(process.env.FACE_THRESHOLD_COSINE) || 0.45;
 
-    console.log('📏 Kết quả so khớp:', {
-      userID: normalizedUserID,
-      fullName: template.fullName,
-      euclideanDistance: distance,
-      cosineSimilarity: cosineSim,
-      thresholds: { euclidean: thresholdEu, cosine: thresholdCos }
-    });
+    console.log('📏 Distance (euclidean):', distance, 'CosineSim:', cosineSim, 'Thresholds:', { thresholdEu, thresholdCos });
 
-    // KIỂM TRA NGHIÊM NGẶT: Phải đạt cả 2 điều kiện để được coi là khớp
-    const isEuclideanMatch = distance <= thresholdEu;
-    const isCosineMatch = cosineSim >= thresholdCos;
-    
-    console.log('🔍 Chi tiết kiểm tra khớp:', {
-      euclideanDistance: distance,
-      euclideanThreshold: thresholdEu,
-      euclideanMatch: isEuclideanMatch,
-      cosineSimilarity: cosineSim,
-      cosineThreshold: thresholdCos,
-      cosineMatch: isCosineMatch,
-      overallMatch: isEuclideanMatch && isCosineMatch
-    });
-    
-    // KIỂM TRA BỔ SUNG: Đảm bảo userID khớp chính xác
-    if (template.userID !== normalizedUserID) {
-      console.error('🚨 LỖI NGHIÊM TRỌNG: Template userID không khớp với userID yêu cầu!', {
-        templateUserID: template.userID,
-        requestedUserID: normalizedUserID
-      });
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Lỗi hệ thống: Template userID không khớp' 
-      });
-    }
-    
-    if (!isEuclideanMatch || !isCosineMatch) {
-      console.error('❌ Khuôn mặt KHÔNG KHỚP:', {
-        euclideanMatch: isEuclideanMatch,
-        cosineMatch: isCosineMatch,
-        reason: !isEuclideanMatch ? 'Euclidean distance quá cao' : 'Cosine similarity quá thấp'
-      });
-      
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Khuôn mặt không khớp với tài khoản đăng nhập. Vui lòng thử lại hoặc liên hệ quản trị viên.',
-        data: {
-          userID: normalizedUserID,
-          fullName: template.fullName,
-          match_details: {
-            euclidean_distance: distance,
-            cosine_similarity: cosineSim,
-            thresholds: { euclidean: thresholdEu, cosine: thresholdCos },
-            euclidean_match: isEuclideanMatch,
-            cosine_match: isCosineMatch
-          }
-        }
-      });
+    if (distance > thresholdEu && cosineSim < thresholdCos) {
+      return res.status(401).json({ success: false, message: 'Khuôn mặt không khớp với người dùng hiện tại.' });
     }
 
-    console.log('✅ Khuôn mặt KHỚP HOÀN TOÀN!', {
-      userID: normalizedUserID,
-      fullName: template.fullName,
-      euclideanDistance: distance,
-      cosineSimilarity: cosineSim,
-      euclideanMatch: isEuclideanMatch,
-      cosineMatch: isCosineMatch
-    });
-    
-    // KIỂM TRA BỔ SUNG: Đảm bảo không có lỗi logic
-    if (!isEuclideanMatch || !isCosineMatch) {
-      console.error('🚨 LỖI LOGIC NGHIÊM TRỌNG: Đã vào nhánh khớp nhưng điều kiện không đạt!');
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Lỗi hệ thống: Logic so khớp không nhất quán' 
-      });
-    }
-    
-    console.log('🎯 BẮT ĐẦU XỬ LÝ CHẤM CÔNG SAU KHI XÁC NHẬN KHỚP KHUÔN MẶT');
+    console.log('✅ Khuôn mặt khớp! Khoảng cách:', distance, 'Cosine similarity:', cosineSim);
 
     // Lấy thời điểm nhận diện thành công (chính xác theo giờ Việt Nam)
     const recognitionSuccessTime = getVietnamTime();
@@ -352,11 +198,11 @@ async function faceAttendanceCurrent(req, res, next) {
       console.log('✅ Đã tạo device face_recognition với ID:', deviceId);
     }
 
-    // KIỂM TRA BẢNG attendance để xác định loại chấm công - SỬ DỤNG normalizedUserID
+    // KIỂM TRA BẢNG attendance để xác định loại chấm công - KIỂM TRA USERID TRƯỚC TIÊN
     console.log('🔍 KIỂM TRA USERID TRƯỚC TIÊN: Kiểm tra lịch sử chấm công trong ngày từ bảng attendance...');
     const [todayAttendance] = await pool.execute(
       'SELECT * FROM attendance WHERE user_id = ? AND work_date = ? ORDER BY created_at DESC',
-      [normalizedUserID, currentDate]
+      [template.userID, currentDate]
     );
 
     console.log('📊 Bản ghi attendance hôm nay:', todayAttendance.length > 0 ? 'Có' : 'Chưa có');
@@ -498,7 +344,7 @@ async function faceAttendanceCurrent(req, res, next) {
         // Xóa tất cả bản ghi cũ và tạo mới
         await pool.execute(
           'DELETE FROM attendance WHERE user_id = ? AND work_date = ?',
-          [normalizedUserID, currentDate]
+          [template.userID, currentDate]
         );
         console.log('🗑️ Đã xóa tất cả bản ghi cũ và sẽ tạo mới');
         attendanceType = 'check_in';
@@ -537,7 +383,7 @@ async function faceAttendanceCurrent(req, res, next) {
       // Lấy dữ liệu mới nhất như bình thường
       const [normalRecord] = await pool.execute(
         'SELECT * FROM attendance WHERE user_id = ? AND work_date = ? ORDER BY created_at DESC LIMIT 1',
-        [normalizedUserID, currentDate]
+        [template.userID, currentDate]
       );
       latestAttendance = normalRecord;
     }
@@ -598,7 +444,7 @@ async function faceAttendanceCurrent(req, res, next) {
         // Check-in: INSERT mới với check_in, check_out để NULL
         const [insertResult] = await pool.execute(
           'INSERT INTO attendance (user_id, work_date, check_in, check_out, device_in_id, device_out_id, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, NULL, NOW(), NOW())',
-          [normalizedUserID, currentDate, attendanceTime, deviceId]
+          [template.userID, currentDate, attendanceTime, deviceId]
         );
         attendanceId = insertResult.insertId;
         console.log('✅ Đã lưu check_in vào bảng attendance (check_out = NULL) với ID:', attendanceId);
@@ -682,7 +528,7 @@ async function faceAttendanceCurrent(req, res, next) {
       message: successMessage,
       additional_info: additionalInfo,
       data: {
-        userID: normalizedUserID,
+        userID: template.userID,
         fullName: template.fullName,
         distance,
         cosineSim,
@@ -692,14 +538,7 @@ async function faceAttendanceCurrent(req, res, next) {
         processing_time_ms: processingTime,
         attendance_id: attendanceId,
         device_id: deviceId,
-        is_completed: attendanceType === 'check_out',
-        match_details: {
-          euclidean_distance: distance,
-          cosine_similarity: cosineSim,
-          thresholds: { euclidean: thresholdEu, cosine: thresholdCos },
-          euclidean_match: isEuclideanMatch,
-          cosine_match: isCosineMatch
-        }
+        is_completed: attendanceType === 'check_out'
       }
     });
   } catch (err) {

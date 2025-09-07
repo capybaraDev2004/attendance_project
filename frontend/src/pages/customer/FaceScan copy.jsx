@@ -37,7 +37,14 @@ const FaceScan = () => {
   // Cấu hình mặc định cho TinyFaceDetector
   const TINY_INPUT_SIZE = 512;
   const TINY_THRESHOLD = 0.35;
-  // Xóa biến DETECT_STRATEGIES không sử dụng để loại bỏ warning
+  // Danh sách chiến lược phát hiện để tăng độ nhạy (thử tuần tự)
+  const DETECT_STRATEGIES = React.useMemo(() => ([
+    { engine: 'tiny', inputSize: 416, threshold: 0.25 },
+    { engine: 'tiny', inputSize: 512, threshold: 0.22 },
+    { engine: 'tiny', inputSize: 608, threshold: 0.20 },
+    { engine: 'ssd', minConfidence: 0.25 },
+    { engine: 'ssd', minConfidence: 0.2 }
+  ]), []);
 
   // Nạp model với nhiều phương án URL (ưu tiên public/models, có preflight kiểm tra manifest JSON)
   const loadModels = useCallback(async () => {
@@ -133,65 +140,31 @@ const FaceScan = () => {
     }
   }, [modelsLoaded]);
 
-  // Lấy userID hiện tại từ authentication state
+  // Lấy userID hiện tại (tùy ứng dụng, bạn có thể thay đổi key)
   const getCurrentUserId = () => {
     try {
-      console.log('🔍 Đang lấy userID từ authentication state...');
-      
-      // Thử các cách lấy userID từ localStorage theo thứ tự ưu tiên
-      const authKeys = ['auth', 'user', 'currentUser', 'userInfo'];
-      
-      for (const key of authKeys) {
-        const rawData = localStorage.getItem(key);
-        if (rawData) {
-          try {
-            const data = JSON.parse(rawData);
-            console.log(`📋 Dữ liệu từ ${key}:`, data);
-            
-            // Thử các cấu trúc khác nhau
-            const possiblePaths = [
-              data?.user?.userID,
-              data?.user?.userId, 
-              data?.user?.id,
-              data?.data?.userID,
-              data?.data?.userId,
-              data?.data?.id,
-              data?.profile?.userID,
-              data?.profile?.userId,
-              data?.profile?.id,
-              data?.userID,
-              data?.userId,
-              data?.id
-            ];
-            
-            for (const userId of possiblePaths) {
-              if (userId !== undefined && userId !== null && userId !== '') {
-                console.log(`✅ Tìm thấy userID: ${userId} từ ${key}`);
-                return userId;
-              }
-            }
-          } catch (parseErr) {
-            console.warn(`⚠️ Không thể parse dữ liệu từ ${key}:`, parseErr);
-          }
-        }
+      // Lấy từ auth (định dạng phổ biến: { token, role, user: { userID, ... } })
+      const rawAuth = localStorage.getItem('auth');
+      if (rawAuth) {
+        try {
+          const a = JSON.parse(rawAuth);
+          const u = a?.user || a?.data || a?.profile;
+          const id = u?.userID ?? u?.userId ?? u?.id;
+          if (id !== undefined && id !== null) return id;
+        } catch (_) {}
       }
-      
-      // Thử lấy từ các key riêng lẻ
-      const directKeys = ['userID', 'userId', 'currentUserId'];
-      for (const key of directKeys) {
-        const value = localStorage.getItem(key);
-        if (value && value !== 'null' && value !== 'undefined') {
-          console.log(`✅ Tìm thấy userID: ${value} từ key trực tiếp ${key}`);
-          return value;
-        }
+      const raw1 = localStorage.getItem('user');
+      if (raw1) {
+        const u = JSON.parse(raw1);
+        return u?.userID ?? u?.userId ?? u?.id ?? null;
       }
-      
-      console.warn('⚠️ Không tìm thấy userID trong localStorage');
-      return null;
-    } catch (error) {
-      console.error('❌ Lỗi khi lấy userID:', error);
-      return null;
-    }
+      const raw2 = localStorage.getItem('currentUser');
+      if (raw2) {
+        const u = JSON.parse(raw2);
+        return u?.userID ?? u?.userId ?? u?.id ?? null;
+      }
+    } catch (_) {}
+    return null;
   };
 
   // Lấy token đăng nhập nếu có để gửi Authorization cho backend
@@ -244,7 +217,7 @@ const FaceScan = () => {
   }, [stopCameraCompletely]);
 
   // Gọi API backend để so khớp đúng user hiện tại + lưu chấm công - THÊM LOCK MECHANISM
-  const submitDescriptor = useCallback(async (descriptor, userID) => {
+  const submitDescriptor = useCallback(async (descriptor) => {
     // KIỂM TRA LOCK ĐỂ TRÁNH GỌI API NHIỀU LẦN
     const now = Date.now();
     if (apiCallLockRef.current || (now - lastApiCallTimeRef.current) < API_DEBOUNCE_MS) {
@@ -267,8 +240,7 @@ const FaceScan = () => {
         'http://localhost:3001'
       ].filter(Boolean);
 
-      // Sử dụng userID được truyền vào thay vì lấy lại
-      console.log('📤 Gửi descriptor cho userID:', userID);
+      const currentUserId = getCurrentUserId();
       let lastErr = null;
 
       for (const base of apiBases) {
@@ -286,7 +258,7 @@ const FaceScan = () => {
               'Accept': 'application/json',
               ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
-            body: JSON.stringify({ descriptor, userID: userID })
+            body: JSON.stringify({ descriptor, userID: currentUserId })
           });
 
           // Đọc text trước để debug tốt hơn khi không phải JSON
@@ -344,16 +316,7 @@ const FaceScan = () => {
       const fa = getFA();
       if (!fa) return;
       const video = videoRef.current;
-      
-      // CẢI THIỆN: Kiểm tra camera sẵn sàng chi tiết hơn
-      if (video.videoWidth === 0 || video.videoHeight === 0 || video.readyState < 3) {
-        console.log('⚠️ Camera chưa sẵn sàng:', {
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight,
-          readyState: video.readyState
-        });
-        return;
-      }
+      if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
       // Hàm detect Tiny với fallback backend khi gặp lỗi fromPixels/engine
       const detectTiny = async (source, opts) => {
@@ -446,20 +409,9 @@ const FaceScan = () => {
       const offCtx = off.getContext('2d');
       offCtx.drawImage(video, 0, 0, off.width, off.height);
 
-      // CẢI THIỆN: Thêm fallback detection với nhiều strategy hơn VÀ GIẢM THRESHOLD
-      const DETECT_STRATEGIES_IMPROVED = [
-        { engine: 'tiny', inputSize: 320, threshold: 0.15 }, // GIẢM threshold để tăng độ nhạy
-        { engine: 'tiny', inputSize: 416, threshold: 0.12 },
-        { engine: 'tiny', inputSize: 512, threshold: 0.10 },
-        { engine: 'tiny', inputSize: 608, threshold: 0.08 },
-        { engine: 'tiny', inputSize: 224, threshold: 0.20 }, // THÊM strategy mới
-        { engine: 'ssd', minConfidence: 0.15 },
-        { engine: 'ssd', minConfidence: 0.10 }
-      ];
-
       // Thử tuần tự nhiều chiến lược tăng nhạy
       let result = null;
-      for (const strat of DETECT_STRATEGIES_IMPROVED) {
+      for (const strat of DETECT_STRATEGIES) {
         try {
           if (strat.engine === 'tiny') {
             result = await detectTiny(off, { inputSize: strat.inputSize, threshold: strat.threshold });
@@ -491,30 +443,22 @@ const FaceScan = () => {
         }
 
         if (!isSubmittingRef.current && result.descriptor) {
-          // Kiểm tra userID trước khi gửi - BẮT BUỘC PHẢI CÓ
+          // Kiểm tra userID trước khi gửi
           const currentUserId = getCurrentUserId();
           if (!currentUserId) {
-            console.error('❌ Không tìm thấy userID đăng nhập hiện tại');
             setScanResult({
               success: false,
-              message: 'Không tìm thấy thông tin đăng nhập. Vui lòng đăng nhập lại trước khi chấm công.',
+              message: 'Không tìm thấy userID đăng nhập hiện tại. Vui lòng đăng nhập lại.',
               timestamp: new Date().toLocaleString()
             });
             stopScan();
             return;
           }
-          
           const descriptor = Array.from(result.descriptor);
-          console.log('✅ Tạo descriptor 128 chiều cho userID:', currentUserId, 'length:', descriptor.length, 'sample:', descriptor.slice(0, 5));
-          
+          console.log('✅ Tạo descriptor 128 chiều, length:', descriptor.length, 'sample:', descriptor.slice(0, 5));
           // Thành công → hủy timeout tổng
-          if (scanTimeoutRef.current) { 
-            clearTimeout(scanTimeoutRef.current); 
-            scanTimeoutRef.current = null; 
-          }
-          
-          // Gửi descriptor cùng với userID để backend kiểm tra khớp
-          await submitDescriptor(descriptor, currentUserId);
+          if (scanTimeoutRef.current) { clearTimeout(scanTimeoutRef.current); scanTimeoutRef.current = null; }
+          await submitDescriptor(descriptor);
           return;
         }
       } else {
@@ -544,188 +488,112 @@ const FaceScan = () => {
         timestamp: new Date().toLocaleString()
       });
     }
-  }, [modelsLoaded, submitDescriptor, stopScan]); // BỎ DETECT_STRATEGIES khỏi dependencies
+  }, [modelsLoaded, submitDescriptor, stopScan, DETECT_STRATEGIES]);
 
-  // CẢI THIỆN: Tăng số lần thử và giảm interval để tăng độ nhạy - TRÁNH DUPLICATE
+  // Sau đếm ngược: thử chụp và nhận diện nhiều lần trong cửa sổ ngắn - GIẢM SỐ LẦN THỬ
   const captureWithRetries = useCallback(async () => {
-    // KIỂM TRA TRÁNH DUPLICATE CALLS
-    if (isSubmittingRef.current || detectionAbortRef.current || apiCallLockRef.current) {
-      console.log('🚫 Bỏ qua captureWithRetries - đang xử lý');
-      return;
-    }
-
-    const maxAttempts = 20;
-    const intervalMs = 200;
-    console.log('🎯 Bắt đầu capture với retries...');
-    
+    const maxAttempts = 10; // GIẢM từ 25 xuống 10 để tránh gọi quá nhiều
+    const intervalMs = 300; // TĂNG từ 200ms lên 300ms để giảm tần suất
     for (let attempt = 1; attempt <= maxAttempts && isScanningRef.current; attempt++) {
       console.log(`🔁 Capture attempt ${attempt}/${maxAttempts}`);
       await captureAndDetectOnce();
-      
       // Nếu đang submit thì nghĩa là đã có kết quả và đang gửi → dừng retry
-      if (isSubmittingRef.current || detectionAbortRef.current || apiCallLockRef.current) {
-        console.log('✅ Đã có kết quả, dừng retry');
-        return;
-      }
+      if (isSubmittingRef.current || detectionAbortRef.current || apiCallLockRef.current) return;
       await new Promise(r => setTimeout(r, intervalMs));
     }
-    
-    // Hết lượt thử mà chưa submit: báo thất bại ngay
-    console.log('❌ Hết lượt thử, không phát hiện được khuôn mặt');
+    // Hết lượt thử mà chưa submit: báo thất bại ngay (không đợi timeout 20s)
     setScanResult({
       success: false,
-      message: 'Không phát hiện được khuôn mặt. Vui lòng điều chỉnh vị trí/ánh sáng và thử lại.',
+      message: 'Không phát hiện khuôn mặt đủ rõ sau nhiều lần thử. Vui lòng điều chỉnh vị trí/ánh sáng và thử lại.',
       timestamp: new Date().toLocaleString()
     });
     // Dọn dẹp timeout và dừng quét
-    if (scanTimeoutRef.current) { 
-      clearTimeout(scanTimeoutRef.current); 
-      scanTimeoutRef.current = null; 
-    }
+    if (scanTimeoutRef.current) { clearTimeout(scanTimeoutRef.current); scanTimeoutRef.current = null; }
     stopScan();
   }, [captureAndDetectOnce, stopScan]);
 
-  // Bắt đầu quét - SỬA LỖI MODELS LOADED STATE
+  // Bắt đầu quét
   const startScan = useCallback(async () => {
-    console.log('🚀 BẮT ĐẦU START SCAN...');
-    
-    // Reset tất cả state và ref ngay từ đầu
     setScanResult(null);
     setErrorMessage('');
     detectionAbortRef.current = false;
-    apiCallLockRef.current = false;
-    backendFallbackTriedRef.current = false;
-    
-    // KIỂM TRA VÀ CHẶN TRÙNG LẶP CHẶT CHẼ HƠN
-    if (isScanningRef.current || isScanning) {
+    // Chặn gọi trùng lặp khi đang quét
+    if (isScanningRef.current) {
       console.warn('⚠️ Đang trong phiên quét, bỏ qua yêu cầu mới.');
       return;
     }
 
-    // KIỂM TRA FACE-API SẴN SÀNG TRƯỚC (không dựa vào state)
-    const fa = getFA();
-    if (!fa || !fa.nets?.tinyFaceDetector?.params) {
-      console.log('📦 Models chưa sẵn sàng, đang tải...');
+    if (!modelsLoaded) {
       await loadModels();
-      
-      // Kiểm tra lại face-api sau khi load
-      const faAfterLoad = getFA();
-      if (!faAfterLoad || !faAfterLoad.nets?.tinyFaceDetector?.params) {
-        console.error('❌ Không thể tải models');
-        setErrorMessage('Không thể tải model nhận diện. Vui lòng tải lại trang.');
-        return;
-      }
-      console.log('✅ Models đã sẵn sàng sau khi tải');
-    } else {
-      console.log('✅ Models đã sẵn sàng');
     }
 
     try {
-      console.log('📹 Đang khởi tạo camera...');
+      const fa = getFA();
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          width: { ideal: 1280 }, 
-          height: { ideal: 720 }, 
-          facingMode: 'user',
-          frameRate: { ideal: 30, max: 60 },
-          focusMode: 'continuous',
-          whiteBalanceMode: 'continuous'
-        }
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
       });
-      
       setCurrentStream(stream);
       currentStreamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
 
-        // CHỜ CAMERA SẴN SÀNG HOÀN TOÀN VỚI TIMEOUT
-        console.log('⏳ Chờ camera sẵn sàng...');
-        await new Promise((resolve, reject) => {
+        // Chờ metadata để có kích thước khung hình
+        await new Promise(resolve => {
           const v = videoRef.current;
-          if (!v) return reject(new Error('Video element không tồn tại'));
-          
-          let timeoutId = setTimeout(() => {
-            reject(new Error('Camera timeout - không thể khởi tạo trong 10s'));
-          }, 10000);
-          
-          const checkReady = () => {
-            if (v.readyState >= 3 && v.videoWidth > 0 && v.videoHeight > 0) {
-              clearTimeout(timeoutId);
-              v.removeEventListener('loadedmetadata', checkReady);
-              v.removeEventListener('canplay', checkReady);
-              v.removeEventListener('loadeddata', checkReady);
-              resolve();
-            }
-          };
-          
-          if (v.readyState >= 3 && v.videoWidth > 0) {
-            clearTimeout(timeoutId);
-            resolve();
-          } else {
-            v.addEventListener('loadedmetadata', checkReady);
-            v.addEventListener('canplay', checkReady);
-            v.addEventListener('loadeddata', checkReady);
-          }
+          if (!v) return resolve();
+          if (v.readyState >= 2 && v.videoWidth > 0) return resolve();
+          const handler = () => { v.removeEventListener('loadedmetadata', handler); resolve(); };
+          v.addEventListener('loadedmetadata', handler);
         });
 
-        console.log(`📐 Kích thước video: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
-
-        // SET STATE SCANNING NGAY SAU KHI CAMERA SẴN SÀNG
-        setIsScanning(true);
-        console.log('✅ Camera đã sẵn sàng, bắt đầu quét...');
-
-        // WARM-UP NHANH VÀ ĐƠN GIẢN - SỬA LỖI CÚ PHÁP
+        // Log kích thước khung hình để chẩn đoán
         try {
-          console.log('🔥 Warm-up model nhanh...');
           const v = videoRef.current;
-          const off = document.createElement('canvas');
-          off.width = v.videoWidth; 
-          off.height = v.videoHeight;
-          const offCtx = off.getContext('2d');
-          offCtx.drawImage(v, 0, 0, off.width, off.height);
-          
-          // SỬA LỖI: Bỏ .catch() vì không phải Promise
-          try {
-            await fa
-              .detectSingleFace(off, new fa.TinyFaceDetectorOptions({ 
-                inputSize: 320, 
-                threshold: 0.3 
-              }))
-              .withFaceLandmarks()
-              .withFaceDescriptor();
-            console.log('✅ Warm-up hoàn thành');
-          } catch (warmupDetectErr) {
-            console.warn('⚠️ Warm-up detect thất bại:', warmupDetectErr?.message);
-          }
-        } catch (warmupErr) {
-          console.warn('⚠️ Warm-up thất bại:', warmupErr?.message);
-        }
+          console.log(`Kích thước video: ${v.videoWidth}x${v.videoHeight}, readyState=${v.readyState}`);
+        } catch {}
 
-        // BẮT ĐẦU COUNTDOWN VÀ QUÉT NGAY LẬP TỨC - TRÁNH DUPLICATE
+        setIsScanning(true);
+        // reset cờ fallback backend mỗi phiên quét mới
+        backendFallbackTriedRef.current = false;
+
+        // Đếm ngược 3s rồi detect
         setCountdown(3);
-        let timerStarted = false; // Thêm flag để tránh duplicate
         const timer = setInterval(() => {
           setCountdown(prev => {
             if (prev <= 1) {
               clearInterval(timer);
-              if (!timerStarted) { // Chỉ chạy 1 lần
-                timerStarted = true;
-                console.log('🎯 Bắt đầu capture và detect...');
-                captureWithRetries();
-              }
+              // Sau 3s: thử nhiều lần để tăng tỷ lệ bắt được khuôn mặt
+              captureWithRetries();
               return 0;
             }
             return prev - 1;
           });
         }, 1000);
 
-        // Thiết lập timeout tổng cho phiên quét
+        // Warm-up bằng khung hình video -> canvas offscreen để thống nhất pipeline
+        try {
+          const v = videoRef.current;
+          const off = document.createElement('canvas');
+          off.width = v.videoWidth; off.height = v.videoHeight;
+          const offCtx = off.getContext('2d');
+          offCtx.drawImage(v, 0, 0, off.width, off.height);
+          await fa
+            .detectSingleFace(off, new fa.TinyFaceDetectorOptions({ inputSize: TINY_INPUT_SIZE, scoreThreshold: TINY_THRESHOLD }))
+            .withFaceLandmarks()
+            .withFaceDescriptor()
+            .catch(() => {});
+          console.log('Đã warmup mô hình detect bằng offscreen từ video');
+        } catch {}
+
+        // Thiết lập timeout tổng cho phiên quét 20s
         if (scanTimeoutRef.current) {
           clearTimeout(scanTimeoutRef.current);
         }
         scanTimeoutRef.current = setTimeout(() => {
-          console.error('⏰ Timeout quét khuôn mặt');
+          // Nếu sau 20s vẫn chưa submit thành công, log lỗi và dừng quét
+          const msg = 'Timeout: Quét khuôn mặt vượt quá 20 giây mà không có phản hồi.';
+          console.error(msg);
           setScanResult({
             success: false,
             message: 'Hết thời gian quét. Vui lòng đưa mặt vào khung và thử lại.',
@@ -735,14 +603,10 @@ const FaceScan = () => {
         }, 20000);
       }
     } catch (error) {
-      console.error('❌ Lỗi khi khởi tạo camera:', error);
-      setErrorMessage(`Không thể truy cập camera: ${error.message}`);
-      // Reset state khi lỗi
-      setIsScanning(false);
-      setCurrentStream(null);
-      currentStreamRef.current = null;
+      console.error('Lỗi khi truy cập camera:', error);
+      setErrorMessage('Không thể truy cập camera. Vui lòng cho phép quyền truy cập camera và thử lại.');
     }
-  }, [loadModels, captureWithRetries, stopScan, isScanning]);
+  }, [loadModels, modelsLoaded, captureWithRetries, stopScan]);
 
   // Cleanup chỉ khi UNMOUNT
   useEffect(() => {

@@ -61,7 +61,7 @@ export default function CameraApp() {
           };
         }
       } catch (fallbackErr) {
-        setCameraError("Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập.");
+        setCameraError("Không thể truy cập camera. Vui lòng kiểm tra `qu`yền truy cập.");
       }
     }
   }, []);

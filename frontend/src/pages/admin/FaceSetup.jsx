@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
-import AdminButton from '../../components/AdminButton';
-import { FaUserFriends, FaCamera, FaPlus, FaEdit, FaTrash, FaEye, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { FaUserFriends } from 'react-icons/fa';
 import './FaceSetup.css';
 
 const FaceSetup = () => {
@@ -21,14 +20,15 @@ const FaceSetup = () => {
   // Trạng thái model face-api
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [modelLoadingError, setModelLoadingError] = useState('');
+  // eslint-disable-next-line no-unused-vars
   const [debugInfo, setDebugInfo] = useState({});
   
   // Thử nhiều URL models khác nhau - đặt URL hoạt động lên đầu
   // Sử dụng file weights local từ backend
   const MODEL_URLS = useMemo(() => [
-    '/api/face_api/weights',
+    'http://127.0.0.1:3001/api/face_api/weights',
     'http://localhost:3001/api/face_api/weights',
-    'http://127.0.0.1:3001/api/face_api/weights'
+    '/api/face_api/weights'
   ], []);
 
   // Định nghĩa models cần load với tên file weights chính xác
@@ -99,41 +99,39 @@ const FaceSetup = () => {
   }, []);
 
   useEffect(() => {
-    // Tải model nhận diện (chỉ tải 1 lần) + đợi CDN sẵn sàng
+    // Tải model nhận diện (chỉ tải 1 lần); đảm bảo face-api UMD nội bộ được nạp
     const loadModels = async () => {
       try {
         console.log('🔄 Bắt đầu load models...');
-        
-        // Đợi cả TensorFlow.js và face-api.js load xong từ CDN
-        let tries = 0;
-        while ((!window.tf || !window.faceapi) && tries < 150) {
-          console.log('⏳ Đang chờ scripts load từ CDN...', tries, {
-            tf: !!window.tf,
-            faceapi: !!window.faceapi
-          });
-          await new Promise(r => setTimeout(r, 100));
-          tries++;
-        }
-        
-        // Kiểm tra TensorFlow.js
-        if (!window.tf) {
-          const error = 'TensorFlow.js chưa sẵn sàng sau 15 giây. Vui lòng tải lại trang.';
-          console.error('❌', error);
-          setModelLoadingError(error);
-          return;
-        }
-        
-        // Kiểm tra face-api.js
+
+        // Nạp UMD local nếu thiếu
         if (!window.faceapi) {
-          const error = 'face-api.js chưa sẵn sàng sau 15 giây. Vui lòng tải lại trang.';
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = '/models/face-api.js-master/dist/face-api.min.js';
+            script.async = true;
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Không thể nạp face-api.min.js nội bộ'));
+            document.body.appendChild(script);
+          });
+        }
+        if (!window.faceapi) {
+          const error = 'face-api.js chưa sẵn sàng';
           console.error('❌', error);
           setModelLoadingError(error);
           return;
         }
 
         const fa = window.faceapi;
-        console.log('✅ TensorFlow.js đã sẵn sàng, version:', window.tf.version);
-        console.log('✅ face-api.js đã sẵn sàng');
+        console.log('✅ face-api.js đã sẵn sàng (UMD)');
+        // Đồng bộ backend CPU như trang quét để tránh sai khác fromPixels/engine
+        try {
+          if (fa?.tf?.setBackend) {
+            await fa.tf.setBackend('cpu');
+            await fa.tf.ready();
+            console.log('Đang dùng TFJS backend:', fa?.tf?.getBackend?.());
+          }
+        } catch (e) { console.warn('Không thể set backend cpu:', e?.message || e); }
         console.log('📦 Available nets:', Object.keys(fa.nets || {}));
         console.log('🔧 face-api version:', fa.version);
         console.log('🔧 face-api object keys:', Object.keys(fa));
@@ -391,7 +389,7 @@ const FaceSetup = () => {
     
     // Delay để đảm bảo script CDN đã load
     setTimeout(loadModels, 2000);
-  }, [MODEL_URLS]);
+  }, [MODEL_URLS, modelsToLoad]);
 
   // Xác định user đã cài đặt nhận diện chưa (lấy từ MongoDB)
   const isUserFaceInstalled = (user) => {
@@ -520,6 +518,7 @@ const FaceSetup = () => {
   };
 
   // Test model loading với URL cụ thể
+  // eslint-disable-next-line no-unused-vars
   const testModelLoading = async (modelName, modelUrl) => {
     try {
       const fa = window.faceapi;
@@ -561,12 +560,55 @@ const FaceSetup = () => {
       try {
         // Kiểm tra model có sẵn và có thể sử dụng
         const model = fa.nets[net];
-        const isLoaded = model && (
-          (model.isLoaded && typeof model.isLoaded === 'function' && model.isLoaded()) ||
-          model.loaded === true
-        );
         
-        console.log(`📊 Model ${net}: ${isLoaded ? '✅ Loaded' : '❌ Not Loaded'}`);
+        // Kiểm tra nhiều cách để xác định model đã load
+        let isLoaded = false;
+        
+        if (model) {
+          // Cách 1: Kiểm tra method isLoaded()
+          if (model.isLoaded && typeof model.isLoaded === 'function') {
+            try {
+              isLoaded = model.isLoaded();
+            } catch (e) {
+              console.warn(`⚠️ isLoaded() method error for ${net}:`, e.message);
+            }
+          }
+          
+          // Cách 2: Kiểm tra thuộc tính loaded
+          if (!isLoaded && model.loaded === true) {
+            isLoaded = true;
+          }
+          
+          // Cách 3: Kiểm tra thuộc tính params (models đã load thường có params)
+          if (!isLoaded && model.params) {
+            isLoaded = true;
+          }
+          
+          // Cách 4: Kiểm tra thuộc tính weights (models đã load có weights)
+          if (!isLoaded && model.weights) {
+            isLoaded = true;
+          }
+          
+          // Cách 5: Kiểm tra thuộc tính variables (models đã load có variables)
+          if (!isLoaded && model.variables) {
+            isLoaded = true;
+          }
+          
+          // Cách 6: Kiểm tra thuộc tính isLoaded trực tiếp
+          if (!isLoaded && model.isLoaded === true) {
+            isLoaded = true;
+          }
+        }
+        
+        console.log(`📊 Model ${net}: ${isLoaded ? '✅ Loaded' : '❌ Not Loaded'}`, {
+          hasModel: !!model,
+          hasIsLoadedMethod: !!(model?.isLoaded && typeof model.isLoaded === 'function'),
+          loadedProperty: model?.loaded,
+          hasParams: !!model?.params,
+          hasWeights: !!model?.weights,
+          hasVariables: !!model?.variables
+        });
+        
         return { modelName: net, isLoaded, model };
       } catch (e) {
         console.warn(`⚠️ Không thể kiểm tra model ${net}:`, e.message);
@@ -578,7 +620,10 @@ const FaceSetup = () => {
     
     // Chỉ cần ít nhất 1 model để hoạt động
     const hasWorkingModel = loadedNets.length > 0;
-    console.log(`📊 Overall model status: ${hasWorkingModel ? '✅ Ready' : '❌ Not Ready'}`);
+    console.log(`📊 Overall model status: ${hasWorkingModel ? '✅ Ready' : '❌ Not Ready'}`, {
+      loadedModels: loadedNets.map(n => n.modelName),
+      totalModels: requiredNets.length
+    });
     
     return hasWorkingModel;
   };
@@ -596,8 +641,13 @@ const FaceSetup = () => {
 
     // Kiểm tra model status trước khi sử dụng
     if (!checkModelStatus()) {
-      console.warn('⚠️ Models chưa load đầy đủ, sử dụng fallback method');
-      return await extractDescriptorSimple(dataUrl);
+      // Thử kiểm tra lại một lần nữa với delay ngắn
+      console.log('🔄 Kiểm tra lại model status sau 100ms...');
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (!checkModelStatus()) {
+        throw new Error('Models face-api chưa sẵn sàng. Vui lòng tải lại trang.');
+      }
     }
 
     try {
@@ -612,8 +662,28 @@ const FaceSetup = () => {
       console.log(`📊 Model status trước khi xử lý: ${modelStatus ? '✅ Ready' : '❌ Not Ready'}`);
       
       if (!modelStatus) {
-        console.warn('⚠️ Models chưa load đầy đủ, sử dụng fallback method');
-        return await extractDescriptorSimple(dataUrl);
+        throw new Error('Models face-api chưa sẵn sàng sau kiểm tra lần 2.');
+      }
+      
+      // Test thực tế với một ảnh đơn giản để đảm bảo models hoạt động
+      console.log('🧪 Test models với ảnh đơn giản...');
+      try {
+        const testCanvas = document.createElement('canvas');
+        testCanvas.width = 100;
+        testCanvas.height = 100;
+        const testCtx = testCanvas.getContext('2d');
+        testCtx.fillStyle = 'white';
+        testCtx.fillRect(0, 0, 100, 100);
+        
+        const testResult = await fa.detectSingleFace(testCanvas, new fa.TinyFaceDetectorOptions({ 
+          inputSize: 320, 
+          scoreThreshold: 0.5 
+        }));
+        
+        console.log('✅ Test detect thành công:', !!testResult);
+      } catch (testError) {
+        console.warn('⚠️ Test detect thất bại:', testError.message);
+        // Không throw error ở đây, chỉ warning
       }
     
       // Tạo HTMLImageElement để kiểm soát việc load ảnh
@@ -684,54 +754,16 @@ const FaceSetup = () => {
       // descriptor là Float32Array 128 phần tử
       return Array.from(result.descriptor);
     } catch (error) {
-      console.error('❌ Lỗi extractDescriptor:', error);
+      console.error('❌ Lỗi extractDescriptor (dừng lại, không fallback để tránh lưu dữ liệu sai):', error);
       console.error('❌ Error stack:', error.stack);
-      
-      // Nếu lỗi face-api.js, thử dùng method đơn giản hơn
-      if (error.message.includes('d is not a function') || 
-          error.message.includes('TypeError') ||
-          error.message.includes('load model before inference')) {
-        console.log('🔄 Thử method đơn giản hơn...');
-        return await extractDescriptorSimple(dataUrl);
-      }
-      
-      // Nếu lỗi khác, thử method không phụ thuộc face-api.js
-      console.log('🔄 Thử method không phụ thuộc face-api.js...');
-      return await extractDescriptorNoFaceApi(dataUrl);
+      throw error; // Không fallback để đảm bảo descriptor được tạo bởi face-api.js thật
     }
   };
 
-  // Fallback method đơn giản hơn nếu face-api.js bị lỗi
-  const extractDescriptorSimple = async (dataUrl) => {
-    try {
-      console.log('🔄 Sử dụng fallback method...');
-      
-      // Tạo ảnh đơn giản
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = () => reject(new Error('Không thể tải ảnh'));
-        img.src = dataUrl;
-      });
-      
-      console.log('✅ Ảnh đã load với fallback method');
-      
-      // Tạo descriptor giả 128 chiều (chỉ để test)
-      // Trong thực tế, bạn có thể dùng thư viện khác hoặc backend xử lý
-      const fakeDescriptor = new Array(128).fill(0).map((_, i) => Math.random() - 0.5);
-      
-      console.log('⚠️ Sử dụng descriptor giả (fallback mode)');
-      return fakeDescriptor;
-      
-    } catch (error) {
-      console.error('❌ Fallback method cũng lỗi:', error);
-      throw new Error('Không thể xử lý ảnh với cả hai method. Vui lòng kiểm tra thư viện face-api.js.');
-    }
-  };
+  // ĐÃ LOẠI BỎ fallback tạo descriptor giả để đảm bảo dữ liệu chính xác
 
   // Method hoàn toàn không phụ thuộc vào face-api.js
+  // eslint-disable-next-line no-unused-vars
   const extractDescriptorNoFaceApi = async (dataUrl) => {
     try {
       console.log('🔄 Sử dụng method không phụ thuộc face-api.js...');
@@ -948,15 +980,10 @@ const FaceSetup = () => {
   };
 
   // Xóa dữ liệu nhận diện (chưa hiển thị nút trong UI)
-  const deleteFaceData = (userID) => {
-    if (!window.confirm('Bạn có chắc muốn xóa dữ liệu nhận diện của user này?')) return;
-    // TODO: Gọi API backend để xóa theo userID, sau đó cập nhật state faceEnrollments
-  };
+  // const deleteFaceData = (userID) => {};
 
   // Xem ảnh đã đăng ký (nếu có lưu kèm ảnh)
-  const viewFaceImage = (userID) => {
-    // TODO: Nếu backend có lưu ảnh, mở URL ảnh tại đây
-  };
+  // const viewFaceImage = (userID) => {};
 
   if (loading) {
     return (
@@ -975,265 +1002,6 @@ const FaceSetup = () => {
 
   return (
     <>
-      {/* Debug Info */}
-      <div style={{ 
-        padding: '12px', 
-        backgroundColor: '#f8f9fa', 
-        marginBottom: '16px', 
-        borderRadius: '6px',
-        fontSize: '12px',
-        fontFamily: 'monospace'
-      }}>
-        <strong>🐛 Debug Info:</strong>
-        <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-        
-        {/* Test Button */}
-        <div style={{ marginTop: '12px' }}>
-          <button 
-            onClick={async () => {
-              console.log('🧪 Manual test face-api.js...');
-              const result = await testFaceApi();
-              if (result) {
-                alert('✅ face-api.js test thành công!');
-              } else {
-                alert('❌ face-api.js test thất bại!');
-              }
-            }}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px'
-            }}
-          >
-            🧪 Test face-api.js
-          </button>
-          
-          <button 
-            onClick={async () => {
-              console.log('🧪 Test fallback method...');
-              try {
-                // Tạo ảnh test đơn giản
-                const canvas = document.createElement('canvas');
-                canvas.width = 100;
-                canvas.height = 100;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = 'red';
-                ctx.fillRect(0, 0, 100, 100);
-                
-                const testDataUrl = canvas.toDataURL();
-                const descriptor = await extractDescriptorNoFaceApi(testDataUrl);
-                console.log('✅ Fallback method test thành công, descriptor length:', descriptor.length);
-                alert(`✅ Fallback method test thành công!\nDescriptor length: ${descriptor.length}`);
-              } catch (error) {
-                console.error('❌ Fallback method test thất bại:', error);
-                alert(`❌ Fallback method test thất bại: ${error.message}`);
-              }
-            }}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              marginLeft: '8px'
-            }}
-          >
-            🧪 Test Fallback
-          </button>
-          
-          <button 
-            onClick={() => {
-              console.log('🔍 Test model status...');
-              const status = checkModelStatus();
-              const fa = window.faceapi;
-              if (fa && fa.nets) {
-                const modelInfo = {
-                  tinyFaceDetector: fa.nets.tinyFaceDetector ? 'Available' : 'Missing',
-                  faceLandmark68Net: fa.nets.faceLandmark68Net ? 'Available' : 'Missing',
-                  faceRecognitionNet: fa.nets.faceRecognitionNet ? 'Available' : 'Missing'
-                };
-                console.log('📊 Model info:', modelInfo);
-                alert(`Model Status: ${status ? '✅ Ready' : '❌ Not Ready'}\n\nModel Info:\n${JSON.stringify(modelInfo, null, 2)}`);
-              } else {
-                alert('❌ face-api.js không có sẵn');
-              }
-            }}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#ffc107',
-              color: 'black',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              marginLeft: '8px'
-            }}
-          >
-            🔍 Test Models
-          </button>
-          
-          <button 
-            onClick={async () => {
-              console.log('🧪 Test model loading...');
-              const fa = window.faceapi;
-              if (!fa) {
-                alert('❌ face-api.js không có sẵn');
-                return;
-              }
-              
-              const results = {};
-              for (const modelUrl of MODEL_URLS) {
-                console.log(`\n🔍 Testing URL: ${modelUrl}`);
-                results[modelUrl] = {};
-                
-                for (const model of modelsToLoad) {
-                  if (fa.nets[model.name]) {
-                    console.log(`🔍 Testing ${model.name} với weights path: ${model.weightsPath}`);
-                    const success = await testModelLoading(model.name, modelUrl);
-                    results[modelUrl][model.name] = success ? '✅ Success' : '❌ Failed';
-                  } else {
-                    results[modelUrl][model.name] = '⚠️ Not Available';
-                  }
-                }
-              }
-              
-              console.log('📊 Model loading test results:', results);
-              alert(`Model Loading Test Results:\n\n${JSON.stringify(results, null, 2)}`);
-            }}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#17a2b8',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              marginLeft: '8px'
-            }}
-          >
-            🧪 Test Loading
-          </button>
-          
-          <button 
-            onClick={() => {
-              console.log('🔍 Test working URL...');
-              const fa = window.faceapi;
-              if (!fa) {
-                alert('❌ face-api.js không có sẵn');
-                return;
-              }
-              
-              if (fa.workingModelUrl) {
-                alert(`✅ URL hoạt động: ${fa.workingModelUrl}`);
-                console.log('💡 Working URL:', fa.workingModelUrl);
-              } else {
-                alert('❌ Chưa có URL hoạt động. Vui lòng load models trước.');
-                console.log('⚠️ Chưa có working URL');
-              }
-            }}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#6f42c1',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              marginLeft: '8px'
-            }}
-          >
-            🔍 Test Working URL
-          </button>
-          
-          <button 
-            onClick={async () => {
-              console.log('🌐 Testing network connection...');
-              const results = {};
-              
-              for (const modelUrl of MODEL_URLS) {
-                try {
-                  console.log(`🔍 Testing: ${modelUrl}`);
-                  
-                  // Test tất cả file weights cần thiết
-                  const testFiles = [
-                    'tiny_face_detector_model-weights_manifest.json',
-                    'face_landmark_68_model-weights_manifest.json',
-                    'face_recognition_model-weights_manifest.json'
-                  ];
-                  
-                  const fileResults = {};
-                  for (const testFile of testFiles) {
-                    try {
-                      const response = await fetch(`${modelUrl}/${testFile}`);
-                      if (response.ok) {
-                        fileResults[testFile] = `✅ ${response.status}`;
-                      } else {
-                        fileResults[testFile] = `❌ ${response.status}`;
-                      }
-                    } catch (error) {
-                      fileResults[testFile] = `❌ ${error.message}`;
-                    }
-                  }
-                  
-                  results[modelUrl] = fileResults;
-                  console.log(`✅ ${modelUrl} test completed:`, fileResults);
-                } catch (error) {
-                  results[modelUrl] = `❌ ${error.message}`;
-                  console.warn(`❌ ${modelUrl} failed:`, error.message);
-                }
-              }
-              
-              console.log('📊 Network test results:', results);
-              const resultText = Object.entries(results).map(([url, status]) => {
-                if (typeof status === 'object') {
-                  return `${url}:\n${Object.entries(status).map(([file, fileStatus]) => `  ${file}: ${fileStatus}`).join('\n')}`;
-                }
-                return `${url}: ${status}`;
-              }).join('\n\n');
-              
-              alert(`Network Test Results:\n\n${resultText}`);
-            }}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              marginLeft: '8px'
-            }}
-          >
-            🌐 Test Network
-          </button>
-          
-          <button 
-            onClick={() => {
-              console.log('🔄 Reload page...');
-              window.location.reload();
-            }}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              marginLeft: '8px'
-            }}
-          >
-            🔄 Reload Page
-          </button>
-        </div>
-      </div>
-
       {/* Trạng thái model */}
       <div
         className="model-status"
