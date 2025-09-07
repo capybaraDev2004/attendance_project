@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/AdminLayout';
-import AdminButton from '../../components/AdminButton';
+import AdminLayout from '../../../components/AdminLayout';
+import AdminButton from '../../../components/AdminButton';
 import { FaDesktop, FaPlus, FaEdit, FaTrash, FaWifi, FaExclamationTriangle, FaCheckCircle, FaClock } from 'react-icons/fa';
 import './DeviceManagement.css';
 

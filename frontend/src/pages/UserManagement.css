@@ -1,10 +1,7 @@
-/* User Management Styles - Thiết kế chuyên nghiệp doanh nghiệp */
-
 .user-management-container {
   min-height: 100vh;
-  font-family: var(--font-primary);
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', -apple-system, BlinkMacSystemFont, sans-serif;
 }
-
 /* Bộ lọc và tìm kiếm */
 .filters-section {
   background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);

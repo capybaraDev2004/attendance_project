@@ -7,24 +7,25 @@ import './components/ToastStyles.css';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
+// Import các trang customer
+import CustomerUsers from './pages/customer/User/CustomerUsers';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import CustomerHome from './pages/customer/CustomerHome';
-import CustomerUsers from './pages/customer/CustomerUsers';
-import CustomerAttendance from './pages/customer/CustomerAttendance';
-import CustomerTimekeeping from './pages/customer/CustomerTimekeeping';
+import CustomerAttendance from './pages/customer/History/CustomerAttendance';
+import CustomerTimekeeping from './pages/customer/Timekeeping/CustomerTimekeeping';
 import CustomerLogout from './pages/customer/CustomerLogout';
-import FaceScan from './pages/customer/FaceScan';
+import FaceScan from './pages/customer/Face-scan/FaceScan';
 
 // Import các trang admin
 import AdminHome from './pages/admin/AdminHome';
 import UserManagement from './pages/UserManagement';
-import FaceSetup from './pages/admin/FaceSetup';
-import AttendanceHistory from './pages/admin/AttendanceHistory';
-import PayrollCalculation from './pages/admin/PayrollCalculation';
-import DeviceManagement from './pages/admin/DeviceManagement';
-import WorkHours from './pages/admin/WorkHours';
-import Positions from './pages/admin/Positions';
-import ShiftManagement from './pages/admin/ShiftManagement';
+import FaceSetup from './pages/admin/Face-setup/FaceSetup';
+import AttendanceHistory from './pages/admin/History/AttendanceHistory';
+import PayrollCalculation from './pages/admin/Calculate/PayrollCalculation';
+import DeviceManagement from './pages/admin/Devices/DeviceManagement';
+import WorkHours from './pages/admin/Work-hours/WorkHours';
+import Positions from './pages/admin/Positions/Positions';
+import ShiftManagement from './pages/admin/Shift-management/ShiftManagement';
 
 function App() {
   return (

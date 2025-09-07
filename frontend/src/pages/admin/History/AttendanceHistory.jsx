@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import AdminLayout from '../../components/AdminLayout';
-import AdminButton from '../../components/AdminButton';
+import AdminLayout from '../../../components/AdminLayout';
+import AdminButton from '../../../components/AdminButton';
 import { FaHistory, FaCalendarAlt, FaSearch, FaFileExcel } from 'react-icons/fa';
 import './AttendanceHistory.css';
 

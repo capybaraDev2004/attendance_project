@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import AdminLayout from '../../components/AdminLayout';
-import AdminButton from '../../components/AdminButton';
+import AdminLayout from '../../../components/AdminLayout';
+import AdminButton from '../../../components/AdminButton';
 import { FaHistory, FaSearch, FaFileExcel, FaCalendarAlt } from 'react-icons/fa';
-import '../admin/AttendanceHistory.css';
 
 // Component lịch sử chấm công cho customer - chỉ hiển thị lịch sử của user hiện tại
 const CustomerAttendance = () => {

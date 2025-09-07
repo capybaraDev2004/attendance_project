@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../components/AdminLayout';
-import AdminButton from '../../components/AdminButton';
+import AdminLayout from '../../../components/AdminLayout';
+import AdminButton from '../../../components/AdminButton';
 import { FaUsers, FaSearch, FaFilter, FaEye, FaEyeSlash } from 'react-icons/fa';
-import '../admin/UserManagement.css';
+import './CustomerUsers.css';
 
 // Component quản lý người dùng cho customer - chỉ xem danh sách
 const CustomerUsers = () => {
@@ -137,9 +137,9 @@ const CustomerUsers = () => {
   const renderRoleBadge = useCallback((role) => {
     switch (role) {
       case 'admin':
-        return <span className="role-admin">Quản trị</span>;
+        return <span className="role-admin2">Quản trị</span>;
       case 'employee':
-        return <span className="role-employee">Nhân viên</span>;
+        return <span className="role-employee2">Nhân viên</span>;
       default:
         return <span className="role-default">{role || 'Chưa xác định'}</span>;
     }
@@ -209,7 +209,7 @@ const CustomerUsers = () => {
       subtitle="Xem danh sách người dùng trong hệ thống"
       icon={FaUsers}
     >
-      <div className="user-management-container">
+      <div className="user-management-container2">
         {/* Filters Section */}
         <div className="filters-container">
           <div className="filters-card">

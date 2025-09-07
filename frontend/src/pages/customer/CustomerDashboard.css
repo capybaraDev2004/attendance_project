@@ -5,15 +5,16 @@
 }
 
 .customer-sidebar {
-  width: 240px;
-  background: #111827;
-  color: #e5e7eb;
+  width: 262px;
+  background: #ffffff;
+  color: #0f60ff;
   display: flex;
   flex-direction: column;
+  align-items: center;
 }
 
 .customer-brand {
-  padding: 16px 20px;
+  padding: 20px 20px;
   font-weight: var(--font-weight-bold);
   font-size: var(--font-size-lg);
   font-family: var(--font-primary);
@@ -23,23 +24,39 @@
 .customer-nav {
   display: flex;
   flex-direction: column;
-  padding: 8px 0;
+  padding: 12px 0;
 }
 
 .customer-nav a {
-  color: #e5e7eb;
-  padding: 12px 20px;
+  color: black;
+  padding: 15px 16px;
+  border-radius: 9px;
   text-decoration: none;
   transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 8px;
+} 
+
+.customer-nav a .nav-icon {
+  font-size: 16px;
+  min-width: 16px;
+}
+
+.customer-nav a span {
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .customer-nav a:hover {
-  background: rgba(255,255,255,0.06);
+  background: #d5e6f466;
+  color: #0067b8;
 }
 
 .customer-nav a.active {
-  background: #1f2937;
-  color: #fff;
+  background: #d5e6f466;
+  color: #0067b8;
 }
 
 .customer-content {

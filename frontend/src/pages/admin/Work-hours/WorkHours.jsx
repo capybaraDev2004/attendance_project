@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../components/AdminLayout';
-import AdminButton from '../../components/AdminButton';
+import AdminLayout from '../../../components/AdminLayout';
+import AdminButton from '../../../components/AdminButton';
 import { FaClock, FaExclamationTriangle, FaCalendarAlt, FaUserClock } from 'react-icons/fa';
 import './WorkHours.css';
 

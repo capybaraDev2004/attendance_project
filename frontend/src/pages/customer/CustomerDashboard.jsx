@@ -1,7 +1,14 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import './CustomerDashboard.css';
-
+import { 
+  FaHome, 
+  FaUsers, 
+  FaCamera, 
+  FaHistory, 
+  FaClock, 
+  FaSignOutAlt 
+} from 'react-icons/fa';
 // Layout tổng cho customer: sidebar + topbar + content
 const CustomerDashboard = () => {
   const navigate = useNavigate();
@@ -20,22 +27,28 @@ const CustomerDashboard = () => {
         <div className="customer-brand">Customer Portal</div>
         <nav className="customer-nav">
           <NavLink end to="" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-            🏠 Trang chủ
+            <FaHome className="nav-icon" />
+            <span>Trang chủ</span>
           </NavLink>
           <NavLink to="users" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-            👥 Quản lý người dùng
+            <FaUsers className="nav-icon" />
+            <span>Quản lý người dùng</span>
           </NavLink>
           <NavLink to="face-scan" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-            🔍 Quét Khuôn Mặt
+            <FaCamera className="nav-icon" />
+            <span>Quét Khuôn Mặt</span>
           </NavLink>
           <NavLink to="attendance" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-            🕒 Lịch sử ra vào
+            <FaHistory className="nav-icon" />
+            <span>Lịch sử ra vào</span>
           </NavLink>
           <NavLink to="timekeeping" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-            📅 Quản lý chấm công
+            <FaClock className="nav-icon" />
+            <span>Quản lý chấm công</span>
           </NavLink>
           <NavLink to="logout" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-            🚪 Đăng xuất
+            <FaSignOutAlt className="nav-icon" />
+            <span>Đăng xuất</span>
           </NavLink>
         </nav>
       </aside>

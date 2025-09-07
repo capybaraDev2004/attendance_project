@@ -126,7 +126,7 @@ const CustomerTimekeeping = () => {
 
   if (loading) {
     return (
-      <div className="timekeeping-container">
+      <div>
         <div className="timekeeping-header">
           <h2>🕐 Quản lý chấm công</h2>
         </div>

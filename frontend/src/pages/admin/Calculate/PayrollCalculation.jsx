@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './PayrollCalculation.css';
-import AdminLayout from '../../components/AdminLayout';
-import AdminButton from '../../components/AdminButton';
+import AdminLayout from '../../../components/AdminLayout';
+import AdminButton from '../../../components/AdminButton';
 import { FaCalculator, FaCalendarAlt, FaUsers, FaFileExport, FaSearch, FaFilter, FaDownload, FaInfoCircle } from 'react-icons/fa';
 
 const PayrollCalculation = () => {
