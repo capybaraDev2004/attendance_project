@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AdminLayout from '../../../components/AdminLayout';
 import AdminButton from '../../../components/AdminButton';
-import { FaDesktop, FaPlus, FaEdit, FaTrash, FaWifi, FaExclamationTriangle, FaCheckCircle, FaClock } from 'react-icons/fa';
+import { FaDesktop, FaPlus, FaEdit, FaTrash, FaExclamationTriangle, FaClock } from 'react-icons/fa';
 import './DeviceManagement.css';
 
 const DeviceManagement = () => {
@@ -26,8 +26,8 @@ const DeviceManagement = () => {
     description: ''
   });
 
-  // Dữ liệu mẫu cho thiết bị IoT RFID
-  const sampleDevices = [
+  // Dữ liệu mẫu cho thiết bị IoT RFID - sử dụng useMemo để tránh re-render
+  const sampleDevices = useMemo(() => [
     {
       id: 1,
       deviceName: 'RFID Reader - Cổng chính',
@@ -84,14 +84,9 @@ const DeviceManagement = () => {
       batteryLevel: 78,
       signalStrength: 'medium'
     }
-  ];
+  ], []);
 
-  useEffect(() => {
-    // Giả lập API call
-    fetchDevices();
-  }, []);
-
-  const fetchDevices = async () => {
+  const fetchDevices = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -107,7 +102,12 @@ const DeviceManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sampleDevices]);
+
+  useEffect(() => {
+    // Giả lập API call
+    fetchDevices();
+  }, [fetchDevices]);
 
   const handleAddDevice = () => {
     setFormData({

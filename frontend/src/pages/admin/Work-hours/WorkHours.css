@@ -269,24 +269,30 @@
   letter-spacing: 0.5px;
 }
 
+/* Trạng thái - Màu sắc theo yêu cầu */
 .status-completed {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-late {
-  background: #f8d7da;
-  color: #721c24;
+  background: #d4edda;  /* Xanh lá cây nhạt */
+  color: #155724;      /* Xanh lá cây đậm */
 }
 
 .status-overtime {
-  background: #fff3cd;
-  color: #856404;
+  background: #cce7ff;  /* Xanh dương nhạt */
+  color: #0066cc;      /* Xanh dương đậm */
+}
+
+.status-short {
+  background: #f8d7da;  /* Đỏ nhạt */
+  color: #721c24;      /* Đỏ đậm */
+}
+
+.status-late {
+  background: #f8d7da;  /* Đỏ nhạt */
+  color: #721c24;      /* Đỏ đậm */
 }
 
 .status-absent {
-  background: #f8d7da;
-  color: #721c24;
+  background: #f8d7da;  /* Đỏ nhạt */
+  color: #721c24;      /* Đỏ đậm */
 }
 
 /* Ghi chú */

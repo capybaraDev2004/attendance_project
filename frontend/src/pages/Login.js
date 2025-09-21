@@ -74,17 +74,17 @@ const LoginPage = () => {
     }
   };
 
-  // Animation variants cho Framer Motion
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        duration: 0.8,
-        staggerChildren: 0.2
-      }
-    }
-  };
+  // Animation variants cho Framer Motion - tạm thời comment vì chưa sử dụng
+  // const containerVariants = {
+  //   hidden: { opacity: 0 },
+  //   visible: {
+  //     opacity: 1,
+  //     transition: {
+  //       duration: 0.8,
+  //       staggerChildren: 0.2
+  //     }
+  //   }
+  // };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 30 },

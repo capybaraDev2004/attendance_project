@@ -9,11 +9,11 @@ const PayrollCalculation = () => {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [selectedEmployee, setSelectedEmployee] = useState('');
+  // const [selectedEmployee, setSelectedEmployee] = useState(''); // Tạm thời comment vì chưa sử dụng
   const [calculationType, setCalculationType] = useState('monthly');
 
   // State cho danh sách nhân viên
-  const [employees, setEmployees] = useState([
+  const [employees] = useState([
     { id: 1, name: 'Nguyễn Văn A', department: 'IT', position: 'Developer', baseSalary: 15000000, attendanceDays: 22, overtimeHours: 8 },
     { id: 2, name: 'Trần Thị B', department: 'HR', position: 'Manager', baseSalary: 20000000, attendanceDays: 21, overtimeHours: 5 },
     { id: 3, name: 'Lê Văn C', department: 'Sales', position: 'Sales Rep', baseSalary: 12000000, attendanceDays: 20, overtimeHours: 12 },

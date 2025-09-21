@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../../components/AdminLayout';
 import AdminButton from '../../../components/AdminButton';
 import { toast } from 'react-toastify';
-import { FaUserTie, FaPlus, FaEdit, FaTrash, FaExclamationTriangle, FaUsers } from 'react-icons/fa';
+import { FaUserTie, FaPlus, FaEdit, FaTrash, FaExclamationTriangle, FaUsers, FaEye } from 'react-icons/fa';
 import './Positions.css';
 
 const Positions = () => {
@@ -11,7 +11,10 @@ const Positions = () => {
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState(null);
+  const [positionEmployees, setPositionEmployees] = useState([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -65,6 +68,7 @@ const Positions = () => {
             ...p,
             status: typeof p.status === 'string' ? parseInt(p.status) : p.status,
             employeeCount: typeof p.employeeCount === 'string' ? parseInt(p.employeeCount) : p.employeeCount,
+            actualEmployeeCount: typeof p.actualEmployeeCount === 'string' ? parseInt(p.actualEmployeeCount) : p.actualEmployeeCount,
             salaryMin: typeof p.salaryMin === 'string' ? parseInt(p.salaryMin) : p.salaryMin,
             salaryMax: typeof p.salaryMax === 'string' ? parseInt(p.salaryMax) : p.salaryMax,
           }))
@@ -85,6 +89,33 @@ const Positions = () => {
       console.error('Lỗi fetch positions:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Hàm lấy danh sách nhân viên theo chức vụ
+  const fetchEmployeesByPosition = async (positionId) => {
+    setLoadingEmployees(true);
+    try {
+      const response = await fetch(`http://localhost:3001/api/positions/${positionId}/employees`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setPositionEmployees(data.employees);
+      setSelectedPosition(data.position);
+    } catch (err) {
+      console.error('Lỗi fetch employees:', err);
+      toast.error(err.message || 'Có lỗi xảy ra khi tải danh sách nhân viên');
+    } finally {
+      setLoadingEmployees(false);
     }
   };
 
@@ -119,6 +150,12 @@ const Positions = () => {
       employeeCount: position.employeeCount ?? ''
     });
     setShowEditModal(true);
+  };
+
+  // Hàm xem chi tiết nhân viên
+  const handleViewDetails = async (position) => {
+    await fetchEmployeesByPosition(position.id);
+    setShowDetailModal(true);
   };
 
   // Hàm xóa chức vụ
@@ -244,7 +281,9 @@ const Positions = () => {
   const closeModal = () => {
     setShowAddModal(false);
     setShowEditModal(false);
+    setShowDetailModal(false);
     setSelectedPosition(null);
+    setPositionEmployees([]);
     setFormData({
       title: '',
       code: '',
@@ -275,6 +314,7 @@ const Positions = () => {
   const activePositions = positions.filter(p => p.status === 1).length;
   const inactivePositions = positions.filter(p => p.status === 0).length;
   const totalEmployees = positions.reduce((sum, p) => sum + (p.employeeCount || 0), 0);
+  const totalActualEmployees = positions.reduce((sum, p) => sum + (p.actualEmployeeCount || 0), 0);
 
   // Format trạng thái
   const formatStatus = (status) => {
@@ -302,6 +342,23 @@ const Positions = () => {
       return `Đến ${salaryMax.toLocaleString()} VNĐ`;
     }
     return 'Chưa xác định';
+  };
+
+  // Format ngày sinh
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Chưa cập nhật';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN');
+  };
+
+  // Format giới tính
+  const formatGender = (gender) => {
+    switch (gender) {
+      case 'male': return 'Nam';
+      case 'female': return 'Nữ';
+      case 'other': return 'Khác';
+      default: return 'Chưa cập nhật';
+    }
   };
 
   if (loading) {
@@ -398,7 +455,11 @@ const Positions = () => {
           </div>
           <div className="stat-card">
             <div className="stat-number">{totalEmployees}</div>
-            <div className="stat-label">Tổng nhân viên</div>
+            <div className="stat-label">Tổng nhân viên dự kiến</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-number">{totalActualEmployees}</div>
+            <div className="stat-label">Tổng nhân viên thực tế</div>
           </div>
         </div>
 
@@ -422,7 +483,8 @@ const Positions = () => {
                 <th>Chức vụ</th>
                 <th>Phòng ban</th>
                 <th>Cấp độ</th>
-                <th>Số nhân viên</th>
+                <th>Số nhân viên dự kiến</th>
+                <th>Số nhân viên thực tế</th>
                 <th>Mức lương</th>
                 <th>Trạng thái</th>
                 <th>Thao tác</th>
@@ -431,7 +493,7 @@ const Positions = () => {
             <tbody>
               {filteredPositions.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="no-data">
+                  <td colSpan="9" className="no-data">
                     <div className="no-data-content">
                       <p>Không tìm thấy chức vụ nào</p>
                       <p>Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
@@ -465,6 +527,14 @@ const Positions = () => {
                         <span>{position.employeeCount || 0}</span>
                       </div>
                     </td>
+                    <td className="position-actual-employees">
+                      <div className="actual-employee-count">
+                        <FaUsers className="users-icon" />
+                        <span className={`actual-count ${(position.actualEmployeeCount || 0) > (position.employeeCount || 0) ? 'over-limit' : ''}`}>
+                          {position.actualEmployeeCount || 0}
+                        </span>
+                      </div>
+                    </td>
                     <td className="position-salary">
                       <span className="salary-range">{formatSalary(position.salaryMin, position.salaryMax)}</span>
                     </td>
@@ -475,6 +545,13 @@ const Positions = () => {
                     </td>
                     <td className="position-actions">
                       <div className="action-buttons">
+                        <AdminButton
+                          onClick={() => handleViewDetails(position)}
+                          variant="info"
+                          size="small"
+                          icon={FaEye}
+                          title="Xem chi tiết nhân viên"
+                        />
                         <AdminButton
                           onClick={() => handleEditPosition(position)}
                           variant="outline"
@@ -611,13 +688,13 @@ const Positions = () => {
                   </div>
                   
                   <div className="form-group">
-                    <label>Số nhân viên</label>
+                    <label>Số nhân viên dự kiến</label>
                     <input
                       type="number"
                       name="employeeCount"
                       value={formData.employeeCount}
                       onChange={handleInputChange}
-                      placeholder="Nhập số nhân viên"
+                      placeholder="Nhập số nhân viên dự kiến"
                       min="0"
                     />
                   </div>
@@ -761,13 +838,13 @@ const Positions = () => {
                   </div>
                   
                   <div className="form-group">
-                    <label>Số nhân viên</label>
+                    <label>Số nhân viên dự kiến</label>
                     <input
                       type="number"
                       name="employeeCount"
                       value={formData.employeeCount}
                       onChange={handleInputChange}
-                      placeholder="Nhập số nhân viên"
+                      placeholder="Nhập số nhân viên dự kiến"
                       min="0"
                     />
                   </div>
@@ -794,6 +871,112 @@ const Positions = () => {
                   </AdminButton>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal xem chi tiết nhân viên */}
+        {showDetailModal && (
+          <div className="modal-overlay" onClick={closeModal}>
+            <div className="modal-content detail-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>Chi tiết nhân viên - {selectedPosition?.title}</h3>
+                <button className="modal-close" onClick={closeModal}>×</button>
+              </div>
+              
+              <div className="modal-body">
+                {loadingEmployees ? (
+                  <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>Đang tải danh sách nhân viên...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="position-summary">
+                      <h4>Thông tin chức vụ</h4>
+                      <div className="summary-grid">
+                        <div className="summary-item">
+                          <span className="summary-label">Mã chức vụ:</span>
+                          <span className="summary-value">{selectedPosition?.code}</span>
+                        </div>
+                        <div className="summary-item">
+                          <span className="summary-label">Phòng ban:</span>
+                          <span className="summary-value">{selectedPosition?.department}</span>
+                        </div>
+                        <div className="summary-item">
+                          <span className="summary-label">Cấp độ:</span>
+                          <span className="summary-value">{formatLevel(selectedPosition?.level)}</span>
+                        </div>
+                        <div className="summary-item">
+                          <span className="summary-label">Số nhân viên dự kiến:</span>
+                          <span className="summary-value">{selectedPosition?.employeeCount || 0}</span>
+                        </div>
+                        <div className="summary-item">
+                          <span className="summary-label">Số nhân viên thực tế:</span>
+                          <span className="summary-value">{positionEmployees.length}</span>
+                        </div>
+                        <div className="summary-item">
+                          <span className="summary-label">Mức lương:</span>
+                          <span className="summary-value">{formatSalary(selectedPosition?.salaryMin, selectedPosition?.salaryMax)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="employees-section">
+                      <h4>Danh sách nhân viên ({positionEmployees.length} người)</h4>
+                      {positionEmployees.length === 0 ? (
+                        <div className="no-employees">
+                          <p>Chưa có nhân viên nào được gán cho chức vụ này</p>
+                        </div>
+                      ) : (
+                        <div className="employees-table">
+                          <table className="employees-list">
+                            <thead>
+                              <tr>
+                                <th>STT</th>
+                                <th>Họ tên</th>
+                                <th>Email</th>
+                                <th>Số điện thoại</th>
+                                <th>Ngày sinh</th>
+                                <th>Giới tính</th>
+                                <th>Trạng thái</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {positionEmployees.map((employee, index) => (
+                                <tr key={employee.userID}>
+                                  <td>{index + 1}</td>
+                                  <td>
+                                    <div className="employee-name">
+                                      <strong>{employee.fullName}</strong>
+                                      <small>@{employee.userName}</small>
+                                    </div>
+                                  </td>
+                                  <td>{employee.email}</td>
+                                  <td>{employee.phone || 'Chưa cập nhật'}</td>
+                                  <td>{formatDate(employee.dateOfBirth)}</td>
+                                  <td>{formatGender(employee.gender)}</td>
+                                  <td>
+                                    <span className={`status-badge status-${employee.status === 'active' ? 'active' : 'inactive'}`}>
+                                      {employee.status === 'active' ? 'Hoạt động' : 'Tạm ngưng'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              <div className="modal-footer">
+                <AdminButton onClick={closeModal} variant="outline">
+                  Đóng
+                </AdminButton>
+              </div>
             </div>
           </div>
         )}
