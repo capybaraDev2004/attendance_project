@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: 127.0.0.1
--- Thời gian đã tạo: Th9 07, 2025 lúc 04:51 PM
+-- Thời gian đã tạo: Th9 21, 2025 lúc 10:49 AM
 -- Phiên bản máy phục vụ: 10.4.32-MariaDB
 -- Phiên bản PHP: 8.2.12
 
@@ -46,7 +46,9 @@ CREATE TABLE `attendance` (
 --
 
 INSERT INTO `attendance` (`attendance_id`, `user_id`, `work_date`, `check_in`, `check_out`, `first_confidence`, `last_confidence`, `device_in_id`, `device_out_id`, `created_at`, `updated_at`) VALUES
-(66, 3, '2025-09-06', '2025-09-06 01:04:58', '2025-09-06 11:07:38', NULL, NULL, 1, 1, '2025-09-06 16:04:58', '2025-09-07 13:21:58');
+(66, 3, '2025-09-06', '2025-09-06 01:04:58', '2025-09-06 11:07:38', NULL, NULL, 1, 1, '2025-09-06 16:04:58', '2025-09-07 13:21:58'),
+(73, 5, '2025-09-09', '2025-09-09 06:45:14', NULL, NULL, NULL, 1, NULL, '2025-09-09 06:45:14', '2025-09-09 06:45:14'),
+(74, 3, '2025-09-20', '2025-09-20 12:50:34', '2025-09-20 12:50:43', NULL, NULL, 1, 1, '2025-09-20 12:50:34', '2025-09-20 12:50:43');
 
 -- --------------------------------------------------------
 
@@ -310,7 +312,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT cho bảng `attendance`
 --
 ALTER TABLE `attendance`
-  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=73;
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=75;
 
 --
 -- AUTO_INCREMENT cho bảng `devices`
