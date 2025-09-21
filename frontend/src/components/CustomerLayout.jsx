@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Layout chính cho Admin Dashboard với màu nền #f0f2f5
+ * Layout chính cho Customer Dashboard với màu nền #f0f2f5
  * @param {Object} props - Các thuộc tính của component
  * @param {string} props.title - Tiêu đề trang
  * @param {string} props.subtitle - Phụ đề trang (optional)
@@ -9,7 +9,7 @@ import React from 'react';
  * @param {React.ReactNode} props.children - Nội dung trang
  * @param {React.ReactNode} props.headerActions - Các nút hành động ở header (optional)
  */
-const AdminLayout = ({ 
+const CustomerLayout = ({ 
   title, 
   subtitle, 
   icon: Icon, 
@@ -47,4 +47,4 @@ const AdminLayout = ({
   );
 };
 
-export default AdminLayout;
+export default CustomerLayout;

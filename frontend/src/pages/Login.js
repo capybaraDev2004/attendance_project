@@ -157,7 +157,7 @@ const LoginPage = () => {
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3 }}
           >
-            <span className="notification-icon">✅</span>
+            <span className="notification-icon"></span>
             <span className="notification-text">{success}</span>
           </motion.div>
         )}
@@ -244,7 +244,6 @@ const LoginPage = () => {
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
               >
-                ⏳
               </motion.span>
             ) : (
               <span className="button-icon"></span>

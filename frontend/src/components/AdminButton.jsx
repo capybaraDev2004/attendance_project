@@ -1,5 +1,4 @@
 import React from 'react';
-import './AdminButton.css';
 
 const AdminButton = ({ 
   children, 

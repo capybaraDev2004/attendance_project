@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import AdminLayout from '../../../components/AdminLayout';
-import AdminButton from '../../../components/AdminButton';
+import StandardTable from '../../../components/StandardTable';
+import Button from '../../../components/Button';
+import Card, { CardTitle, CardContent } from '../../../components/Card';
 import { FaDesktop, FaPlus, FaEdit, FaTrash, FaExclamationTriangle, FaClock } from 'react-icons/fa';
-import './DeviceManagement.css';
 
 const DeviceManagement = () => {
   const [devices, setDevices] = useState([]);
@@ -13,6 +13,19 @@ const DeviceManagement = () => {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // State cho việc bật/tắt cột - mặc định ẩn IP, Vị trí, Lần cuối
+  const [visibleColumns, setVisibleColumns] = useState({
+    stt: true,
+    deviceName: true,
+    deviceType: true,
+    location: false,      // Ẩn mặc định
+    ipAddress: false,    // Ẩn mặc định
+    status: true,
+    connectionStatus: true,
+    lastSeen: false,     // Ẩn mặc định
+    actions: true
+  });
 
   // Form state cho thêm/sửa thiết bị
   const [formData, setFormData] = useState({
@@ -255,194 +268,370 @@ const DeviceManagement = () => {
     }
   };
 
+  // Định nghĩa các cột có thể ẩn/hiện
+  const columnDefinitions = [
+    { key: 'stt', label: 'STT', width: '60px' },
+    { key: 'deviceName', label: 'Tên thiết bị', width: '200px' },
+    { key: 'deviceType', label: 'Loại', width: '100px' },
+    { key: 'location', label: 'Vị trí', width: '150px' },
+    { key: 'ipAddress', label: 'IP Address', width: '120px' },
+    { key: 'status', label: 'Trạng thái', width: '120px' },
+    { key: 'connectionStatus', label: 'Kết nối', width: '120px' },
+    { key: 'lastSeen', label: 'Lần cuối', width: '150px' },
+    { key: 'actions', label: 'Thao tác', width: '100px' }
+  ];
+
+  // Hiện tất cả cột
+  const showAllColumns = () => {
+    const allVisible = {};
+    columnDefinitions.forEach(column => {
+      allVisible[column.key] = true;
+    });
+    setVisibleColumns(allVisible);
+  };
+
+  // Toggle hiển thị cột
+  const toggleColumn = (columnKey) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey]
+    }));
+  };
+
+  // Định nghĩa cột cho bảng - chỉ hiển thị các cột được chọn
+  const tableColumns = columnDefinitions
+    .filter(column => visibleColumns[column.key])
+    .map(column => {
+      switch (column.key) {
+        case 'stt':
+          return {
+            key: 'stt',
+            label: 'STT',
+            visible: true,
+            render: (_, index) => (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {index + 1}
+              </span>
+            )
+          };
+        case 'deviceName':
+          return {
+            key: 'deviceName',
+            label: 'Tên thiết bị',
+            visible: true,
+            render: (device) => (
+              <div>
+                <div className="text-sm font-medium text-gray-900">{device.deviceName}</div>
+                <div className="text-sm text-gray-500">{device.description}</div>
+              </div>
+            )
+          };
+        case 'deviceType':
+          return {
+            key: 'deviceType',
+            label: 'Loại',
+            visible: true,
+            render: (device) => (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                RFID
+              </span>
+            )
+          };
+        case 'location':
+          return {
+            key: 'location',
+            label: 'Vị trí',
+            visible: true,
+            render: (device) => device.location
+          };
+        case 'ipAddress':
+          return {
+            key: 'ipAddress',
+            label: 'IP Address',
+            visible: true,
+            render: (device) => device.ipAddress
+          };
+        case 'status':
+          return {
+            key: 'status',
+            label: 'Trạng thái',
+            visible: true,
+            render: (device) => (
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                device.status === 'active' ? 'bg-green-100 text-green-800' :
+                device.status === 'inactive' ? 'bg-red-100 text-red-800' :
+                'bg-orange-100 text-orange-800'
+              }`}>
+                {formatStatus(device.status)}
+              </span>
+            )
+          };
+        case 'connectionStatus':
+          return {
+            key: 'connectionStatus',
+            label: 'Kết nối',
+            visible: true,
+            render: (device) => (
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                device.connectionStatus === 'connected' ? 'bg-green-100 text-green-800' :
+                device.connectionStatus === 'disconnected' ? 'bg-red-100 text-red-800' :
+                'bg-orange-100 text-orange-800'
+              }`}>
+                {formatConnectionStatus(device.connectionStatus)}
+              </span>
+            )
+          };
+        case 'lastSeen':
+          return {
+            key: 'lastSeen',
+            label: 'Lần cuối',
+            visible: true,
+            render: (device) => (
+              <div className="flex items-center">
+                <FaClock className="text-gray-400 mr-1" size={12} />
+                <span className="text-sm text-gray-900">{device.lastSeen}</span>
+              </div>
+            )
+          };
+        case 'actions':
+          return {
+            key: 'actions',
+            label: 'Thao tác',
+            visible: true,
+            render: (device) => (
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleEditDevice(device)}
+                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                  title="Chỉnh sửa"
+                >
+                  <FaEdit size={14} />
+                </button>
+                <button
+                  onClick={() => handleDeleteDevice(device.id)}
+                  className="text-red-600 hover:text-red-800 transition-colors"
+                  title="Xóa"
+                >
+                  <FaTrash size={14} />
+                </button>
+              </div>
+            )
+          };
+        default:
+          return null;
+      }
+    })
+    .filter(Boolean);
+
   if (loading) {
     return (
-      <AdminLayout
-        title="Quản lý thiết bị"
-        subtitle="Quản lý các thiết bị IoT RFID trong hệ thống điểm danh"
-        icon={FaDesktop}
-      >
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Đang tải danh sách thiết bị...</p>
+      <div className="space-y-6">
+          <Card>
+            <CardContent>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <FaDesktop className="text-blue-600 text-xl" />
+                </div>
+                <div>
+                  <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                    Quản lý thiết bị
+                  </CardTitle>
+                  <p className="text-gray-600 mt-1">
+                    Quản lý các thiết bị IoT RFID trong hệ thống điểm danh
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <div className="text-center py-12">
+                <div className="loading-spinner"></div>
+                <p className="mt-4 text-gray-600">Đang tải danh sách thiết bị...</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </AdminLayout>
     );
   }
 
   if (error) {
     return (
-      <AdminLayout
-        title="Quản lý thiết bị"
-        subtitle="Quản lý các thiết bị IoT RFID trong hệ thống điểm danh"
-        icon={FaDesktop}
-      >
-        <div className="error-container">
-          <FaExclamationTriangle className="error-icon" />
-          <h3>Đã xảy ra lỗi</h3>
-          <p>{error}</p>
-          <AdminButton onClick={fetchDevices} variant="primary">
-            Thử lại
-          </AdminButton>
+      <div className="space-y-6">
+          <Card>
+            <CardContent>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <FaDesktop className="text-blue-600 text-xl" />
+                </div>
+                <div>
+                  <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                    Quản lý thiết bị
+                  </CardTitle>
+                  <p className="text-gray-600 mt-1">
+                    Quản lý các thiết bị IoT RFID trong hệ thống điểm danh
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <div className="text-center py-12">
+                <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Đã xảy ra lỗi</h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <Button onClick={fetchDevices} variant="primary">
+                  Thử lại
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout
-      title="Quản lý thiết bị"
-      subtitle="Quản lý các thiết bị IoT RFID trong hệ thống điểm danh"
-      icon={FaDesktop}
-    >
-      <div className="device-management-container">
+    <div className="space-y-6">
+        {/* Header Card */}
+        <Card>
+          <CardContent>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaDesktop className="text-blue-600 text-xl" />
+              </div>
+              <div>
+                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                  Quản lý thiết bị
+                </CardTitle>
+                <p className="text-gray-600 mt-1">
+                  Quản lý các thiết bị IoT RFID trong hệ thống điểm danh
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         {/* Bộ lọc và tìm kiếm */}
-        <div className="filters-section">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên thiết bị, vị trí hoặc IP..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          
-          <div className="filter-controls">
-            <div className="filter-group">
-              <label className="filter-label">Trạng thái:</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="active">Hoạt động</option>
-                <option value="inactive">Không hoạt động</option>
-                <option value="maintenance">Bảo trì</option>
-              </select>
+        <Card className="mb-6">
+          <CardTitle level="h3" className="text-lg mb-4">
+            Bộ lọc và tìm kiếm
+          </CardTitle>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Tìm kiếm theo tên thiết bị, vị trí hoặc IP..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
             
-            <AdminButton onClick={fetchDevices} variant="outline" size="small">
-              Làm mới
-            </AdminButton>
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Trạng thái:</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="active">Hoạt động</option>
+                  <option value="inactive">Không hoạt động</option>
+                  <option value="maintenance">Bảo trì</option>
+                </select>
+              </div>
+              
+              <Button onClick={fetchDevices} variant="outline" size="sm">
+                Làm mới
+              </Button>
+            </div>
           </div>
-        </div>
+        </Card>
+
+        {/* Cài đặt hiển thị cột */}
+        <Card>
+          <div className="flex justify-between items-center mb-4">
+            <CardTitle level="h2" className="text-lg">Cài đặt hiển thị cột</CardTitle>
+            <Button onClick={showAllColumns} variant="outline" size="sm">
+              Hiện tất cả
+            </Button>
+          </div>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {columnDefinitions.map((column) => (
+                <label key={column.key} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns[column.key]}
+                    onChange={() => toggleColumn(column.key)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">{column.label}</span>
+                </label>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Thống kê */}
-        <div className="stats-section">
-          <div className="stat-card">
-            <div className="stat-number">{totalDevices}</div>
-            <div className="stat-label">Tổng thiết bị</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{activeDevices}</div>
-            <div className="stat-label">Đang hoạt động</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{inactiveDevices}</div>
-            <div className="stat-label">Không hoạt động</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{maintenanceDevices}</div>
-            <div className="stat-label">Đang bảo trì</div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600 mb-2">{totalDevices}</div>
+              <div className="text-sm text-gray-600">Tổng thiết bị</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600 mb-2">{activeDevices}</div>
+              <div className="text-sm text-gray-600">Đang hoạt động</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-red-600 mb-2">{inactiveDevices}</div>
+              <div className="text-sm text-gray-600">Không hoạt động</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-orange-600 mb-2">{maintenanceDevices}</div>
+              <div className="text-sm text-gray-600">Đang bảo trì</div>
+            </div>
+          </Card>
         </div>
 
         {/* Header và nút thêm */}
-        <div className="section-header">
-          <div className="header-content">
-            <h3>Danh sách thiết bị</h3>
-            <p>Tổng cộng: {filteredDevices.length} thiết bị</p>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Danh sách thiết bị</h3>
+              <p className="text-sm text-gray-600 mt-1">Tổng cộng: {filteredDevices.length} thiết bị</p>
+            </div>
+            <Button onClick={handleAddDevice} variant="primary" icon={<FaPlus />}>
+              Thêm thiết bị
+            </Button>
           </div>
-          <AdminButton onClick={handleAddDevice} variant="primary" icon={FaPlus}>
-            Thêm thiết bị
-          </AdminButton>
         </div>
 
         {/* Bảng thiết bị */}
-        <div className="table-container">
-          <table className="devices-table">
-            <thead>
-              <tr>
-                <th>STT</th>
-                <th>Tên thiết bị</th>
-                <th>Loại</th>
-                <th>Vị trí</th>
-                <th>IP Address</th>
-                <th>Trạng thái</th>
-                <th>Kết nối</th>
-                <th>Lần cuối</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDevices.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="no-data">
-                    <div className="no-data-content">
-                      <p>Không tìm thấy thiết bị nào</p>
-                      <p>Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredDevices.map((device, index) => (
-                  <tr key={device.id} className="device-row">
-                    <td className="device-stt">
-                      <span className="stt-badge">{index + 1}</span>
-                    </td>
-                    <td className="device-name">
-                      <div className="device-info">
-                        <strong>{device.deviceName}</strong>
-                        <small>{device.description}</small>
-                      </div>
-                    </td>
-                    <td className="device-type">
-                      <span className="type-badge type-rfid">RFID</span>
-                    </td>
-                    <td className="device-location">{device.location}</td>
-                    <td className="device-ip">{device.ipAddress}</td>
-                    <td className="device-status">
-                      <span className={`status-badge status-${device.status}`}>
-                        {formatStatus(device.status)}
-                      </span>
-                    </td>
-                    <td className="device-connection">
-                      <span className={`connection-badge connection-${device.connectionStatus}`}>
-                        {formatConnectionStatus(device.connectionStatus)}
-                      </span>
-                    </td>
-                    <td className="device-last-seen">
-                      <div className="last-seen-info">
-                        <FaClock className="clock-icon" />
-                        <span>{device.lastSeen}</span>
-                      </div>
-                    </td>
-                    <td className="device-actions">
-                      <div className="action-buttons">
-                        <AdminButton
-                          onClick={() => handleEditDevice(device)}
-                          variant="outline"
-                          size="small"
-                          icon={FaEdit}
-                          title="Sửa thiết bị"
-                        />
-                        <AdminButton
-                          onClick={() => handleDeleteDevice(device.id)}
-                          variant="danger"
-                          size="small"
-                          icon={FaTrash}
-                          title="Xóa thiết bị"
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <StandardTable
+          title="Danh sách thiết bị"
+          subtitle={`Tổng cộng: ${filteredDevices.length} thiết bị`}
+          icon={FaDesktop}
+          columns={tableColumns}
+          data={filteredDevices}
+          emptyState={
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <FaDesktop size={48} className="mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy thiết bị nào</h3>
+              <p className="text-gray-600">Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+            </div>
+          }
+        />
 
         {/* Modal thêm thiết bị */}
         {showAddModal && (
@@ -541,12 +730,12 @@ const DeviceManagement = () => {
                 </div>
                 
                 <div className="modal-footer">
-                  <AdminButton type="button" onClick={closeModal} variant="outline">
+                  <Button type="button" onClick={closeModal} variant="outline">
                     Hủy
-                  </AdminButton>
-                  <AdminButton type="submit" variant="primary">
+                  </Button>
+                  <Button type="submit" variant="primary">
                     Thêm thiết bị
-                  </AdminButton>
+                  </Button>
                 </div>
               </form>
             </div>
@@ -650,19 +839,18 @@ const DeviceManagement = () => {
                 </div>
                 
                 <div className="modal-footer">
-                  <AdminButton type="button" onClick={closeModal} variant="outline">
+                  <Button type="button" onClick={closeModal} variant="outline">
                     Hủy
-                  </AdminButton>
-                  <AdminButton type="submit" variant="primary">
+                  </Button>
+                  <Button type="submit" variant="primary">
                     Cập nhật
-                  </AdminButton>
+                  </Button>
                 </div>
               </form>
             </div>
           </div>
         )}
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 

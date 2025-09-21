@@ -1,7 +1,6 @@
 // attendance_project/frontend/src/pages/AdminDashboard.js
 import React from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import './AdminDashboard.css';
 
 // Trang quản lý dành cho admin với giao diện hiện đại và URL routing
 const AdminDashboard = () => {

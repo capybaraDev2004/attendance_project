@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import AdminLayout from '../../../components/AdminLayout';
-import AdminButton from '../../../components/AdminButton';
-import { FaHistory, FaSearch, FaFileExcel, FaCalendarAlt } from 'react-icons/fa';
+import StandardTable from '../../../components/StandardTable';
+import Card, { CardTitle, CardContent } from '../../../components/Card';
+import { IconHistory, IconSearch, IconFileExport, IconCalendar, IconAlertCircle } from '@tabler/icons-react';
 
 // Component lịch sử chấm công cho customer - chỉ hiển thị lịch sử của user hiện tại
 const CustomerAttendance = () => {
@@ -171,9 +171,9 @@ const CustomerAttendance = () => {
 
   // Badge trạng thái theo check-in/out
   const renderStatusBadge = useCallback((checkIn, checkOut) => {
-    if (!checkIn) return <span className="status-pending">Chưa vào</span>;
-    if (!checkOut) return <span className="status-working">Đang làm việc</span>;
-    return <span className="status-complete">Đã tan ca</span>;
+    if (!checkIn) return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Chưa vào</span>;
+    if (!checkOut) return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Đang làm việc</span>;
+    return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Đã tan ca</span>;
   }, []);
 
   // Hàm format ngày theo định dạng dd/mm/yyyy
@@ -185,6 +185,52 @@ const CustomerAttendance = () => {
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   }, []);
+
+  // Định nghĩa cột cho bảng
+  const tableColumns = [
+    {
+      key: 'attendance_id',
+      label: 'ID',
+      visible: true,
+      render: (record) => <span className="font-medium">{record.attendance_id}</span>
+    },
+    {
+      key: 'work_date',
+      label: 'NGÀY',
+      visible: true,
+      render: (record) => formatDateToDDMMYYYY(record.work_date)
+    },
+    {
+      key: 'check_in',
+      label: 'THỜI GIAN VÀO',
+      visible: true,
+      render: (record) => record.check_in ? new Date(record.check_in).toLocaleTimeString('vi-VN') : '--'
+    },
+    {
+      key: 'device_in_name',
+      label: 'THIẾT BỊ VÀO',
+      visible: true,
+      render: (record) => record.device_in_name || '--'
+    },
+    {
+      key: 'check_out',
+      label: 'THỜI GIAN RA',
+      visible: true,
+      render: (record) => record.check_out ? new Date(record.check_out).toLocaleTimeString('vi-VN') : '--'
+    },
+    {
+      key: 'device_out_name',
+      label: 'THIẾT BỊ RA',
+      visible: true,
+      render: (record) => record.device_out_name || '--'
+    },
+    {
+      key: 'status',
+      label: 'TRẠNG THÁI',
+      visible: true,
+      render: (record) => renderStatusBadge(record.check_in, record.check_out)
+    }
+  ];
 
   // Component Date Picker
   const DatePicker = ({ isOpen, onClose, onSelect }) => {
@@ -252,194 +298,178 @@ const CustomerAttendance = () => {
 
   if (loading) {
     return (
-      <AdminLayout
-        title="Lịch sử chấm công của tôi"
-        subtitle="Theo dõi lịch sử ra vào cá nhân"
-        icon={FaHistory}
-      >
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Đang tải dữ liệu...</p>
+      <div className="space-y-6">
+        <div className="mb-6">
+          <div className="flex items-center space-x-3">
+            <IconHistory className="text-gray-600" size={24} />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Lịch sử chấm công</h1>
+              <p className="text-gray-600 mt-1">Theo dõi lịch sử ra vào cá nhân</p>
+            </div>
+          </div>
         </div>
-      </AdminLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (!currentUser) {
     return (
-      <AdminLayout
-        title="Lịch sử chấm công của tôi"
-        subtitle="Theo dõi lịch sử ra vào cá nhân"
-        icon={FaHistory}
-      >
-        <div className="no-data-container">
-          <div className="no-data-card">
-            <FaHistory className="no-data-icon" />
-            <h3>Không thể xác định thông tin người dùng</h3>
-            <p>Vui lòng đăng nhập lại để xem lịch sử chấm công</p>
+      <div className="space-y-6">
+        <div className="mb-6">
+          <div className="flex items-center space-x-3">
+            <IconHistory className="text-gray-600" size={24} />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Lịch sử chấm công</h1>
+              <p className="text-gray-600 mt-1">Theo dõi lịch sử ra vào cá nhân</p>
+            </div>
           </div>
         </div>
-      </AdminLayout>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center mb-4">
+            <IconAlertCircle className="text-red-600 mr-3" size={24} />
+            <h3 className="text-lg font-semibold text-red-900">Không thể xác định thông tin người dùng</h3>
+          </div>
+          <p className="text-red-700">Vui lòng đăng nhập lại để xem lịch sử chấm công</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <AdminLayout
-      title="Lịch sử chấm công của tôi"
-      subtitle={`Lịch sử ra vào của ${currentUser.fullName}`}
-      icon={FaHistory}
-    >
-      <div className="attendance-history-container">
-        {/* Filters Section - Chỉ hiển thị filter ngày */}
-        <div className="filters-container">
-          <div className="filters-card">
-            <h3 className="filters-title">
-              <FaSearch className="filters-icon" />
-              Bộ lọc dữ liệu
-            </h3>
-            
-            {/* Lọc theo ngày */}
-            <div className="filter-group">
-              <div className="filter-title">Lọc theo ngày</div>
-              <div className="date-row">
-                <div className="input-group">
-                  <label className="input-label">Ngày bắt đầu:</label>
-                  <div className="date-input-container">
-                    <input
-                      type="text"
-                      className="form-input date-input"
-                      placeholder="dd/mm/yyyy"
-                      value={filters.startDate}
-                      onChange={(e) => handleDateInputChange('startDate', e.target.value)}
-                      maxLength="10"
-                    />
-                    <button
-                      type="button"
-                      className="date-picker-button"
-                      onClick={() => setShowStartDatePicker(true)}
-                    >
-                      <FaCalendarAlt />
-                    </button>
-                  </div>
+    <div className="space-y-6">
+      {/* Header Card */}
+      <Card>
+        <CardContent>
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <IconHistory className="text-blue-600 text-xl" />
+            </div>
+            <div>
+              <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                Lịch sử chấm công
+              </CardTitle>
+              <p className="text-gray-600 mt-1">
+                Lịch sử ra vào của {currentUser.fullName}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      {/* Filters Section */}
+      <div className="bg-white rounded-lg shadow-sm border mb-6">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <IconSearch className="mr-2 text-green-600" size={20} />
+            Bộ lọc dữ liệu
+          </h3>
+        </div>
+        
+        <div className="p-6">
+          {/* Lọc theo ngày */}
+          <div className="mb-6">
+            <h4 className="text-md font-medium text-gray-900 mb-4">Lọc theo ngày</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ngày bắt đầu:</label>
+                <div className="flex">
+                  <input
+                    type="text"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="dd/mm/yyyy"
+                    value={filters.startDate}
+                    onChange={(e) => handleDateInputChange('startDate', e.target.value)}
+                    maxLength="10"
+                  />
+                  <button
+                    type="button"
+                    className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200 transition-colors"
+                    onClick={() => setShowStartDatePicker(true)}
+                  >
+                    <IconCalendar size={16} />
+                  </button>
                 </div>
-                <div className="input-group">
-                  <label className="input-label">Ngày kết thúc:</label>
-                  <div className="date-input-container">
-                    <input
-                      type="text"
-                      className="form-input date-input"
-                      placeholder="dd/mm/yyyy"
-                      value={filters.endDate}
-                      onChange={(e) => handleDateInputChange('endDate', e.target.value)}
-                      maxLength="10"
-                    />
-                    <button
-                      type="button"
-                      className="date-picker-button"
-                      onClick={() => setShowEndDatePicker(true)}
-                    >
-                      <FaCalendarAlt />
-                    </button>
-                  </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ngày kết thúc:</label>
+                <div className="flex">
+                  <input
+                    type="text"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="dd/mm/yyyy"
+                    value={filters.endDate}
+                    onChange={(e) => handleDateInputChange('endDate', e.target.value)}
+                    maxLength="10"
+                  />
+                  <button
+                    type="button"
+                    className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200 transition-colors"
+                    onClick={() => setShowEndDatePicker(true)}
+                  >
+                    <IconCalendar size={16} />
+                  </button>
                 </div>
               </div>
             </div>
-
-            {/* Action Buttons */}
-            <div className="filter-actions">
-              <AdminButton
-                variant="success"
-                size="medium"
-                onClick={handleFilter}
-                icon={FaSearch}
-              >
-                Lọc dữ liệu
-              </AdminButton>
-              <AdminButton
-                variant="outline"
-                size="medium"
-                onClick={() => alert('Tính năng xuất Excel sẽ được triển khai!')}
-                icon={FaFileExcel}
-              >
-                Xuất File Excel
-              </AdminButton>
-            </div>
-          </div>
-        </div>
-
-        {/* Data Table */}
-        <div className="table-container">
-          <div className="table-header">
-            <h3 className="table-title">
-              <FaHistory className="table-icon" />
-              Dữ liệu lịch sử
-            </h3>
-            <p className="table-subtitle">
-              Tổng cộng: {attendanceData.length} bản ghi
-            </p>
           </div>
 
-          {attendanceData.length === 0 ? (
-            <div className="no-data-container">
-              <div className="no-data-card">
-                <FaHistory className="no-data-icon" />
-                <h3>Chưa có dữ liệu lịch sử</h3>
-                <p>Vui lòng chọn khoảng thời gian và nhấn "Lọc dữ liệu" để xem kết quả</p>
-              </div>
-            </div>
-          ) : (
-            <div className="table-wrapper">
-              <table className="data-table">
-                <thead className="table-header-row">
-                  <tr>
-                    <th>ID</th>
-                    <th>NGÀY</th>
-                    <th>THỜI GIAN VÀO</th>
-                    <th>THIẾT BỊ VÀO</th>
-                    <th>THỜI GIAN RA</th>
-                    <th>THIẾT BỊ RA</th>
-                    <th>TRẠNG THÁI</th>
-                  </tr>
-                </thead>
-                <tbody className="table-body">
-                  {attendanceData.map((record) => (
-                    <tr key={record.attendance_id}>
-                      <td className="record-id">{record.attendance_id}</td>
-                      <td className="record-date">
-                        {formatDateToDDMMYYYY(record.work_date)}
-                      </td>
-                      <td className="record-time-in">
-                        {record.check_in ? new Date(record.check_in).toLocaleTimeString('vi-VN') : '--'}
-                      </td>
-                      <td className="record-device-in">{record.device_in_name || '--'}</td>
-                      <td className="record-time-out">
-                        {record.check_out ? new Date(record.check_out).toLocaleTimeString('vi-VN') : '--'}
-                      </td>
-                      <td className="record-device-out">{record.device_out_name || '--'}</td>
-                      <td className="record-status">
-                        {renderStatusBadge(record.check_in, record.check_out)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {/* Action Buttons */}
+          <div className="flex space-x-3">
+            <button
+              onClick={handleFilter}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+            >
+              <IconSearch className="mr-2" size={16} />
+              Lọc dữ liệu
+            </button>
+            <button
+              onClick={() => alert('Tính năng xuất Excel sẽ được triển khai!')}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center"
+            >
+              <IconFileExport className="mr-2" size={16} />
+              Xuất File Excel
+            </button>
+          </div>
         </div>
-
-        {/* Date Pickers */}
-        <DatePicker
-          isOpen={showStartDatePicker}
-          onClose={() => setShowStartDatePicker(false)}
-          onSelect={(date) => handleDatePickerSelect('startDate', date)}
-        />
-        <DatePicker
-          isOpen={showEndDatePicker}
-          onClose={() => setShowEndDatePicker(false)}
-          onSelect={(date) => handleDatePickerSelect('endDate', date)}
-        />
       </div>
-    </AdminLayout>
+
+      {/* Data Table */}
+      <StandardTable
+        title="Dữ liệu lịch sử"
+        subtitle={`Tổng cộng: ${attendanceData.length} bản ghi`}
+        icon={IconHistory}
+        columns={tableColumns}
+        data={attendanceData}
+        onRefresh={fetchAttendanceHistory}
+        emptyState={
+          <div className="text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <IconHistory size={48} className="mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có dữ liệu lịch sử</h3>
+            <p className="text-gray-600">Vui lòng chọn khoảng thời gian và nhấn "Lọc dữ liệu" để xem kết quả</p>
+          </div>
+        }
+      />
+
+      {/* Date Pickers */}
+      <DatePicker
+        isOpen={showStartDatePicker}
+        onClose={() => setShowStartDatePicker(false)}
+        onSelect={(date) => handleDatePickerSelect('startDate', date)}
+      />
+      <DatePicker
+        isOpen={showEndDatePicker}
+        onClose={() => setShowEndDatePicker(false)}
+        onSelect={(date) => handleDatePickerSelect('endDate', date)}
+      />
+    </div>
   );
 };
 

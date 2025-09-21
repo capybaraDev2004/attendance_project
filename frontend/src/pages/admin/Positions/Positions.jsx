@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../../components/AdminLayout';
-import AdminButton from '../../../components/AdminButton';
+import StandardTable from '../../../components/StandardTable';
+import Card, { CardTitle, CardContent, CardActions } from '../../../components/Card';
+import Button from '../../../components/Button';
 import { toast } from 'react-toastify';
-import { FaUserTie, FaPlus, FaEdit, FaTrash, FaExclamationTriangle, FaUsers, FaEye } from 'react-icons/fa';
+import { FaUserTie, FaPlus, FaEdit, FaTrash, FaExclamationTriangle, FaEye } from 'react-icons/fa';
 import './Positions.css';
 
 const Positions = () => {
@@ -17,6 +18,19 @@ const Positions = () => {
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // State cho việc bật/tắt cột
+  const [visibleColumns, setVisibleColumns] = useState({
+    stt: true,
+    title: true,
+    department: true,
+    level: true,
+    employeeCount: false,
+    actualEmployeeCount: true,
+    salary: true,
+    status: true,
+    actions: true
+  });
 
   // Form state cho thêm/sửa chức vụ
   const [formData, setFormData] = useState({
@@ -361,219 +375,372 @@ const Positions = () => {
     }
   };
 
+  // Định nghĩa các cột có thể ẩn/hiện
+  const columnDefinitions = [
+    { key: 'stt', label: 'STT', width: '60px' },
+    { key: 'title', label: 'Chức vụ', width: '200px' },
+    { key: 'department', label: 'Phòng ban', width: '150px' },
+    { key: 'level', label: 'Cấp độ', width: '120px' },
+    { key: 'employeeCount', label: 'Nhân viên dự kiến', width: '150px' },
+    { key: 'actualEmployeeCount', label: 'Nhân viên thực tế', width: '150px' },
+    { key: 'salary', label: 'Mức lương', width: '200px' },
+    { key: 'status', label: 'Trạng thái', width: '120px' },
+    { key: 'actions', label: 'Thao tác', width: '100px' }
+  ];
+
+  // Hiện tất cả cột
+  const showAllColumns = () => {
+    const allVisible = {};
+    columnDefinitions.forEach(column => {
+      allVisible[column.key] = true;
+    });
+    setVisibleColumns(allVisible);
+  };
+
+  // Toggle hiển thị cột
+  const toggleColumn = (columnKey) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey]
+    }));
+  };
+
+  // Định nghĩa cột cho bảng - chỉ hiển thị các cột được chọn
+  const tableColumns = columnDefinitions
+    .filter(column => visibleColumns[column.key])
+    .map(column => {
+      switch (column.key) {
+        case 'stt':
+          return {
+            key: 'stt',
+            label: 'STT',
+            visible: true,
+            render: (_, index) => index + 1
+          };
+        case 'title':
+          return {
+            key: 'title',
+            label: 'Chức vụ',
+            visible: true,
+            render: (position) => (
+              <div>
+                <div className="text-sm font-medium text-gray-900">{position.title}</div>
+                <div className="text-sm text-gray-500">{position.code}</div>
+              </div>
+            )
+          };
+        case 'department':
+          return {
+            key: 'department',
+            label: 'Phòng ban',
+            visible: true,
+            render: (position) => position.department
+          };
+        case 'level':
+          return {
+            key: 'level',
+            label: 'Cấp độ',
+            visible: true,
+            render: (position) => (
+              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                {formatLevel(position.level)}
+              </span>
+            )
+          };
+        case 'employeeCount':
+          return {
+            key: 'employeeCount',
+            label: 'Nhân viên dự kiến',
+            visible: true,
+            render: (position) => (
+              <span className="font-medium">{position.employeeCount || 0}</span>
+            )
+          };
+        case 'actualEmployeeCount':
+          return {
+            key: 'actualEmployeeCount',
+            label: 'Nhân viên thực tế',
+            visible: true,
+            render: (position) => (
+              <span className="font-medium">{position.actualEmployeeCount || 0}</span>
+            )
+          };
+        case 'salary':
+          return {
+            key: 'salary',
+            label: 'Mức lương',
+            visible: true,
+            render: (position) => formatSalary(position.salaryMin, position.salaryMax)
+          };
+        case 'status':
+          return {
+            key: 'status',
+            label: 'Trạng thái',
+            visible: true,
+            render: (position) => (
+              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                position.status === 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {formatStatus(position.status)}
+              </span>
+            )
+          };
+        case 'actions':
+          return {
+            key: 'actions',
+            label: 'Thao tác',
+            visible: true,
+            render: (position) => (
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleViewDetails(position)}
+                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                  title="Xem chi tiết"
+                >
+                  <FaEye size={14} />
+                </button>
+                <button
+                  onClick={() => handleEditPosition(position)}
+                  className="text-green-600 hover:text-green-800 transition-colors"
+                  title="Chỉnh sửa"
+                >
+                  <FaEdit size={14} />
+                </button>
+                <button
+                  onClick={() => handleDeletePosition(position.id)}
+                  className="text-red-600 hover:text-red-800 transition-colors"
+                  title="Xóa"
+                >
+                  <FaTrash size={14} />
+                </button>
+              </div>
+            )
+          };
+        default:
+          return null;
+      }
+    })
+    .filter(Boolean);
+
+
   if (loading) {
     return (
-      <AdminLayout
-        title="Quản lý chức vụ"
-        subtitle="Quản lý các chức vụ và vị trí công việc trong công ty"
-        icon={FaUserTie}
-      >
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Đang tải danh sách chức vụ...</p>
+      <div className="space-y-6">
+          <Card>
+            <CardContent>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <FaUserTie className="text-blue-600 text-xl" />
+                </div>
+                <div>
+                  <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                    Quản lý chức vụ
+                  </CardTitle>
+                  <p className="text-gray-600 mt-1">
+                    Quản lý các chức vụ và vị trí công việc trong công ty
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <div className="text-center py-12">
+                <div className="loading-spinner"></div>
+                <p className="mt-4 text-gray-600">Đang tải danh sách chức vụ...</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </AdminLayout>
     );
   }
 
   if (error) {
     return (
-      <AdminLayout
-        title="Quản lý chức vụ"
-        subtitle="Quản lý các chức vụ và vị trí công việc trong công ty"
-        icon={FaUserTie}
-      >
-        <div className="error-container">
-          <FaExclamationTriangle className="error-icon" />
-          <h3>Đã xảy ra lỗi</h3>
-          <p>{error}</p>
-          <div style={{ marginTop: '20px' }}>
-            <AdminButton onClick={fetchPositions} variant="primary" style={{ marginRight: '10px' }}>
-              Thử lại
-            </AdminButton>
-            <AdminButton onClick={() => window.location.reload()} variant="outline">
-              Tải lại trang
-            </AdminButton>
-          </div>
+      <div className="space-y-6">
+          <Card>
+            <CardContent>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <FaUserTie className="text-blue-600 text-xl" />
+                </div>
+                <div>
+                  <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                    Quản lý chức vụ
+                  </CardTitle>
+                  <p className="text-gray-600 mt-1">
+                    Quản lý các chức vụ và vị trí công việc trong công ty
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <div className="text-center py-12">
+                <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Đã xảy ra lỗi</h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <div className="flex justify-center space-x-3">
+                  <Button onClick={fetchPositions} variant="primary">
+                    Thử lại
+                  </Button>
+                  <Button onClick={() => window.location.reload()} variant="outline">
+                    Tải lại trang
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout
-      title="Quản lý chức vụ"
-      subtitle="Quản lý các chức vụ và vị trí công việc trong công ty"
-      icon={FaUserTie}
-    >
-      <div className="positions-container">
-        {/* Bộ lọc và tìm kiếm */}
-        <div className="filters-section">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên chức vụ, mã chức vụ hoặc phòng ban..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          
-          <div className="filter-controls">
-            <div className="filter-group">
-              <label className="filter-label">Trạng thái:</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="active">Đang sử dụng</option>
-                <option value="inactive">Tạm ngưng</option>
-              </select>
+    <div className="space-y-6">
+        {/* Header Card */}
+        <Card>
+          <CardContent>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaUserTie className="text-blue-600 text-xl" />
+              </div>
+              <div>
+                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                  Quản lý chức vụ
+                </CardTitle>
+                <p className="text-gray-600 mt-1">
+                  Quản lý các chức vụ và vị trí công việc trong công ty
+                </p>
+              </div>
             </div>
-            
-            <AdminButton onClick={fetchPositions} variant="outline" size="small">
+          </CardContent>
+        </Card>
+
+        {/* Bộ lọc và tìm kiếm */}
+        <Card>
+          <CardTitle level="h2" className="text-lg mb-4">Bộ lọc và tìm kiếm</CardTitle>
+          <CardContent>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên chức vụ, mã chức vụ hoặc phòng ban..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="md:w-48">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="active">Đang sử dụng</option>
+                  <option value="inactive">Tạm ngưng</option>
+                </select>
+              </div>
+            </div>
+          </CardContent>
+          <CardActions>
+            <Button onClick={fetchPositions} variant="outline" size="sm">
               Làm mới
-            </AdminButton>
+            </Button>
+          </CardActions>
+        </Card>
+
+        {/* Cài đặt hiển thị cột */}
+        <Card>
+          <div className="flex justify-between items-center mb-4">
+            <CardTitle level="h2" className="text-lg">Cài đặt hiển thị cột</CardTitle>
+            <Button onClick={showAllColumns} variant="outline" size="sm">
+              Hiện tất cả
+            </Button>
           </div>
-        </div>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {columnDefinitions.map((column) => (
+                <label key={column.key} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns[column.key]}
+                    onChange={() => toggleColumn(column.key)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">{column.label}</span>
+                </label>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Thống kê */}
         <div className="stats-section">
-          <div className="stat-card">
-            <div className="stat-number">{totalPositions}</div>
-            <div className="stat-label">Tổng chức vụ</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{activePositions}</div>
-            <div className="stat-label">Đang sử dụng</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{inactivePositions}</div>
-            <div className="stat-label">Tạm ngưng</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{totalEmployees}</div>
-            <div className="stat-label">Tổng nhân viên dự kiến</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{totalActualEmployees}</div>
-            <div className="stat-label">Tổng nhân viên thực tế</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <Card>
+              <CardContent className="text-center">
+                <div className="stat-number">{totalPositions}</div>
+                <div className="stat-label">Tổng chức vụ</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center">
+                <div className="stat-number">{activePositions}</div>
+                <div className="stat-label">Đang sử dụng</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center">
+                <div className="stat-number">{inactivePositions}</div>
+                <div className="stat-label">Tạm ngưng</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center">
+                <div className="stat-number">{totalEmployees}</div>
+                <div className="stat-label">Tổng nhân viên dự kiến</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="text-center">
+                <div className="stat-number">{totalActualEmployees}</div>
+                <div className="stat-label">Tổng nhân viên thực tế</div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        {/* Header và nút thêm */}
-        <div className="section-header">
-          <div className="header-content">
-            <h3>Danh sách chức vụ</h3>
-            <p>Tổng cộng: {filteredPositions.length} chức vụ</p>
+        {/* Danh sách chức vụ */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Danh sách chức vụ</h3>
+              <p className="text-sm text-gray-600 mt-1">Tổng cộng: {filteredPositions.length} chức vụ</p>
+            </div>
+            <Button onClick={handleAddPosition} variant="primary" icon={<FaPlus />}>
+              Thêm chức vụ
+            </Button>
           </div>
-          <AdminButton onClick={handleAddPosition} variant="primary" icon={FaPlus}>
-            Thêm chức vụ
-          </AdminButton>
         </div>
 
-        {/* Bảng chức vụ */}
-        <div className="table-container">
-          <table className="positions-table">
-            <thead>
-              <tr>
-                <th>STT</th>
-                <th>Chức vụ</th>
-                <th>Phòng ban</th>
-                <th>Cấp độ</th>
-                <th>Số nhân viên dự kiến</th>
-                <th>Số nhân viên thực tế</th>
-                <th>Mức lương</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPositions.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="no-data">
-                    <div className="no-data-content">
-                      <p>Không tìm thấy chức vụ nào</p>
-                      <p>Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredPositions.map((position, index) => (
-                  <tr key={position.id} className="position-row">
-                    <td className="position-stt">
-                      <span className="stt-badge">{index + 1}</span>
-                    </td>
-                    <td className="position-info">
-                      <div className="position-details">
-                        <strong>{position.title}</strong>
-                        <small>{position.code}</small>
-                        <div className="position-description">{position.description}</div>
-                      </div>
-                    </td>
-                    <td className="position-department">
-                      <span className="department-badge">{position.department}</span>
-                    </td>
-                    <td className="position-level">
-                      <span className={`level-badge level-${position.level?.replace(/\s+/g, '-').toLowerCase()}`}>
-                        {formatLevel(position.level)}
-                      </span>
-                    </td>
-                    <td className="position-employees">
-                      <div className="employee-count">
-                        <FaUsers className="users-icon" />
-                        <span>{position.employeeCount || 0}</span>
-                      </div>
-                    </td>
-                    <td className="position-actual-employees">
-                      <div className="actual-employee-count">
-                        <FaUsers className="users-icon" />
-                        <span className={`actual-count ${(position.actualEmployeeCount || 0) > (position.employeeCount || 0) ? 'over-limit' : ''}`}>
-                          {position.actualEmployeeCount || 0}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="position-salary">
-                      <span className="salary-range">{formatSalary(position.salaryMin, position.salaryMax)}</span>
-                    </td>
-                    <td className="position-status">
-                      <span className={`status-badge status-${position.status === 1 ? 'active' : 'inactive'}`}>
-                        {formatStatus(position.status)}
-                      </span>
-                    </td>
-                    <td className="position-actions">
-                      <div className="action-buttons">
-                        <AdminButton
-                          onClick={() => handleViewDetails(position)}
-                          variant="info"
-                          size="small"
-                          icon={FaEye}
-                          title="Xem chi tiết nhân viên"
-                        />
-                        <AdminButton
-                          onClick={() => handleEditPosition(position)}
-                          variant="outline"
-                          size="small"
-                          icon={FaEdit}
-                          title="Sửa chức vụ"
-                        />
-                        <AdminButton
-                          onClick={() => handleDeletePosition(position.id)}
-                          variant="danger"
-                          size="small"
-                          icon={FaTrash}
-                          title="Xóa chức vụ"
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <StandardTable
+          title="Danh sách chức vụ"
+          subtitle={`Tổng cộng: ${filteredPositions.length} chức vụ`}
+          icon={FaUserTie}
+          columns={tableColumns}
+          data={filteredPositions}
+          emptyState={
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <FaUserTie size={48} className="mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy chức vụ nào</h3>
+              <p className="text-gray-600">Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+            </div>
+          }
+        />
 
         {/* Modal thêm chức vụ */}
         {showAddModal && (
@@ -713,12 +880,12 @@ const Positions = () => {
                 </div>
                 
                 <div className="modal-footer">
-                  <AdminButton type="button" onClick={closeModal} variant="outline">
+                  <Button type="button" onClick={closeModal} variant="outline">
                     Hủy
-                  </AdminButton>
-                  <AdminButton type="submit" variant="primary">
+                  </Button>
+                  <Button type="submit" variant="primary">
                     Thêm chức vụ
-                  </AdminButton>
+                  </Button>
                 </div>
               </form>
             </div>
@@ -863,12 +1030,12 @@ const Positions = () => {
                 </div>
                 
                 <div className="modal-footer">
-                  <AdminButton type="button" onClick={closeModal} variant="outline">
+                  <Button type="button" onClick={closeModal} variant="outline">
                     Hủy
-                  </AdminButton>
-                  <AdminButton type="submit" variant="primary">
+                  </Button>
+                  <Button type="submit" variant="primary">
                     Cập nhật
-                  </AdminButton>
+                  </Button>
                 </div>
               </form>
             </div>
@@ -973,15 +1140,14 @@ const Positions = () => {
               </div>
               
               <div className="modal-footer">
-                <AdminButton onClick={closeModal} variant="outline">
+                <Button onClick={closeModal} variant="outline">
                   Đóng
-                </AdminButton>
+                </Button>
               </div>
             </div>
           </div>
         )}
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 

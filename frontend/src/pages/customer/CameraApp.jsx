@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import './CameraApp.css';
 
 export default function CameraApp() {
   const videoRef = useRef(null);

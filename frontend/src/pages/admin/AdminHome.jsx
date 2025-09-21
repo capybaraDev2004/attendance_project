@@ -1,84 +1,170 @@
 import React from 'react';
 import { FaUsers, FaHistory, FaDesktop, FaCalculator } from 'react-icons/fa';
+import Card, { CardTitle, CardContent, CardActions } from '../../components/Card';
+import Button from '../../components/Button';
 
-// Trang chủ admin - hiển thị tổng quan và thống kê
+/**
+ * Trang chủ admin - hiển thị tổng quan và thống kê với thiết kế Card mới
+ */
 const AdminHome = () => {
   return (
-    <div className="admin-home">
-      <div className="admin-welcome">
-        <h1>Chào mừng đến với Admin Dashboard</h1>
-        <p>Quản lý hệ thống chấm công và nhân sự</p>
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <Card>
+        <CardTitle level="h1" className="text-3xl mb-2">
+          Chào mừng đến với Admin Dashboard
+        </CardTitle>
+        <CardContent className="text-lg">
+          Quản lý hệ thống chấm công và nhân sự một cách hiệu quả
+        </CardContent>
+      </Card>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <FaUsers className="text-blue-600 text-xl" />
+            </div>
+            <div>
+              <CardTitle level="h3" className="text-lg mb-1">
+                Tổng nhân viên
+              </CardTitle>
+              <p className="text-2xl font-bold text-gray-900">--</p>
+              <span className="text-sm text-gray-500">người</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <FaHistory className="text-green-600 text-xl" />
+            </div>
+            <div>
+              <CardTitle level="h3" className="text-lg mb-1">
+                Chấm công hôm nay
+              </CardTitle>
+              <p className="text-2xl font-bold text-gray-900">--</p>
+              <span className="text-sm text-gray-500">lần</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <FaDesktop className="text-orange-600 text-xl" />
+            </div>
+            <div>
+              <CardTitle level="h3" className="text-lg mb-1">
+                Thiết bị hoạt động
+              </CardTitle>
+              <p className="text-2xl font-bold text-gray-900">--</p>
+              <span className="text-sm text-gray-500">thiết bị</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-red-100 rounded-lg">
+              <FaCalculator className="text-red-600 text-xl" />
+            </div>
+            <div>
+              <CardTitle level="h3" className="text-lg mb-1">
+                Công chưa tính
+              </CardTitle>
+              <p className="text-2xl font-bold text-gray-900">--</p>
+              <span className="text-sm text-gray-500">ngày</span>
+            </div>
+          </div>
+        </Card>
       </div>
 
-      <div className="admin-stats">
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">
-              <FaUsers />
-            </div>
-            <div className="stat-content">
-              <h3>Tổng nhân viên</h3>
-              <p className="stat-number">--</p>
-              <span className="stat-label">người</span>
-            </div>
-          </div>
+      {/* Quick Actions */}
+      <Card>
+        <CardTitle level="h2" className="text-2xl mb-4">
+          Các chức năng chính
+        </CardTitle>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent>
+              <div className="text-center">
+                <div className="text-4xl mb-3">👥</div>
+                <CardTitle level="h3" className="text-lg mb-2">
+                  Quản lý người dùng
+                </CardTitle>
+                <p className="text-gray-600 text-sm">
+                  Thêm, sửa, xóa thông tin nhân viên
+                </p>
+              </div>
+            </CardContent>
+            <CardActions className="justify-center">
+              <Button variant="primary" className="w-full">
+                Truy cập
+              </Button>
+            </CardActions>
+          </Card>
 
-          <div className="stat-card">
-            <div className="stat-icon">
-              <FaHistory />
-            </div>
-            <div className="stat-content">
-              <h3>Chấm công hôm nay</h3>
-              <p className="stat-number">--</p>
-              <span className="stat-label">lần</span>
-            </div>
-          </div>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent>
+              <div className="text-center">
+                <div className="text-4xl mb-3">👁</div>
+                <CardTitle level="h3" className="text-lg mb-2">
+                  Cài đặt nhận diện
+                </CardTitle>
+                <p className="text-gray-600 text-sm">
+                  Cấu hình hệ thống nhận diện khuôn mặt
+                </p>
+              </div>
+            </CardContent>
+            <CardActions className="justify-center">
+              <Button variant="primary" className="w-full">
+                Truy cập
+              </Button>
+            </CardActions>
+          </Card>
 
-          <div className="stat-card">
-            <div className="stat-icon">
-              <FaDesktop />
-            </div>
-            <div className="stat-content">
-              <h3>Thiết bị hoạt động</h3>
-              <p className="stat-number">--</p>
-              <span className="stat-label">thiết bị</span>
-            </div>
-          </div>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent>
+              <div className="text-center">
+                <div className="text-4xl mb-3">📜</div>
+                <CardTitle level="h3" className="text-lg mb-2">
+                  Lịch sử ra vào
+                </CardTitle>
+                <p className="text-gray-600 text-sm">
+                  Xem và quản lý lịch sử chấm công
+                </p>
+              </div>
+            </CardContent>
+            <CardActions className="justify-center">
+              <Button variant="primary" className="w-full">
+                Truy cập
+              </Button>
+            </CardActions>
+          </Card>
 
-          <div className="stat-card">
-            <div className="stat-icon">
-              <FaCalculator />
-            </div>
-            <div className="stat-content">
-              <h3>Công chưa tính</h3>
-              <p className="stat-number">--</p>
-              <span className="stat-label">ngày</span>
-            </div>
-          </div>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent>
+              <div className="text-center">
+                <div className="text-4xl mb-3">💰</div>
+                <CardTitle level="h3" className="text-lg mb-2">
+                  Tính công
+                </CardTitle>
+                <p className="text-gray-600 text-sm">
+                  Tính toán lương và công làm việc
+                </p>
+              </div>
+            </CardContent>
+            <CardActions className="justify-center">
+              <Button variant="primary" className="w-full">
+                Truy cập
+              </Button>
+            </CardActions>
+          </Card>
         </div>
-      </div>
-
-      <div className="admin-quick-actions">
-        <h2>Các chức năng chính</h2>
-        <div className="actions-grid">
-          <div className="action-card">
-            <h3>👥 Quản lý người dùng</h3>
-            <p>Thêm, sửa, xóa thông tin nhân viên</p>
-          </div>
-          <div className="action-card">
-            <h3>👁 Cài đặt nhận diện</h3>
-            <p>Cấu hình hệ thống nhận diện khuôn mặt</p>
-          </div>
-          <div className="action-card">
-            <h3>📜 Lịch sử ra vào</h3>
-            <p>Xem và quản lý lịch sử chấm công</p>
-          </div>
-          <div className="action-card">
-            <h3>💰 Tính công</h3>
-            <p>Tính toán lương và công làm việc</p>
-          </div>
-        </div>
-      </div>
+      </Card>
     </div>
   );
 };

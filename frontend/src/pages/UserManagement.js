@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
+import Card, { CardTitle, CardContent, CardActions } from '../components/Card';
+import Button from '../components/Button';
 import { FaUsers } from 'react-icons/fa';
-import './UserManagement.css';
 
 // Trang quản lý người dùng - lấy dữ liệu từ database
 const UserManagement = () => {
@@ -219,9 +220,9 @@ const UserManagement = () => {
           <div className="error-card">
             <h3>Lỗi khi tải dữ liệu</h3>
             <p>{error}</p>
-            <button className="btn-retry" onClick={fetchUsers}>
+            <Button onClick={fetchUsers} variant="primary">
               Thử lại
-            </button>
+            </Button>
           </div>
         </div>
       </AdminLayout>
@@ -229,199 +230,226 @@ const UserManagement = () => {
   }
 
   return (
-    <AdminLayout
-      title="Quản lý người dùng"
-      subtitle="Quản lý thông tin và quyền hạn của người dùng trong hệ thống"
-      icon={FaUsers}
-    >
-      <div className="user-management-container">
+    <AdminLayout>
+      <div className="space-y-6">
+        {/* Header Card */}
+        <Card>
+          <CardContent>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaUsers className="text-blue-600 text-xl" />
+              </div>
+              <div>
+                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                  Quản lý người dùng
+                </CardTitle>
+                <p className="text-gray-600 mt-1">
+                  Quản lý thông tin và quyền hạn của người dùng trong hệ thống
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         {/* Bộ lọc và tìm kiếm */}
-        <div className="filters-section">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          
-          <div className="filter-controls">
-            <div className="filter-group">
-              <label className="filter-label">Vai trò:</label>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">Tất cả vai trò</option>
-                <option value="admin">Quản trị viên</option>
-                <option value="employee">Nhân viên</option>
-              </select>
+        <Card>
+          <CardTitle level="h2" className="text-lg mb-4">Bộ lọc và tìm kiếm</CardTitle>
+          <CardContent>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="md:w-48">
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">Tất cả vai trò</option>
+                  <option value="admin">Quản trị viên</option>
+                  <option value="employee">Nhân viên</option>
+                </select>
+              </div>
+              <div className="md:w-48">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="active">Hoạt động</option>
+                  <option value="inactive">Không hoạt động</option>
+                </select>
+              </div>
             </div>
-            
-            <div className="filter-group">
-              <label className="filter-label">Trạng thái:</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="active">Hoạt động</option>
-                <option value="inactive">Không hoạt động</option>
-              </select>
-            </div>
-            
-            <button className="btn-refresh" onClick={fetchUsers}>
+          </CardContent>
+          <CardActions>
+            <Button onClick={fetchUsers} variant="outline" size="sm">
               Làm mới
-            </button>
-          </div>
-        </div>
+            </Button>
+          </CardActions>
+        </Card>
 
         {/* Thống kê */}
-        <div className="stats-section">
-          <div className="stat-card">
-            <div className="stat-number">{users.length}</div>
-            <div className="stat-label">Tổng người dùng</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{users.filter(u => u.role === 'admin').length}</div>
-            <div className="stat-label">Quản trị viên</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{users.filter(u => u.role === 'employee').length}</div>
-            <div className="stat-label">Nhân viên</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{users.filter(u => u.status === 'active').length}</div>
-            <div className="stat-label">Đang hoạt động</div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card>
+            <CardContent className="text-center">
+              <div className="text-3xl font-bold text-blue-600 mb-2">{users.length}</div>
+              <div className="text-sm text-gray-600">Tổng người dùng</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="text-center">
+              <div className="text-3xl font-bold text-green-600 mb-2">{users.filter(u => u.role === 'admin').length}</div>
+              <div className="text-sm text-gray-600">Quản trị viên</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="text-center">
+              <div className="text-3xl font-bold text-purple-600 mb-2">{users.filter(u => u.role === 'employee').length}</div>
+              <div className="text-sm text-gray-600">Nhân viên</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="text-center">
+              <div className="text-3xl font-bold text-orange-600 mb-2">{users.filter(u => u.status === 'active').length}</div>
+              <div className="text-sm text-gray-600">Đang hoạt động</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Cài đặt hiển thị cột */}
-        <div className="column-controls-section">
-          <div className="column-controls-header">
-            <h3>Cài đặt hiển thị cột</h3>
-            <div className="column-controls-actions">
-              <button className="btn-column-control" onClick={showAllColumns}>
+        <Card>
+          <div className="flex justify-between items-center mb-4">
+            <CardTitle level="h2" className="text-lg">Cài đặt hiển thị cột</CardTitle>
+            <CardActions>
+              <Button onClick={showAllColumns} variant="outline" size="sm">
                 Hiện tất cả
-              </button>
+              </Button>
+            </CardActions>
+          </div>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {columnDefinitions.map((column) => (
+                <label key={column.key} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns[column.key]}
+                    onChange={() => toggleColumn(column.key)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">{column.label}</span>
+                </label>
+              ))}
             </div>
-          </div>
-          
-          <div className="column-toggles">
-            {columnDefinitions.map((column) => (
-              <label key={column.key} className="column-toggle-item">
-                <input
-                  type="checkbox"
-                  checked={visibleColumns[column.key]}
-                  onChange={() => toggleColumn(column.key)}
-                  className="column-checkbox"
-                />
-                <span className="column-toggle-label">{column.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Bảng dữ liệu */}
-        <div className="table-container">
-          <table className="users-table">
-            <thead className="table-header">
-              <tr>
-                {columnDefinitions
-                  .filter(column => visibleColumns[column.key])
-                  .map((column) => (
-                    <th key={column.key} style={{ width: column.width }}>
-                      {column.label}
-                    </th>
-                  ))}
-              </tr>
-            </thead>
-            <tbody className="table-body">
-              {sortedUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={columnDefinitions.filter(col => visibleColumns[col.key]).length} className="no-data">
-                    <div className="no-data-content">
-                      <p>Không tìm thấy người dùng nào</p>
-                      <p>Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                sortedUsers.map((user, index) => (
-                  <tr key={user.userID} className="user-row">
+        <Card>
+          <CardTitle level="h2" className="text-lg mb-4">
+            Danh sách người dùng ({sortedUsers.length})
+          </CardTitle>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
                     {columnDefinitions
                       .filter(column => visibleColumns[column.key])
-                      .map((column) => {
-                        // Render cell content based on column type
-                        switch (column.key) {
-                          case 'stt':
-                            return (
-                              <td key={column.key} className="user-stt">
-                                <span className="stt-badge">{index + 1}</span>
-                              </td>
-                            );
-                          case 'id':
-                            return <td key={column.key} className="user-id">{user.userID}</td>;
-                          case 'fullName':
-                            return <td key={column.key} className="user-name">{user.fullName}</td>;
-                          case 'email':
-                            return <td key={column.key} className="user-email">{user.email}</td>;
-                          case 'phone':
-                            return <td key={column.key} className="user-phone">{user.phone || '--'}</td>;
-                          case 'dateOfBirth':
-                            return <td key={column.key} className="user-birth">{formatDate(user.dateOfBirth)}</td>;
-                          case 'gender':
-                            return (
-                              <td key={column.key} className="user-gender">
-                                <span
-                                  className={`gender-badge ${
-                                    user.gender === 'female'
-                                      ? 'gender-female'
-                                      : user.gender === 'male'
-                                      ? 'gender-male'
-                                      : 'gender-other'
-                                  }`}
-                                >
-                                  {formatGender(user.gender)}
-                                </span>
-                              </td>
-                            );
-                          case 'address':
-                            return <td key={column.key} className="user-address">{user.address || '--'}</td>;
-                          case 'position':
-                            return <td key={column.key} className="user-position">{user.position || '--'}</td>;
-                          case 'role':
-                            return (
-                              <td key={column.key} className="user-role">
-                                <span className={`role-badge role-${user.role}`}>
-                                  {formatRole(user.role)}
-                                </span>
-                              </td>
-                            );
-                          case 'status':
-                            return (
-                              <td key={column.key} className="user-status">
-                                <span className={`status-badge ${user.status ? `status-${user.status}` : 'status-unknown'}`}>
-                                  {formatStatus(user.status)}
-                                </span>
-                              </td>
-                            );
-                          case 'created_at':
-                            return <td key={column.key} className="user-created">{formatDate(user.created_at)}</td>;
-                          default:
-                            return null;
-                        }
-                      })}
+                      .map((column) => (
+                        <th key={column.key} className="text-left py-3 px-4 font-medium text-gray-700">
+                          {column.label}
+                        </th>
+                      ))}
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {sortedUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={columnDefinitions.filter(col => visibleColumns[col.key]).length} className="text-center py-8 text-gray-500">
+                        Không tìm thấy người dùng nào
+                      </td>
+                    </tr>
+                  ) : (
+                    sortedUsers.map((user, index) => (
+                      <tr key={user.userID} className="border-b border-gray-100 hover:bg-gray-50">
+                        {columnDefinitions
+                          .filter(column => visibleColumns[column.key])
+                          .map((column) => {
+                            // Render cell content based on column type
+                            switch (column.key) {
+                              case 'stt':
+                                return (
+                                  <td key={column.key} className="py-3 px-4 text-gray-600">
+                                    <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">{index + 1}</span>
+                                  </td>
+                                );
+                              case 'id':
+                                return <td key={column.key} className="py-3 px-4 text-gray-700">{user.userID}</td>;
+                              case 'fullName':
+                                return <td key={column.key} className="py-3 px-4 font-medium text-gray-900">{user.fullName}</td>;
+                              case 'email':
+                                return <td key={column.key} className="py-3 px-4 text-gray-700">{user.email}</td>;
+                              case 'phone':
+                                return <td key={column.key} className="py-3 px-4 text-gray-700">{user.phone || '--'}</td>;
+                              case 'dateOfBirth':
+                                return <td key={column.key} className="py-3 px-4 text-gray-700">{formatDate(user.dateOfBirth)}</td>;
+                              case 'gender':
+                                return (
+                                  <td key={column.key} className="py-3 px-4">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      user.gender === 'female' ? 'bg-pink-100 text-pink-800' :
+                                      user.gender === 'male' ? 'bg-blue-100 text-blue-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {formatGender(user.gender)}
+                                    </span>
+                                  </td>
+                                );
+                              case 'address':
+                                return <td key={column.key} className="py-3 px-4 text-gray-700">{user.address || '--'}</td>;
+                              case 'position':
+                                return <td key={column.key} className="py-3 px-4 text-gray-700">{user.position || '--'}</td>;
+                              case 'role':
+                                return (
+                                  <td key={column.key} className="py-3 px-4">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      user.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                                    }`}>
+                                      {formatRole(user.role)}
+                                    </span>
+                                  </td>
+                                );
+                              case 'status':
+                                return (
+                                  <td key={column.key} className="py-3 px-4">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {formatStatus(user.status)}
+                                    </span>
+                                  </td>
+                                );
+                              case 'created_at':
+                                return <td key={column.key} className="py-3 px-4 text-gray-700">{formatDate(user.created_at)}</td>;
+                              default:
+                                return null;
+                            }
+                          })}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </AdminLayout>
   );

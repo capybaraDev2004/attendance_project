@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import './CustomerTimekeeping.css';
+import StandardTable from '../../../components/StandardTable';
+import Card, { CardTitle, CardContent } from '../../../components/Card';
+import { IconClock, IconRefresh, IconCheck, IconAlertCircle } from '@tabler/icons-react';
 
 // Sử dụng cùng API_URL như Login.js
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
@@ -23,22 +25,22 @@ const CustomerTimekeeping = () => {
         
         // Trả về user info từ auth object
         if (auth.user) {
-          console.log('✅ Tìm thấy user từ auth.user:', auth.user);
+          console.log('Tìm thấy user từ auth.user:', auth.user);
           return auth.user;
         }
         
         // Nếu không có user object, thử decode token
         if (auth.token) {
           const payload = JSON.parse(atob(auth.token));
-          console.log('✅ Tìm thấy user từ token:', payload);
+          console.log('Tìm thấy user từ token:', payload);
           return payload;
         }
       }
       
-      console.warn('⚠️ Không tìm thấy auth data trong localStorage');
+      console.warn('Không tìm thấy auth data trong localStorage');
       return null;
     } catch (error) {
-      console.error('❌ Lỗi khi lấy thông tin user:', error);
+      console.error('Lỗi khi lấy thông tin user:', error);
       return null;
     }
   }, []);
@@ -112,27 +114,91 @@ const CustomerTimekeeping = () => {
     return `${day}/${month}/${year}`;
   }, []);
 
-  // Xác định class CSS cho status badge
-  const getStatusClass = useCallback((status) => {
-    if (status.includes('Muộn')) {
-      return 'late';
-    } else if (status.includes('Sớm')) {
-      return 'early';
-    } else if (status.includes('Tăng ca')) {
-      return 'overtime';
+  // Định nghĩa cột cho bảng
+  const tableColumns = [
+    {
+      key: 'date',
+      label: '📅 Ngày',
+      visible: true,
+      render: (record) => (
+        <span className="font-medium">
+          {record.isDateHeader ? formatDate(record.date) : formatDate(record.date)}
+        </span>
+      )
+    },
+    {
+      key: 'time',
+      label: '🕐 Giờ',
+      visible: true,
+      render: (record) => record.time
+    },
+    {
+      key: 'type',
+      label: '🏷️ Loại',
+      visible: true,
+      render: (record) => {
+        if (record.isDateHeader) {
+          return <span className="text-gray-500">📅</span>;
+        }
+        return (
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+            record.type.toLowerCase() === 'check-in' 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-red-100 text-red-800'
+          }`}>
+            {record.type}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'status',
+      label: '📊 Trạng thái',
+      visible: true,
+      render: (record) => {
+        if (record.isDateHeader) {
+          return <span></span>;
+        }
+        return (
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+            record.status.includes('Muộn') 
+              ? 'bg-red-100 text-red-800'
+              : record.status.includes('Sớm')
+              ? 'bg-yellow-100 text-yellow-800'
+              : record.status.includes('Tăng ca')
+              ? 'bg-purple-100 text-purple-800'
+              : 'bg-green-100 text-green-800'
+          }`}>
+            {record.status}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'location',
+      label: '📍 Địa điểm',
+      visible: true,
+      render: (record) => record.location
     }
-    return 'on-time';
-  }, []);
+  ];
 
   if (loading) {
     return (
-      <div>
-        <div className="timekeeping-header">
-          <h2>🕐 Quản lý chấm công</h2>
+      <div className="space-y-6">
+        <div className="mb-6">
+          <div className="flex items-center space-x-3">
+            <IconClock className="text-gray-600" size={24} />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Chấm công</h1>
+              <p className="text-gray-600 mt-1">Quản lý chấm công vào/ra</p>
+            </div>
+          </div>
         </div>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Đang tải dữ liệu...</p>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải dữ liệu...</p>
+          </div>
         </div>
       </div>
     );
@@ -140,106 +206,126 @@ const CustomerTimekeeping = () => {
 
   if (error) {
     return (
-      <div className="timekeeping-container">
-        <div className="timekeeping-header">
-          <h2>🕐 Quản lý chấm công</h2>
+      <div className="space-y-6">
+        <div className="mb-6">
+          <div className="flex items-center space-x-3">
+            <IconClock className="text-gray-600" size={24} />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Chấm công</h1>
+              <p className="text-gray-600 mt-1">Quản lý chấm công vào/ra</p>
+            </div>
+          </div>
         </div>
-        <div className="error-container">
-          <div className="error-icon">❌</div>
-          <p>{error}</p>
-          <button onClick={fetchAttendanceHistory} className="retry-button">
-            Thử lại
-          </button>
-          <button 
-            onClick={() => {
-              localStorage.removeItem('auth');
-              window.location.href = '/login';
-            }} 
-            className="retry-button"
-            style={{ marginLeft: '10px', background: '#ef4444' }}
-          >
-            Đăng nhập lại
-          </button>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center mb-4">
+            <IconAlertCircle className="text-red-600 mr-3" size={24} />
+            <h3 className="text-lg font-semibold text-red-900">Có lỗi xảy ra</h3>
+          </div>
+          <p className="text-red-700 mb-4">{error}</p>
+          <div className="flex space-x-3">
+            <button 
+              onClick={fetchAttendanceHistory}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+            >
+              <IconRefresh className="mr-2" size={16} />
+              Thử lại
+            </button>
+            <button 
+              onClick={() => {
+                localStorage.removeItem('auth');
+                window.location.href = '/login';
+              }}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Đăng nhập lại
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="timekeeping-container">
-      <div className="timekeeping-header">
-        <h2>🕐 Quản lý chấm công</h2>
+    <div className="space-y-6">
+      {/* Header Card */}
+      <Card>
+        <CardContent>
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <IconClock className="text-blue-600 text-xl" />
+            </div>
+            <div>
+              <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                Chấm công
+              </CardTitle>
+              <p className="text-gray-600 mt-1">
+                Quản lý chấm công vào/ra
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      {/* Thống kê nhanh */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="flex items-center">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <IconClock className="text-green-600" size={24} />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Tổng bản ghi</p>
+              <p className="text-2xl font-bold text-gray-900">{actualRecordCount}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="flex items-center">
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <IconCheck className="text-blue-600" size={24} />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Chấm công hôm nay</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {attendanceHistory.filter(record => 
+                  record.date === new Date().toISOString().split('T')[0]
+                ).length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="flex items-center">
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <IconRefresh className="text-orange-600" size={24} />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Cập nhật cuối</p>
+              <p className="text-sm font-bold text-gray-900">Vừa xong</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Bảng lịch sử chấm công */}
-      <div className="attendance-table-container">
-        <div className="table-header">
-          <h3>📊 Lịch sử chấm công</h3>
-          <div className="table-actions">
-            <span className="total-records">Tổng: {actualRecordCount} bản ghi</span>
-            <button onClick={fetchAttendanceHistory} className="refresh-button">
-              🔄 Làm mới
-            </button>
+      <StandardTable
+        title="Lịch sử chấm công"
+        subtitle={`Tổng: ${actualRecordCount} bản ghi`}
+        icon={IconClock}
+        columns={tableColumns}
+        data={attendanceHistory}
+        onRefresh={fetchAttendanceHistory}
+        emptyState={
+          <div className="text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <IconClock size={48} className="mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có lịch sử chấm công</h3>
+            <p className="text-gray-600">Hãy bắt đầu chấm công để xem lịch sử ở đây</p>
           </div>
-        </div>
-
-        <div className="table-wrapper">
-          <table className="attendance-table">
-            <thead>
-              <tr>
-                <th>📅 Ngày</th>
-                <th>🕐 Giờ</th>
-                <th>🏷️ Loại</th>
-                <th>📊 Trạng thái</th>
-                <th>📍 Địa điểm</th>
-              </tr>
-            </thead>
-            <tbody>
-              {attendanceHistory.map((record) => (
-                <tr key={record.id} className={`attendance-row ${record.isDateHeader ? 'date-header-row' : ''}`}>
-                  <td className="date-cell">
-                    <span className="date-text">
-                      {record.isDateHeader ? formatDate(record.date) : formatDate(record.date)}
-                    </span>
-                  </td>
-                  <td className="time-cell">
-                    <span className="time-text">{record.time}</span>
-                  </td>
-                  <td className="type-cell">
-                    {record.isDateHeader ? (
-                      <span className="date-header-text">📅</span>
-                    ) : (
-                      <span className={`type-badge ${record.type.toLowerCase().replace('-', '-')}`}>
-                        {record.type}
-                      </span>
-                    )}
-                  </td>
-                  <td className="status-cell">
-                    {record.isDateHeader ? (
-                      <span className="date-header-text"></span>
-                    ) : (
-                      <span className={`status-badge ${getStatusClass(record.status)}`}>
-                        {record.status}
-                      </span>
-                    )}
-                  </td>
-                  <td className="location-cell">
-                    <span className="location-text">{record.location}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Thông báo khi không có dữ liệu */}
-        {actualRecordCount === 0 && (
-          <div className="no-data">
-            <div className="no-data-icon">📊</div>
-            <p>Chưa có lịch sử chấm công</p>
-          </div>
-        )}
-      </div>
+        }
+      />
     </div>
   );
 };

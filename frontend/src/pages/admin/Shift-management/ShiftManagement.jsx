@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../../components/AdminLayout';
-import AdminButton from '../../../components/AdminButton';
+import Button from '../../../components/Button';
+import Card, { CardTitle, CardContent } from '../../../components/Card';
 import { FaClock, FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaCalendarAlt, FaUserClock, FaExclamationTriangle } from 'react-icons/fa';
-import './ShiftManagement.css';
 
 const ShiftManagement = () => {
   const [shifts, setShifts] = useState([]);
@@ -243,166 +242,210 @@ const ShiftManagement = () => {
   };
 
   return (
-    <AdminLayout>
-      <div className="shift-management">
-        {/* Header */}
-        <div className="page-header">
-          <div className="header-content">
-            <div className="header-title">
-              <FaClock className="header-icon" />
-              <h1>Quản lý ca làm việc</h1>
+    <div className="space-y-6">
+        {/* Header Card */}
+        <Card>
+          <CardContent>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaClock className="text-blue-600 text-xl" />
+              </div>
+              <div>
+                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                  Quản lý ca làm việc
+                </CardTitle>
+                <p className="text-gray-600 mt-1">
+                  Thiết lập và quản lý các ca làm việc trong hệ thống
+                </p>
+              </div>
             </div>
-            <p className="header-description">
-              Thiết lập và quản lý các ca làm việc trong hệ thống
-            </p>
+          </CardContent>
+        </Card>
+
+        {/* Header và nút thêm */}
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle level="h3" className="text-lg mb-1">
+                Danh sách ca làm việc
+              </CardTitle>
+              <CardContent className="text-sm text-gray-600">
+                Tổng cộng: {filteredShifts.length} ca làm việc
+              </CardContent>
+            </div>
+            <Button
+              onClick={() => setShowAddModal(true)}
+              variant="primary"
+              icon={<FaPlus />}
+            >
+              Thêm ca làm việc
+            </Button>
           </div>
-          <AdminButton
-            onClick={() => setShowAddModal(true)}
-            className="add-shift-btn"
-            icon={FaPlus}
-          >
-            Thêm ca làm việc
-          </AdminButton>
-        </div>
+        </Card>
 
         {/* Filters và Search */}
-        <div className="filters-section">
-          <div className="filter-group">
-            <label>Trạng thái:</label>
-            <select 
-              value={filterStatus} 
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Tất cả</option>
-              <option value="active">Đang hoạt động</option>
-              <option value="inactive">Không hoạt động</option>
-            </select>
-          </div>
-          
-          <div className="search-group">
-            <input
-              type="text"
-              placeholder="Tìm kiếm ca làm việc..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-        </div>
+        <Card>
+          <CardTitle level="h3" className="text-lg mb-4">
+            Bộ lọc và tìm kiếm
+          </CardTitle>
+          <CardContent>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm ca làm việc..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Trạng thái:</label>
+                <select 
+                  value={filterStatus} 
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="active">Đang hoạt động</option>
+                  <option value="inactive">Không hoạt động</option>
+                </select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Error Message */}
         {error && (
-          <div className="error-message">
-            <FaExclamationTriangle className="error-icon" />
-            <div>
-              {error}
-              {error.includes('Không thể kết nối đến server') && (
-                <div style={{ marginTop: '8px', fontSize: '14px', opacity: 0.8 }}>
-                  <strong>Hướng dẫn:</strong>
-                  <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
-                    <li>Kiểm tra backend server đã chạy chưa</li>
-                    <li>Chạy script SQL để tạo bảng shifts</li>
-                    <li>Kiểm tra kết nối database</li>
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div className="loading-overlay">
-            <div className="loading-spinner"></div>
-            <p>Đang xử lý...</p>
-          </div>
-        )}
-
-        {/* Danh sách ca làm việc */}
-        <div className="shifts-grid">
-          {filteredShifts.length === 0 ? (
-            <div className="empty-state">
-              <FaCalendarAlt className="empty-icon" />
-              <h3>Chưa có ca làm việc nào</h3>
-              <p>Hãy thêm ca làm việc đầu tiên để bắt đầu</p>
-            </div>
-          ) : (
-            filteredShifts.map(shift => (
-              <div key={shift.shift_id} className={`shift-card ${!shift.is_active ? 'inactive' : ''}`}>
-                <div className="shift-header">
-                  <div className="shift-info">
-                    <h3 className="shift-name">{shift.shift_name}</h3>
-                    <div className="shift-status">
-                      <span className={`status-badge ${shift.is_active ? 'active' : 'inactive'}`}>
-                        {shift.is_active ? 'Đang hoạt động' : 'Không hoạt động'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="shift-actions">
-                    <button
-                      onClick={() => handleToggleStatus(shift.shift_id)}
-                      className={`toggle-btn ${shift.is_active ? 'active' : 'inactive'}`}
-                      title={shift.is_active ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                    >
-                      {shift.is_active ? <FaToggleOn /> : <FaToggleOff />}
-                    </button>
-                    <button
-                      onClick={() => openEditModal(shift)}
-                      className="edit-btn"
-                      title="Chỉnh sửa"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteShift(shift.shift_id)}
-                      className="delete-btn"
-                      title="Xóa"
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="shift-details">
-                  <div className="time-info">
-                    <div className="time-item">
-                      <FaUserClock className="time-icon" />
-                      <span className="time-label">Bắt đầu:</span>
-                      <span className="time-value">{shift.start_time}</span>
-                    </div>
-                    <div className="time-item">
-                      <FaUserClock className="time-icon" />
-                      <span className="time-label">Kết thúc:</span>
-                      <span className="time-value">{shift.end_time}</span>
-                    </div>
-                  </div>
-
-                  <div className="work-hours-info">
-                    <div className="hours-item">
-                      <span className="hours-label">Giờ làm việc:</span>
-                      <span className="hours-value">
-                        {calculateWorkHours(shift.start_time, shift.end_time, shift.break_duration).toFixed(1)}h
-                      </span>
-                    </div>
-                    {shift.break_duration > 0 && (
-                      <div className="hours-item">
-                        <span className="hours-label">Nghỉ giữa ca:</span>
-                        <span className="hours-value">{shift.break_duration} phút</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {shift.description && (
-                    <div className="shift-description">
-                      <p>{shift.description}</p>
+          <Card className="border-red-200 bg-red-50">
+            <CardContent>
+              <div className="flex items-start">
+                <FaExclamationTriangle className="text-red-500 mr-3 mt-1" />
+                <div>
+                  <div className="text-red-800 font-medium">{error}</div>
+                  {error.includes('Không thể kết nối đến server') && (
+                    <div className="mt-2 text-sm text-red-700">
+                      <strong>Hướng dẫn:</strong>
+                      <ul className="mt-1 ml-4 list-disc">
+                        <li>Kiểm tra backend server đã chạy chưa</li>
+                        <li>Chạy script SQL để tạo bảng shifts</li>
+                        <li>Kiểm tra kết nối database</li>
+                      </ul>
                     </div>
                   )}
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <Card>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-gray-600">Đang xử lý...</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Danh sách ca làm việc */}
+        {filteredShifts.length === 0 ? (
+          <Card>
+            <CardContent>
+              <div className="text-center py-12">
+                <FaCalendarAlt className="mx-auto text-gray-400 text-4xl mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có ca làm việc nào</h3>
+                <p className="text-gray-600">Hãy thêm ca làm việc đầu tiên để bắt đầu</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredShifts.map(shift => (
+              <Card key={shift.shift_id} className={`${!shift.is_active ? 'opacity-60' : ''}`}>
+                <CardContent>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <CardTitle level="h4" className="text-lg mb-1">
+                        {shift.shift_name}
+                      </CardTitle>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        shift.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {shift.is_active ? 'Đang hoạt động' : 'Không hoạt động'}
+                      </span>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleToggleStatus(shift.shift_id)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          shift.is_active 
+                            ? 'text-green-600 hover:bg-green-100' 
+                            : 'text-gray-400 hover:bg-gray-100'
+                        }`}
+                        title={shift.is_active ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                      >
+                        {shift.is_active ? <FaToggleOn /> : <FaToggleOff />}
+                      </button>
+                      <button
+                        onClick={() => openEditModal(shift)}
+                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                        title="Chỉnh sửa"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteShift(shift.shift_id)}
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Xóa"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <FaUserClock className="mr-2" />
+                      <span className="mr-2">Bắt đầu:</span>
+                      <span className="font-medium">{shift.start_time}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <FaUserClock className="mr-2" />
+                      <span className="mr-2">Kết thúc:</span>
+                      <span className="font-medium">{shift.end_time}</span>
+                    </div>
+                    
+                    <div className="border-t pt-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Giờ làm việc:</span>
+                        <span className="font-medium text-blue-600">
+                          {calculateWorkHours(shift.start_time, shift.end_time, shift.break_duration).toFixed(1)}h
+                        </span>
+                      </div>
+                      {shift.break_duration > 0 && (
+                        <div className="flex justify-between text-sm mt-1">
+                          <span className="text-gray-600">Nghỉ giữa ca:</span>
+                          <span className="font-medium">{shift.break_duration} phút</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {shift.description && (
+                      <div className="border-t pt-3">
+                        <p className="text-sm text-gray-600">{shift.description}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Modal thêm ca làm việc */}
         {showAddModal && (
@@ -482,23 +525,23 @@ const ShiftManagement = () => {
                 </div>
 
                 <div className="form-actions">
-                  <AdminButton
+                  <Button
                     type="button"
                     onClick={() => {
                       setShowAddModal(false);
                       resetForm();
                     }}
-                    className="cancel-btn"
+                    variant="outline"
                   >
                     Hủy
-                  </AdminButton>
-                  <AdminButton
+                  </Button>
+                  <Button
                     type="submit"
-                    className="submit-btn"
+                    variant="primary"
                     disabled={loading}
                   >
                     {loading ? 'Đang tạo...' : 'Tạo ca làm việc'}
-                  </AdminButton>
+                  </Button>
                 </div>
               </form>
             </div>
@@ -584,31 +627,30 @@ const ShiftManagement = () => {
                 </div>
 
                 <div className="form-actions">
-                  <AdminButton
+                  <Button
                     type="button"
                     onClick={() => {
                       setShowEditModal(false);
                       setSelectedShift(null);
                       resetForm();
                     }}
-                    className="cancel-btn"
+                    variant="outline"
                   >
                     Hủy
-                  </AdminButton>
-                  <AdminButton
+                  </Button>
+                  <Button
                     type="submit"
-                    className="submit-btn"
+                    variant="primary"
                     disabled={loading}
                   >
                     {loading ? 'Đang cập nhật...' : 'Cập nhật'}
-                  </AdminButton>
+                  </Button>
                 </div>
               </form>
             </div>
           </div>
         )}
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 

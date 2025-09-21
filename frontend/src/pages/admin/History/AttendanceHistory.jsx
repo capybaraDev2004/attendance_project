@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import AdminLayout from '../../../components/AdminLayout';
-import AdminButton from '../../../components/AdminButton';
+import Button from '../../../components/Button';
+import Card, { CardTitle, CardContent, CardActions } from '../../../components/Card';
 import { FaHistory, FaCalendarAlt, FaSearch, FaFileExcel } from 'react-icons/fa';
-import './AttendanceHistory.css';
 
 // Lịch sử ra/vào với bộ lọc theo ngày, user, thiết bị
 const AttendanceHistory = () => {
@@ -136,65 +135,96 @@ const AttendanceHistory = () => {
 
   // Badge trạng thái theo check-in/out
   const renderStatusBadge = (checkIn, checkOut) => {
-    if (!checkIn) return <span className="status-pending">Chưa vào</span>;
-    if (!checkOut) return <span className="status-working">Đang làm việc</span>;
-    return <span className="status-complete">Hoàn thành</span>;
+    if (!checkIn) {
+      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Chưa vào</span>;
+    }
+    if (!checkOut) {
+      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Đang làm việc</span>;
+    }
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Hoàn thành</span>;
   };
 
   if (loading) {
     return (
-      <AdminLayout
-        title="Lịch sử truy cập người dùng"
-        subtitle="Theo dõi lịch sử ra vào của nhân viên"
-        icon={FaHistory}
-      >
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Đang tải dữ liệu...</p>
-        </div>
-      </AdminLayout>
+      <div className="space-y-6">
+        <Card>
+          <CardContent>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaHistory className="text-blue-600 text-xl" />
+              </div>
+              <div>
+                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                  Lịch sử truy cập người dùng
+                </CardTitle>
+                <p className="text-gray-600 mt-1">
+                  Theo dõi lịch sử ra vào của nhân viên
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Đang tải dữ liệu...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <AdminLayout
-      title="Lịch sử truy cập người dùng"
-      subtitle="Theo dõi lịch sử ra vào của nhân viên"
-      icon={FaHistory}
-    >
-      <div className="attendance-history-container">
+    <div className="space-y-6">
+        {/* Header Card */}
+        <Card>
+          <CardContent>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaHistory className="text-blue-600 text-xl" />
+              </div>
+              <div>
+                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                  Lịch sử truy cập người dùng
+                </CardTitle>
+                <p className="text-gray-600 mt-1">
+                  Theo dõi lịch sử ra vào của nhân viên
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         {/* Filters Section */}
-        <div className="filters-container">
-          <div className="filters-card">
-            <h3 className="filters-title">
-              <FaSearch className="filters-icon" />
-              Bộ lọc dữ liệu
-            </h3>
-            
+        <Card>
+          <CardTitle level="h3" className="text-lg mb-4 flex items-center">
+            <FaSearch className="mr-2" />
+            Bộ lọc dữ liệu
+          </CardTitle>
+          
+          <CardContent>
             {/* Lọc theo ngày */}
-            <div className="filter-group">
-              <div className="filter-title">Lọc theo ngày</div>
-              <div className="date-row">
-                {/* Ô ngày bắt đầu: text dd/MM/yyyy + nút mở calendar + input date ẩn */}
-                <div className="input-group">
-                  <label className="input-label">Ngày bắt đầu:</label>
-                  <div className="date-input-with-button">
+            <div className="mb-6">
+              <CardTitle level="h4" className="text-md mb-3">Lọc theo ngày</CardTitle>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Ô ngày bắt đầu */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày bắt đầu:</label>
+                  <div className="flex">
                     <input
                       type="text"
                       inputMode="numeric"
                       placeholder="dd/mm/yyyy"
-                      className="form-input"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={filters.startDate}
                       onChange={(e) => handleFilterChange('startDate', e.target.value)}
                     />
                     <button
                       type="button"
-                      className="calendar-button"
-                      aria-label="Chọn ngày bắt đầu"
+                      className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200 transition-colors"
                       onClick={() => {
-                        // Mở calendar của input date ẩn (nếu trình duyệt hỗ trợ)
                         if (startHiddenRef.current) {
-                          // Đặt giá trị hiện tại theo ISO để trỏ đúng ngày
                           startHiddenRef.current.value = displayToISO(filters.startDate) || '';
                           if (startHiddenRef.current.showPicker) {
                             startHiddenRef.current.showPicker();
@@ -206,34 +236,31 @@ const AttendanceHistory = () => {
                     >
                       <FaCalendarAlt />
                     </button>
-                    {/* input date ẩn (calendar native) */}
                     <input
                       ref={startHiddenRef}
                       type="date"
-                      className="hidden-date-input"
-                      defaultValue=""
+                      className="hidden"
                       onChange={(e) => handleCalendarPick('startDate', e.target.value)}
                       tabIndex={-1}
                     />
                   </div>
                 </div>
 
-                {/* Ô ngày kết thúc: text dd/MM/yyyy + nút mở calendar + input date ẩn */}
-                <div className="input-group">
-                  <label className="input-label">Ngày kết thúc:</label>
-                  <div className="date-input-with-button">
+                {/* Ô ngày kết thúc */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày kết thúc:</label>
+                  <div className="flex">
                     <input
                       type="text"
                       inputMode="numeric"
                       placeholder="dd/mm/yyyy"
-                      className="form-input"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={filters.endDate}
                       onChange={(e) => handleFilterChange('endDate', e.target.value)}
                     />
                     <button
                       type="button"
-                      className="calendar-button"
-                      aria-label="Chọn ngày kết thúc"
+                      className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200 transition-colors"
                       onClick={() => {
                         if (endHiddenRef.current) {
                           endHiddenRef.current.value = displayToISO(filters.endDate) || '';
@@ -250,8 +277,7 @@ const AttendanceHistory = () => {
                     <input
                       ref={endHiddenRef}
                       type="date"
-                      className="hidden-date-input"
-                      defaultValue=""
+                      className="hidden"
                       onChange={(e) => handleCalendarPick('endDate', e.target.value)}
                       tabIndex={-1}
                     />
@@ -261,12 +287,13 @@ const AttendanceHistory = () => {
             </div>
 
             {/* Lọc theo User và thiết bị */}
-            <div className="filter-group">
-              <div className="select-row">
-                <div className="input-group">
-                  <label className="input-label">Lọc theo User:</label>
+            <div className="mb-6">
+              <CardTitle level="h4" className="text-md mb-3">Lọc theo người dùng và thiết bị</CardTitle>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Lọc theo User:</label>
                   <select
-                    className="form-select"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={filters.selectedUser}
                     onChange={(e) => handleFilterChange('selectedUser', e.target.value)}
                   >
@@ -278,10 +305,10 @@ const AttendanceHistory = () => {
                     ))}
                   </select>
                 </div>
-                <div className="input-group">
-                  <label className="input-label">Lọc theo thiết bị:</label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Lọc theo thiết bị:</label>
                   <select
-                    className="form-select"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={filters.selectedDevice}
                     onChange={(e) => handleFilterChange('selectedDevice', e.target.value)}
                   >
@@ -297,90 +324,91 @@ const AttendanceHistory = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="filter-actions">
-              <AdminButton
+            <CardActions>
+              <Button
                 variant="success"
-                size="medium"
+                size="md"
                 onClick={handleFilter}
-                icon={FaSearch}
+                icon={<FaSearch />}
               >
                 Lọc dữ liệu
-              </AdminButton>
-              <AdminButton
+              </Button>
+              <Button
                 variant="outline"
-                size="medium"
+                size="md"
                 onClick={() => alert('Tính năng xuất Excel sẽ được triển khai!')}
-                icon={FaFileExcel}
+                icon={<FaFileExcel />}
               >
                 Xuất File Excel
-              </AdminButton>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </CardActions>
+          </CardContent>
+        </Card>
 
         {/* Data Table */}
-        <div className="table-container">
-          <div className="table-header">
-            <h3 className="table-title">
-              <FaHistory className="table-icon" />
-              Dữ liệu lịch sử
-            </h3>
-            <p className="table-subtitle">
-              Tổng cộng: {attendanceData.length} bản ghi
-            </p>
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <CardTitle level="h3" className="text-lg mb-1 flex items-center">
+                <FaHistory className="mr-2" />
+                Dữ liệu lịch sử
+              </CardTitle>
+              <CardContent className="text-sm text-gray-600">
+                Tổng cộng: {attendanceData.length} bản ghi
+              </CardContent>
+            </div>
           </div>
 
-          {attendanceData.length === 0 ? (
-            <div className="no-data-container">
-              <div className="no-data-card">
-                <FaHistory className="no-data-icon" />
-                <h3>Chưa có dữ liệu lịch sử</h3>
-                <p>Vui lòng chọn khoảng thời gian và nhấn "Lọc dữ liệu" để xem kết quả</p>
+          <CardContent>
+            {attendanceData.length === 0 ? (
+              <div className="text-center py-12">
+                <FaHistory className="mx-auto text-gray-400 text-4xl mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có dữ liệu lịch sử</h3>
+                <p className="text-gray-600">Vui lòng chọn khoảng thời gian và nhấn "Lọc dữ liệu" để xem kết quả</p>
               </div>
-            </div>
-          ) : (
-            <div className="table-wrapper">
-              <table className="data-table">
-                <thead className="table-header-row">
-                  <tr>
-                    <th>ID</th>
-                    <th>HỌ TÊN</th>
-                    <th>NGÀY</th>
-                    <th>THỜI GIAN VÀO</th>
-                    <th>THIẾT BỊ VÀO</th>
-                    <th>THỜI GIAN RA</th>
-                    <th>THIẾT BỊ RA</th>
-                    <th>TRẠNG THÁI</th>
-                  </tr>
-                </thead>
-                <tbody className="table-body">
-                  {attendanceData.map((record) => (
-                    <tr key={record.attendance_id}>
-                      <td className="record-id">{record.attendance_id}</td>
-                      <td className="record-name">{record.fullName}</td>
-                      <td className="record-date">
-                        {new Date(record.work_date).toLocaleDateString('vi-VN')}
-                      </td>
-                      <td className="record-time-in">
-                        {record.check_in ? new Date(record.check_in).toLocaleTimeString('vi-VN') : '--'}
-                      </td>
-                      <td className="record-device-in">{record.device_in_name || '--'}</td>
-                      <td className="record-time-out">
-                        {record.check_out ? new Date(record.check_out).toLocaleTimeString('vi-VN') : '--'}
-                      </td>
-                      <td className="record-device-out">{record.device_out_name || '--'}</td>
-                      <td className="record-status">
-                        {renderStatusBadge(record.check_in, record.check_out)}
-                      </td>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HỌ TÊN</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NGÀY</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">THỜI GIAN VÀO</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">THIẾT BỊ VÀO</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">THỜI GIAN RA</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">THIẾT BỊ RA</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TRẠNG THÁI</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    </AdminLayout>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {attendanceData.map((record) => (
+                      <tr key={record.attendance_id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.attendance_id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.fullName}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {new Date(record.work_date).toLocaleDateString('vi-VN')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {record.check_in ? new Date(record.check_in).toLocaleTimeString('vi-VN') : '--'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.device_in_name || '--'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {record.check_out ? new Date(record.check_out).toLocaleTimeString('vi-VN') : '--'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.device_out_name || '--'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {renderStatusBadge(record.check_in, record.check_out)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+    </div>
   );
 };
 

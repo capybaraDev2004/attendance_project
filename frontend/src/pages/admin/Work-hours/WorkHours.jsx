@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../../components/AdminLayout';
-import AdminButton from '../../../components/AdminButton';
-import { FaClock, FaExclamationTriangle, FaCalendarAlt, FaUserClock } from 'react-icons/fa';
-import './WorkHours.css';
+import StandardTable from '../../../components/StandardTable';
+import Button from '../../../components/Button';
+import Card, { CardTitle, CardContent } from '../../../components/Card';
+import { FaClock, FaExclamationTriangle } from 'react-icons/fa';
 
 // ===== Cấu hình & Helpers đặt ngoài component để ổn định tham chiếu (fix ESLint deps) =====
 const STANDARD_HOURS = 8;         // số giờ làm chuẩn trong ngày
@@ -315,200 +315,315 @@ const WorkHours = () => {
     return date.toLocaleDateString('vi-VN');
   };
 
+  // Định nghĩa cột cho bảng
+  const tableColumns = [
+    {
+      key: 'stt',
+      label: 'STT',
+      visible: true,
+      render: (_, index) => index + 1
+    },
+    {
+      key: 'employeeName',
+      label: 'Nhân viên',
+      visible: true,
+      render: (workHour) => (
+        <div>
+          <div className="text-sm font-medium text-gray-900">{workHour.employeeName}</div>
+          <div className="text-sm text-gray-500">ID: {workHour.employeeId}</div>
+        </div>
+      )
+    },
+    {
+      key: 'date',
+      label: 'Ngày',
+      visible: true,
+      render: (workHour) => formatDate(workHour.date)
+    },
+    {
+      key: 'checkIn',
+      label: 'Giờ vào',
+      visible: true,
+      render: (workHour) => workHour.checkIn || '--'
+    },
+    {
+      key: 'checkOut',
+      label: 'Giờ ra',
+      visible: true,
+      render: (workHour) => workHour.checkOut || '--'
+    },
+    {
+      key: 'totalHours',
+      label: 'Tổng giờ',
+      visible: true,
+      render: (workHour) => (
+        <span className="font-medium">{workHour.totalHours || 0}h</span>
+      )
+    },
+    {
+      key: 'overtime',
+      label: 'Giờ thêm',
+      visible: true,
+      render: (workHour) => (
+        <span className={`font-medium ${
+          workHour.overtime > 0 ? 'text-orange-600' : 'text-gray-500'
+        }`}>
+          {workHour.overtime || 0}h
+        </span>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Trạng thái',
+      visible: true,
+      render: (workHour) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          workHour.status === 'completed' ? 'bg-green-100 text-green-800' :
+          workHour.status === 'overtime' ? 'bg-orange-100 text-orange-800' :
+          workHour.status === 'short' ? 'bg-yellow-100 text-yellow-800' :
+          workHour.status === 'late' ? 'bg-red-100 text-red-800' :
+          workHour.status === 'absent' ? 'bg-gray-100 text-gray-800' :
+          'bg-gray-100 text-gray-800'
+        }`}>
+          {formatStatus(workHour.status)}
+        </span>
+      )
+    },
+    {
+      key: 'notes',
+      label: 'Ghi chú',
+      visible: true,
+      render: (workHour) => workHour.notes || '--'
+    },
+    {
+      key: 'actions',
+      label: 'Thao tác',
+      visible: true,
+      render: (workHour) => (
+        <div className="flex space-x-2">
+          <button
+            onClick={() => {
+              setSelectedWorkHour(workHour);
+              setFormData({
+                employeeName: workHour.employeeName,
+                employeeId: workHour.employeeId,
+                date: workHour.date,
+                checkIn: workHour.checkIn,
+                checkOut: workHour.checkOut,
+                totalHours: workHour.totalHours,
+                overtime: workHour.overtime,
+                status: workHour.status,
+                notes: workHour.notes
+              });
+              setShowEditModal(true);
+            }}
+            className="text-blue-600 hover:text-blue-800 transition-colors"
+            title="Chỉnh sửa"
+          >
+            <FaClock size={14} />
+          </button>
+        </div>
+      )
+    }
+  ];
+
   if (loading) {
     return (
-      <AdminLayout
-        title="Quản lý giờ làm việc"
-        subtitle="Theo dõi và quản lý giờ làm việc của nhân viên"
-        icon={FaClock}
-      >
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Đang tải danh sách giờ làm việc...</p>
+        <div className="space-y-6">
+          <Card>
+            <CardContent>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <FaClock className="text-blue-600 text-xl" />
+                </div>
+                <div>
+                  <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                    Quản lý giờ làm việc
+                  </CardTitle>
+                  <p className="text-gray-600 mt-1">
+                    Theo dõi và quản lý giờ làm việc của nhân viên
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <div className="text-center py-12">
+                <div className="loading-spinner"></div>
+                <p className="mt-4 text-gray-600">Đang tải danh sách giờ làm việc...</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </AdminLayout>
     );
   }
 
   if (error) {
     return (
-      <AdminLayout
-        title="Quản lý giờ làm việc"
-        subtitle="Theo dõi và quản lý giờ làm việc của nhân viên"
-        icon={FaClock}
-      >
-        <div className="error-container">
-          <FaExclamationTriangle className="error-icon" />
-          <h3>Đã xảy ra lỗi</h3>
-          <p>{error}</p>
-          <AdminButton onClick={fetchWorkHours} variant="primary">
-            Thử lại
-          </AdminButton>
+        <div className="space-y-6">
+          <Card>
+            <CardContent>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <FaClock className="text-blue-600 text-xl" />
+                </div>
+                <div>
+                  <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                    Quản lý giờ làm việc
+                  </CardTitle>
+                  <p className="text-gray-600 mt-1">
+                    Theo dõi và quản lý giờ làm việc của nhân viên
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <div className="text-center py-12">
+                <FaExclamationTriangle className="text-red-500 text-4xl mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Đã xảy ra lỗi</h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <Button onClick={fetchWorkHours} variant="primary">
+                  Thử lại
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout
-      title="Quản lý giờ làm việc"
-      subtitle="Theo dõi và quản lý giờ làm việc của nhân viên"
-      icon={FaClock}
-    >
-      <div className="work-hours-container">
-        {/* Bộ lọc và tìm kiếm */}
-        <div className="filters-section">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên nhân viên, mã nhân viên hoặc phòng ban..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          
-          <div className="filter-controls">
-            <div className="filter-group">
-              <label className="filter-label">Trạng thái:</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="completed">Hoàn thành</option>
-                <option value="overtime">Làm thêm</option>
-                <option value="short">Thiếu giờ</option>
-                <option value="late">Đi muộn</option>
-                <option value="absent">Vắng mặt</option>
-              </select>
+    <div className="space-y-6">
+        {/* Header Card */}
+        <Card>
+          <CardContent>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaClock className="text-blue-600 text-xl" />
+              </div>
+              <div>
+                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                  Quản lý giờ làm việc
+                </CardTitle>
+                <p className="text-gray-600 mt-1">
+                  Theo dõi và quản lý giờ làm việc của nhân viên
+                </p>
+              </div>
             </div>
-            
-            <AdminButton onClick={fetchWorkHours} variant="outline" size="small">
-              Làm mới
-            </AdminButton>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+        {/* Bộ lọc và tìm kiếm */}
+        <Card>
+          <CardTitle level="h3" className="text-lg mb-4">
+            Bộ lọc và tìm kiếm
+          </CardTitle>
+          <CardContent>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên nhân viên, mã nhân viên hoặc phòng ban..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div className="flex gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Trạng thái:</label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="completed">Hoàn thành</option>
+                    <option value="overtime">Làm thêm</option>
+                    <option value="short">Thiếu giờ</option>
+                    <option value="late">Đi muộn</option>
+                    <option value="absent">Vắng mặt</option>
+                  </select>
+                </div>
+                
+                <Button onClick={fetchWorkHours} variant="outline" size="sm">
+                  Làm mới
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Thống kê */}
-        <div className="stats-section">
-          <div className="stat-card">
-            <div className="stat-number">{totalRecords}</div>
-            <div className="stat-label">Tổng bản ghi</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{completedRecords}</div>
-            <div className="stat-label">Hoàn thành</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{lateRecords}</div>
-            <div className="stat-label">Đi muộn</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{overtimeRecords}</div>
-            <div className="stat-label">Làm thêm giờ</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{totalWorkHours.toFixed(2)}</div>
-            <div className="stat-label">Tổng giờ làm</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">{totalOvertime.toFixed(2)}</div>
-            <div className="stat-label">Tổng giờ thêm</div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600 mb-2">{totalRecords}</div>
+              <div className="text-sm text-gray-600">Tổng bản ghi</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600 mb-2">{completedRecords}</div>
+              <div className="text-sm text-gray-600">Hoàn thành</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-yellow-600 mb-2">{lateRecords}</div>
+              <div className="text-sm text-gray-600">Đi muộn</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-orange-600 mb-2">{overtimeRecords}</div>
+              <div className="text-sm text-gray-600">Làm thêm giờ</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-purple-600 mb-2">{totalWorkHours.toFixed(2)}</div>
+              <div className="text-sm text-gray-600">Tổng giờ làm</div>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-red-600 mb-2">{totalOvertime.toFixed(2)}</div>
+              <div className="text-sm text-gray-600">Tổng giờ thêm</div>
+            </div>
+          </Card>
         </div>
 
         {/* Header */}
-        <div className="section-header">
-          <div className="header-content">
-            <h3>Danh sách giờ làm việc</h3>
-            <p>Tổng cộng: {filteredWorkHours.length} bản ghi</p>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Danh sách giờ làm việc</h3>
+              <p className="text-sm text-gray-600 mt-1">Tổng cộng: {filteredWorkHours.length} bản ghi</p>
+            </div>
           </div>
         </div>
 
         {/* Bảng giờ làm việc */}
-        <div className="table-container">
-          <table className="work-hours-table">
-            <thead>
-              <tr>
-                <th>STT</th>
-                <th>Nhân viên</th>
-                <th>Ngày</th>
-                <th>Giờ vào</th>
-                <th>Giờ ra</th>
-                <th>Tổng giờ</th>
-                <th>Giờ thêm</th>
-                <th>Trạng thái</th>
-                <th>Ghi chú</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredWorkHours.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="no-data">
-                    <div className="no-data-content">
-                      <p>Không tìm thấy bản ghi nào</p>
-                      <p>Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredWorkHours.map((workHour, index) => (
-                  <tr key={workHour.id} className="work-hour-row">
-                    <td className="work-hour-stt">
-                      <span className="stt-badge">{index + 1}</span>
-                    </td>
-                    <td className="work-hour-employee">
-                      <div className="employee-info">
-                        <strong>{workHour.employeeName}</strong>
-                        <small>{workHour.employeeId} • {workHour.department}</small>
-                      </div>
-                    </td>
-                    <td className="work-hour-date">
-                      <div className="date-info">
-                        <FaCalendarAlt className="calendar-icon" />
-                        <span>{formatDate(workHour.date)}</span>
-                      </div>
-                    </td>
-                    <td className="work-hour-checkin">
-                      <div className="time-info">
-                        <FaUserClock className="clock-icon" />
-                        <span>{workHour.checkIn || '--'}</span>
-                      </div>
-                    </td>
-                    <td className="work-hour-checkout">
-                      <div className="time-info">
-                        <FaUserClock className="clock-icon" />
-                        <span>{workHour.checkOut || '--'}</span>
-                      </div>
-                    </td>
-                    <td className="work-hour-total">
-                      <span className="hours-badge">{(workHour.totalHours ?? 0).toFixed ? workHour.totalHours.toFixed(2) : Number(workHour.totalHours || 0).toFixed(2)}h</span>
-                    </td>
-                    <td className="work-hour-overtime">
-                      {parseFloat(workHour.overtime || 0) > 0 ? (
-                        <span className="overtime-badge">{(workHour.overtime ?? 0).toFixed ? workHour.overtime.toFixed(2) : Number(workHour.overtime || 0).toFixed(2)}h</span>
-                      ) : (
-                        <span className="no-overtime">--</span>
-                      )}
-                    </td>
-                    <td className="work-hour-status">
-                      <span className={`status-badge status-${workHour.status}`}>
-                        {formatStatus(workHour.status)}
-                      </span>
-                    </td>
-                    <td className="work-hour-notes">
-                      <div className="notes-content">
-                        {workHour.notes || 'Không có ghi chú'}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <StandardTable
+          title="Danh sách giờ làm việc"
+          subtitle={`Tổng cộng: ${filteredWorkHours.length} bản ghi`}
+          icon={FaClock}
+          columns={tableColumns}
+          data={filteredWorkHours}
+          emptyState={
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <FaClock size={48} className="mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Không có dữ liệu giờ làm việc</h3>
+              <p className="text-gray-600">Chưa có bản ghi giờ làm việc nào</p>
+            </div>
+          }
+        />
 
         {/* Modal sửa giờ làm việc (có thể mở từ nơi khác nếu cần) */}
         {showEditModal && (
@@ -636,19 +751,18 @@ const WorkHours = () => {
                 </div>
                 
                 <div className="modal-footer">
-                  <AdminButton type="button" onClick={closeModal} variant="outline">
+                  <Button type="button" onClick={closeModal} variant="outline">
                     Hủy
-                  </AdminButton>
-                  <AdminButton type="submit" variant="primary">
+                  </Button>
+                  <Button type="submit" variant="primary">
                     Cập nhật
-                  </AdminButton>
+                  </Button>
                 </div>
               </form>
             </div>
           </div>
         )}
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 

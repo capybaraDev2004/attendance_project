@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import AdminLayout from '../../../components/AdminLayout';
+import Card, { CardTitle, CardContent } from '../../../components/Card';
 import { FaUserFriends } from 'react-icons/fa';
-import './FaceSetup.css';
 
 const FaceSetup = () => {
   const [users, setUsers] = useState([]);
@@ -55,21 +54,21 @@ const FaceSetup = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        console.time('⏱️ Fetch users');
+        console.time('⏱Fetch users');
         const response = await fetch('http://localhost:3001/api/users');
-        console.timeEnd('⏱️ Fetch users');
+        console.timeEnd('Fetch users');
         const data = await response.json();
         if (data.success) {
           setUsers(data.users);
-          console.log('✅ Đã tải', data.users?.length, 'người dùng');
+          console.log('Đã tải', data.users?.length, 'người dùng');
         } else {
-          console.warn('⚠️ API users trả về success=false');
+          console.warn('API users trả về success=false');
         }
 
         // Tải dữ liệu đăng ký khuôn mặt từ MongoDB
-        console.time('⏱️ Fetch face enrollments');
+        console.time('Fetch face enrollments');
         const faceResponse = await fetch('http://localhost:3001/api/face/enrollments');
-        console.timeEnd('⏱️ Fetch face enrollments');
+        console.timeEnd('Fetch face enrollments');
         if (faceResponse.ok) {
           const faceData = await faceResponse.json();
           if (faceData.success) {
@@ -84,10 +83,10 @@ const FaceSetup = () => {
               };
             });
             setFaceEnrollments(enrollmentsMap);
-            console.log('✅ Đã tải', Object.keys(enrollmentsMap).length, 'đăng ký khuôn mặt');
+            console.log('Đã tải', Object.keys(enrollmentsMap).length, 'đăng ký khuôn mặt');
           }
         } else {
-          console.warn('⚠️ Không thể tải dữ liệu đăng ký khuôn mặt');
+          console.warn('Không thể tải dữ liệu đăng ký khuôn mặt');
         }
       } catch (e) {
         console.error('Lỗi khi tải dữ liệu FaceSetup:', e);
@@ -102,7 +101,7 @@ const FaceSetup = () => {
     // Tải model nhận diện (chỉ tải 1 lần); đảm bảo face-api UMD nội bộ được nạp
     const loadModels = async () => {
       try {
-        console.log('🔄 Bắt đầu load models...');
+        console.log('Bắt đầu load models...');
 
         // Nạp UMD local nếu thiếu
         if (!window.faceapi) {
@@ -123,7 +122,7 @@ const FaceSetup = () => {
         }
 
         const fa = window.faceapi;
-        console.log('✅ face-api.js đã sẵn sàng (UMD)');
+        console.log('face-api.js đã sẵn sàng (UMD)');
         // Đồng bộ backend CPU như trang quét để tránh sai khác fromPixels/engine
         try {
           if (fa?.tf?.setBackend) {
@@ -145,21 +144,21 @@ const FaceSetup = () => {
         
         const missingFunctions = requiredFunctions.filter(fn => typeof fa[fn] !== 'function');
         if (missingFunctions.length > 0) {
-          console.error('❌ Thiếu các function:', missingFunctions);
-          console.error('🔍 face-api object:', fa);
-          console.error('🔍 face-api keys:', Object.keys(fa));
+          console.error('Thiếu các function:', missingFunctions);
+          console.error('face-api object:', fa);
+          console.error('face-api keys:', Object.keys(fa));
           throw new Error(`Thiếu các function: ${missingFunctions.join(', ')}`);
         }
 
-        console.log('✅ Tất cả function cần thiết đã sẵn sàng');
+        console.log('Tất cả function cần thiết đã sẵn sàng');
 
-        console.time('⏱️ Load face-api models');
+        console.time('Load face-api models');
         
         // Load models với error handling chi tiết và retry
         const loadModelWithRetry = async (modelName, loadFunction, maxRetries = 3) => {
           for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-              console.log(`🔄 Loading ${modelName} (attempt ${attempt}/${maxRetries})...`);
+              console.log(`Loading ${modelName} (attempt ${attempt}/${maxRetries})...`);
               
               // Kiểm tra model có sẵn sàng không trước khi load
               if (!fa.nets[modelName] || typeof fa.nets[modelName].loadFromUri !== 'function') {
@@ -172,7 +171,7 @@ const FaceSetup = () => {
               
               for (const modelUrl of MODEL_URLS) {
                 try {
-                  console.log(`🔄 Thử load ${modelName} từ: ${modelUrl}`);
+                  console.log(`Thử load ${modelName} từ: ${modelUrl}`);
                   
                   // Test kết nối trước khi load model
                   try {
@@ -184,9 +183,9 @@ const FaceSetup = () => {
                     if (!testResponse.ok) {
                       throw new Error(`HTTP ${testResponse.status}: ${testResponse.statusText}`);
                     }
-                    console.log(`✅ URL ${modelUrl} có thể truy cập (${testResponse.status}) - Test file: ${testFile}`);
+                    console.log(`URL ${modelUrl} có thể truy cập (${testResponse.status}) - Test file: ${testFile}`);
                   } catch (testError) {
-                    console.warn(`⚠️ URL ${modelUrl} không thể truy cập:`, testError.message);
+                    console.warn(`URL ${modelUrl} không thể truy cập:`, testError.message);
                     continue;
                   }
                   
@@ -197,19 +196,19 @@ const FaceSetup = () => {
                       setTimeout(() => reject(new Error('Model loading timeout')), 30000)
                     )
                   ]);
-                  console.log(`✅ ${modelName} loaded thành công từ ${modelUrl}`);
+                  console.log(`${modelName} loaded thành công từ ${modelUrl}`);
                   loaded = true;
                   workingUrl = modelUrl;
                   break; // Dừng ngay khi thành công
                 } catch (urlError) {
-                  console.warn(`⚠️ Không thể load ${modelName} từ ${modelUrl}:`, urlError.message);
+                  console.warn(`Không thể load ${modelName} từ ${modelUrl}:`, urlError.message);
                   continue;
                 }
               }
               
               if (!loaded) {
                 // Fallback: Tạo model giả để test
-                console.warn(`⚠️ Không thể load ${modelName} từ tất cả URLs. Sử dụng fallback model.`);
+                console.warn(`Không thể load ${modelName} từ tất cả URLs. Sử dụng fallback model.`);
                 
                 // Tạo model giả với các method cần thiết
                 if (fa.nets[modelName]) {
@@ -225,7 +224,7 @@ const FaceSetup = () => {
                     }]);
                   }
                   
-                  console.log(`✅ ${modelName} fallback model đã sẵn sàng`);
+                  console.log(`${modelName} fallback model đã sẵn sàng`);
                   return;
                 }
               }
@@ -233,12 +232,12 @@ const FaceSetup = () => {
               // Lưu URL hoạt động để dùng cho models khác
               if (workingUrl && !fa.workingModelUrl) {
                 fa.workingModelUrl = workingUrl;
-                console.log(`💡 Lưu URL hoạt động: ${workingUrl}`);
+                console.log(`Lưu URL hoạt động: ${workingUrl}`);
               }
               
               return true;
             } catch (err) {
-              console.error(`❌ Lỗi load ${modelName} (attempt ${attempt}):`, err.message);
+              console.error(`Lỗi load ${modelName} (attempt ${attempt}):`, err.message);
               if (attempt === maxRetries) {
                 throw new Error(`Không thể load ${modelName} sau ${maxRetries} lần thử: ${err.message}`);
               }
@@ -249,7 +248,7 @@ const FaceSetup = () => {
         };
 
         // Load models theo thứ tự ưu tiên với tên file weights chính xác
-        console.log('📋 Models cần load:', modelsToLoad.map(m => m.name));
+        console.log('Models cần load:', modelsToLoad.map(m => m.name));
 
         let loadedModels = [];
         let failedModels = [];
@@ -257,19 +256,19 @@ const FaceSetup = () => {
         // Load model đầu tiên để tìm URL hoạt động
         try {
           const firstModel = modelsToLoad[0];
-          console.log(`🚀 Bắt đầu load model đầu tiên: ${firstModel.name}`);
-          console.log(`📁 Sử dụng weights path: ${firstModel.weightsPath}`);
+          console.log(`Bắt đầu load model đầu tiên: ${firstModel.name}`);
+          console.log(`Sử dụng weights path: ${firstModel.weightsPath}`);
           await loadModelWithRetry(firstModel.name, firstModel.loader);
           loadedModels.push(firstModel.name);
           
           // Nếu có URL hoạt động, load models còn lại từ đó
           if (fa.workingModelUrl) {
-            console.log(`🚀 Load models còn lại từ URL hoạt động: ${fa.workingModelUrl}`);
+            console.log(`Load models còn lại từ URL hoạt động: ${fa.workingModelUrl}`);
             
             for (const model of modelsToLoad.slice(1)) {
               try {
-                console.log(`🔄 Loading ${model.name} từ URL hoạt động...`);
-                console.log(`📁 Sử dụng weights path: ${model.weightsPath}`);
+                console.log(`Loading ${model.name} từ URL hoạt động...`);
+                console.log(`Sử dụng weights path: ${model.weightsPath}`);
                 
                 await Promise.race([
                   model.loader(fa.workingModelUrl),
@@ -277,10 +276,10 @@ const FaceSetup = () => {
                     setTimeout(() => reject(new Error('Model loading timeout')), 15000)
                   )
                 ]);
-                console.log(`✅ ${model.name} loaded từ URL hoạt động`);
+                console.log(`${model.name} loaded từ URL hoạt động`);
                 loadedModels.push(model.name);
               } catch (err) {
-                console.error(`❌ Không thể load ${model.name} từ URL hoạt động:`, err.message);
+                console.error(`Không thể load ${model.name} từ URL hoạt động:`, err.message);
                 failedModels.push(model.name);
               }
             }
@@ -288,38 +287,38 @@ const FaceSetup = () => {
             // Load từng model riêng biệt nếu không có URL hoạt động
             for (const model of modelsToLoad.slice(1)) {
               try {
-                console.log(`🔄 Loading ${model.name} riêng biệt...`);
-                console.log(`📁 Sử dụng weights path: ${model.weightsPath}`);
+                console.log(`Loading ${model.name} riêng biệt...`);
+                console.log(`Sử dụng weights path: ${model.weightsPath}`);
                 await loadModelWithRetry(model.name, model.loader);
                 loadedModels.push(model.name);
               } catch (err) {
-                console.error(`❌ Không thể load ${model.name}:`, err.message);
+                console.error(`Không thể load ${model.name}:`, err.message);
                 failedModels.push(model.name);
               }
             }
           }
         } catch (err) {
-          console.error('❌ Không thể load tinyFaceDetector (model đầu tiên):', err.message);
+          console.error('Không thể load tinyFaceDetector (model đầu tiên):', err.message);
           failedModels.push('tinyFaceDetector');
           
           // Thử load các models khác
           for (const model of modelsToLoad.slice(1)) {
             try {
-              console.log(`🔄 Loading ${model.name}...`);
-              console.log(`📁 Sử dụng weights path: ${model.weightsPath}`);
+              console.log(`Loading ${model.name}...`);
+              console.log(`Sử dụng weights path: ${model.weightsPath}`);
               await loadModelWithRetry(model.name, model.loader);
               loadedModels.push(model.name);
             } catch (err) {
-              console.error(`❌ Không thể load ${model.name}:`, err.message);
+              console.error(`Không thể load ${model.name}:`, err.message);
               failedModels.push(model.name);
             }
           }
         }
 
-        console.timeEnd('⏱️ Load face-api models');
+        console.timeEnd('Load face-api models');
         
         if (loadedModels.length === 0) {
-          console.warn('⚠️ Không thể load models thật, tạo fallback models');
+          console.warn('Không thể load models thật, tạo fallback models');
           
           // Tạo fallback models cho tất cả
           const fallbackModels = ['tinyFaceDetector', 'faceLandmark68Net', 'faceRecognitionNet'];
@@ -337,14 +336,14 @@ const FaceSetup = () => {
                 }]);
               }
               
-              console.log(`✅ ${modelName} fallback model đã sẵn sàng`);
+              console.log(`${modelName} fallback model đã sẵn sàng`);
             }
           });
           
           // Kiểm tra lại sau khi tạo fallback
           const fallbackStatus = checkModelStatus();
           if (fallbackStatus) {
-            console.log('✅ Fallback models đã sẵn sàng');
+            console.log('Fallback models đã sẵn sàng');
             loadedModels = fallbackModels;
             failedModels = [];
           } else {
@@ -353,10 +352,10 @@ const FaceSetup = () => {
         }
 
         if (failedModels.length > 0) {
-          console.warn('⚠️ Một số models load thất bại:', failedModels);
-          console.log('✅ Models đã load thành công:', loadedModels);
+          console.warn('Một số models load thất bại:', failedModels);
+          console.log('Models đã load thành công:', loadedModels);
         } else {
-          console.log('✅ Tất cả models đã load thành công');
+          console.log('Tất cả models đã load thành công');
         }
         
         // Đánh dấu models đã load nếu có ít nhất 1 model
@@ -374,7 +373,7 @@ const FaceSetup = () => {
           failedModels: failedModels
         });
       } catch (err) {
-        console.error('❌ Không thể tải model face-api:', err);
+        console.error('Không thể tải model face-api:', err);
         const errorMsg = `Không thể tải model nhận diện: ${err.message}. Vui lòng kiểm tra mạng và tải lại trang.`;
         setModelLoadingError(errorMsg);
         setErrorMsg(errorMsg);
@@ -421,7 +420,7 @@ const FaceSetup = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     
-    console.log('📁 File selected:', file.name, 'size:', file.size, 'type:', file.type);
+    console.log('File selected:', file.name, 'size:', file.size, 'type:', file.type);
     
     // Validate cơ bản: phải là ảnh và dung lượng < 5MB
     if (!file.type.startsWith('image/')) {
@@ -437,7 +436,7 @@ const FaceSetup = () => {
 
     reader.onload = (e) => {
       const result = (e && e.target && e.target.result) ? e.target.result : reader.result; // dùng reader.result nếu e không có target
-      console.log('📖 File read successfully, dataUrl length:', result ? String(result).length : 0);
+      console.log('File read successfully, dataUrl length:', result ? String(result).length : 0);
       setSelectedImage({
         fileName: file.name,
         dataUrl: result,
@@ -446,7 +445,7 @@ const FaceSetup = () => {
       setErrorMsg('');
     };
     reader.onerror = () => {
-      console.error('❌ File read error:', reader.error);
+      console.error('File read error:', reader.error);
       setErrorMsg('Không thể đọc file ảnh. Vui lòng thử lại.');
     };
     reader.readAsDataURL(file);
@@ -460,23 +459,23 @@ const FaceSetup = () => {
         throw new Error('face-api.js chưa sẵn sàng');
       }
 
-      console.log('🧪 Testing face-api.js...');
-      console.log('📊 face-api object:', fa);
-      console.log('📊 nets:', fa.nets);
-      console.log('📊 detectSingleFace type:', typeof fa.detectSingleFace);
-      console.log('📊 fetchImage type:', typeof fa.fetchImage);
-      console.log('📊 TinyFaceDetectorOptions type:', typeof fa.TinyFaceDetectorOptions);
+      console.log('Testing face-api.js...');
+      console.log('face-api object:', fa);
+      console.log('nets:', fa.nets);
+      console.log('detectSingleFace type:', typeof fa.detectSingleFace);
+      console.log('fetchImage type:', typeof fa.fetchImage);
+      console.log('TinyFaceDetectorOptions type:', typeof fa.TinyFaceDetectorOptions);
 
       // Test tạo options
       if (typeof fa.TinyFaceDetectorOptions === 'function') {
         const options = new fa.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
-        console.log('✅ TinyFaceDetectorOptions created:', options);
+        console.log('TinyFaceDetectorOptions created:', options);
       } else {
-        console.warn('⚠️ TinyFaceDetectorOptions không phải function');
+        console.warn('TinyFaceDetectorOptions không phải function');
       }
 
       // Test detect đơn giản với ảnh nhỏ - chỉ test function, không test model
-      console.log('🧪 Testing basic functions...');
+      console.log('Testing basic functions...');
       try {
         // Tạo ảnh test đơn giản (1x1 pixel)
         const canvas = document.createElement('canvas');
@@ -987,129 +986,167 @@ const FaceSetup = () => {
 
   if (loading) {
     return (
-      <AdminLayout
-        title="Cài đặt nhận diện khuôn mặt"
-        subtitle="Quản lý dữ liệu nhận diện cho từng người dùng"
-        icon={FaUserFriends}
-      >
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Đang tải dữ liệu...</p>
-        </div>
-      </AdminLayout>
+      <div className="space-y-6">
+        <Card>
+          <CardContent>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaUserFriends className="text-blue-600 text-xl" />
+              </div>
+              <div>
+                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                  Cài đặt nhận diện khuôn mặt
+                </CardTitle>
+                <p className="text-gray-600 mt-1">
+                  Quản lý dữ liệu nhận diện cho từng người dùng
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Đang tải dữ liệu...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="space-y-6">
       {/* Trạng thái model */}
-      <div
-        className="model-status"
-        style={{
-          padding: 12,
-          backgroundColor: modelsLoaded ? '#d4edda' : '#f8d7da',
-          marginBottom: 16,
-          borderRadius: 6
-        }}
-      >
-        <strong>Trạng thái Model:</strong> {modelsLoaded ? '✅ Đã sẵn sàng' : '⏳ Đang tải...'}
-        {modelLoadingError && (
-          <div style={{ color: '#dc3545', marginTop: 8 }}>
-            <strong>❌ Lỗi:</strong> {modelLoadingError}
+      <Card className="mb-6">
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle level="h3" className="text-lg mb-2">
+                Trạng thái Model Nhận diện
+              </CardTitle>
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                modelsLoaded ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+              }`}>
+                {modelsLoaded ? 'Đã sẵn sàng' : 'Đang tải...'}
+              </div>
+            </div>
+            {modelLoadingError && (
+              <div className="text-red-600 text-sm">
+                <strong>❌ Lỗi:</strong> {modelLoadingError}
+              </div>
+            )}
           </div>
-        )}
-        {!modelsLoaded && !modelLoadingError && (
-          <div>
-            <small>Vui lòng đợi model load xong trước khi cài đặt khuôn mặt</small>
-          </div>
-        )}
-      </div>
-
-      {/* Page Header */}
-      <div className="page-header">
-        <h1 className="page-title">CÀI ĐẶT NHẬN DIỆN KHUÔN MẶT</h1>
-      </div>
+          {!modelsLoaded && !modelLoadingError && (
+            <p className="text-gray-600 text-sm mt-2">
+              Vui lòng đợi model load xong trước khi cài đặt khuôn mặt
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Bảng nhân viên với cột trạng thái nhận diện */}
-      {/* Bọc bằng wrapper để cô lập CSS, tránh xung đột với trang khác */}
-      <div className="face-setup-page">
-        <div className="table-container">
-          {loading ? (
-            <div className="loading">Đang tải dữ liệu...</div>
-          ) : (
-            <table className="data-table">
-              <thead className="table-header">
-                <tr>
-                  <th>STT</th>
-                  <th>ID</th>
-                  <th>HỌ TÊN</th>
-                  <th>CHỨC VỤ</th>
-                  <th>VAI TRÒ</th>
-                  <th>TRẠNG THÁI</th>
-                  <th>NHẬN DIỆN KHUÔN MẶT</th>
-                  <th>NGÀY ĐĂNG KÝ</th>
-                </tr>
-              </thead>
-              <tbody className="table-body">
-                {users.length === 0 ? (
+      <Card>
+        <CardTitle level="h2" className="text-xl mb-4">
+          Danh sách nhân viên và trạng thái nhận diện
+        </CardTitle>
+        <CardContent>
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-gray-600">Đang tải dữ liệu...</p>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-gray-50">
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', color: '#6c757d' }}>
-                      Không có dữ liệu người dùng
-                    </td>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STT</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HỌ TÊN</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CHỨC VỤ</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">VAI TRÒ</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TRẠNG THÁI</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NHẬN DIỆN KHUÔN MẶT</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NGÀY ĐĂNG KÝ</th>
                   </tr>
-                ) : (
-                  users.map((user, index) => {
-                    const installed = isUserFaceInstalled(user);
-                    const enrollment = getUserFaceEnrollment(user);
-                    return (
-                      <tr key={user.userID}>
-                        <td>{index + 1}</td>
-                        <td>{user.userID}</td>
-                        <td>{user.fullName}</td>
-                        <td>{user.position || '--'}</td>
-                        <td>{user.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}</td>
-                        <td style={{textAlign:'center'}}>
-                          <span className={`fs-status-badge ${user.status === 'active' ? 'fs-status-active' : 'fs-status-inactive'}`}>
-                            {user.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="face-setup-cell">
-                            <span className={installed ? 'fs-installed' : 'fs-not-installed'}>
-                              {installed ? 'ĐÃ CÀI ĐẶT' : 'CHƯA CÀI ĐẶT'}
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                        Không có dữ liệu người dùng
+                      </td>
+                    </tr>
+                  ) : (
+                    users.map((user, index) => {
+                      const installed = isUserFaceInstalled(user);
+                      const enrollment = getUserFaceEnrollment(user);
+                      return (
+                        <tr key={user.userID} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {index + 1}
                             </span>
-                            <button 
-                              className="btn-install" 
-                              onClick={() => openInstallModal(user)}
-                              disabled={installed || !modelsLoaded}
-                            >
-                              {installed ? 'Đã cài đặt' : 'Cài đặt'}
-                            </button>
-                          </div>
-                        </td>
-                        <td>
-                          {enrollment ? (
-                            <div>
-                              <div style={{ fontSize: '12px', color: '#28a745' }}>
-                                {new Date(enrollment.createdAt).toLocaleDateString('vi-VN')}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#6c757d' }}>
-                                {new Date(enrollment.createdAt).toLocaleTimeString('vi-VN')}
-                              </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.userID}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.fullName}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.position || '--'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {user.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {user.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                installed ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {installed ? 'ĐÃ CÀI ĐẶT' : 'CHƯA CÀI ĐẶT'}
+                              </span>
+                              <button 
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                                  installed || !modelsLoaded
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }`}
+                                onClick={() => openInstallModal(user)}
+                                disabled={installed || !modelsLoaded}
+                              >
+                                {installed ? 'Đã cài đặt' : 'Cài đặt'}
+                              </button>
                             </div>
-                          ) : (
-                            <span style={{ color: '#6c757d', fontSize: '12px' }}>--</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {enrollment ? (
+                              <div>
+                                <div className="text-green-600 text-xs">
+                                  {new Date(enrollment.createdAt).toLocaleDateString('vi-VN')}
+                                </div>
+                                <div className="text-gray-500 text-xs">
+                                  {new Date(enrollment.createdAt).toLocaleTimeString('vi-VN')}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 text-xs">--</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Modal cài đặt nhận diện khuôn mặt */}
       {installModalOpen && (
@@ -1194,7 +1231,7 @@ const FaceSetup = () => {
           100% { transform: rotate(360deg); }
         }
       `}</style>
-    </>
+    </div>
   );
 };
 

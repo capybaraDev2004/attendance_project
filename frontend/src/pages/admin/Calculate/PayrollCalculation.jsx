@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import './PayrollCalculation.css';
-import AdminLayout from '../../../components/AdminLayout';
-import AdminButton from '../../../components/AdminButton';
+import Card, { CardTitle, CardContent, CardActions, CardButton } from '../../../components/Card';
 import { FaCalculator, FaCalendarAlt, FaUsers, FaFileExport, FaSearch, FaFilter, FaDownload, FaInfoCircle } from 'react-icons/fa';
 
 const PayrollCalculation = () => {
@@ -89,281 +87,325 @@ const PayrollCalculation = () => {
   });
 
   return (
-    <AdminLayout
-      title="Tính Công & Lương"
-      subtitle="Quản lý và tính toán lương tháng cho nhân viên"
-      icon={FaCalculator}
-    >
+    <div className="space-y-6">
+        {/* Header Card */}
+        <Card>
+          <CardContent>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaCalculator className="text-blue-600 text-xl" />
+              </div>
+              <div>
+                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                  Tính Công & Lương
+                </CardTitle>
+                <p className="text-gray-600 mt-1">
+                  Quản lý và tính toán lương tháng cho nhân viên
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Form tính công */}
-      <div className="calculation-form-container">
-        <div className="form-card">
-          <h3 className="form-title">
-            <FaCalendarAlt className="form-icon" />
+        {/* Form tính công */}
+        <Card>
+          <CardTitle level="h3" className="text-lg mb-4 flex items-center">
+            <FaCalendarAlt className="mr-2 text-blue-600" />
             Thông tin tính công
-          </h3>
-          
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="month">Tháng</label>
-              <select
-                id="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="form-select"
-              >
-                <option value="">Chọn tháng</option>
-                {months.map(month => (
-                  <option key={month.value} value={month.value}>
-                    {month.label}
-                  </option>
-                ))}
-              </select>
+          </CardTitle>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="form-group">
+                <label htmlFor="month" className="block text-sm font-medium text-gray-700 mb-2">Tháng</label>
+                <select
+                  id="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Chọn tháng</option>
+                  {months.map(month => (
+                    <option key={month.value} value={month.value}>
+                      {month.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-2">Năm</label>
+                <select
+                  id="year"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {years.map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-2">Phòng ban</label>
+                <select
+                  id="department"
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Tất cả phòng ban</option>
+                  {departments.slice(1).map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="calculationType" className="block text-sm font-medium text-gray-700 mb-2">Loại tính công</label>
+                <select
+                  id="calculationType"
+                  value={calculationType}
+                  onChange={(e) => setCalculationType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="monthly">Tính theo tháng</option>
+                  <option value="quarterly">Tính theo quý</option>
+                  <option value="yearly">Tính theo năm</option>
+                </select>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="year">Năm</label>
-              <select
-                id="year"
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="form-select"
-              >
-                {years.map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="department">Phòng ban</label>
-              <select
-                id="department"
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="form-select"
-              >
-                <option value="">Tất cả phòng ban</option>
-                {departments.slice(1).map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="calculationType">Loại tính công</label>
-              <select
-                id="calculationType"
-                value={calculationType}
-                onChange={(e) => setCalculationType(e.target.value)}
-                className="form-select"
-              >
-                <option value="monthly">Tính theo tháng</option>
-                <option value="quarterly">Tính theo quý</option>
-                <option value="yearly">Tính theo năm</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <AdminButton
-              variant="primary"
-              size="medium"
-              onClick={calculatePayroll}
+          </CardContent>
+          <CardActions>
+            <CardButton 
+              onClick={calculatePayroll} 
+              variant="primary" 
+              className="flex items-center"
               disabled={!selectedMonth || isCalculating}
-              icon={FaCalculator}
             >
               {isCalculating ? (
                 <>
-                  <div className="spinner"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Đang tính toán...
                 </>
               ) : (
-                'Tính công'
+                <>
+                  <FaCalculator className="mr-2" />
+                  Tính công
+                </>
               )}
-            </AdminButton>
+            </CardButton>
             
-            <AdminButton
-              variant="secondary"
-              size="medium"
-              icon={FaFilter}
-            >
+            <CardButton variant="outline" className="flex items-center">
+              <FaFilter className="mr-2" />
               Lọc dữ liệu
-            </AdminButton>
-          </div>
-        </div>
-      </div>
+            </CardButton>
+          </CardActions>
+        </Card>
 
-      {/* Kết quả tính công */}
-      {payrollResults.length > 0 ? (
-        <div className="results-container">
-          <div className="results-header">
-            <h3>
-              <FaUsers className="results-icon" />
-              Kết quả tính công tháng {selectedMonth}/{selectedYear}
-            </h3>
+        {/* Kết quả tính công */}
+        {payrollResults.length > 0 ? (
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <CardTitle level="h3" className="text-lg flex items-center">
+                <FaUsers className="mr-2 text-blue-600" />
+                Kết quả tính công tháng {selectedMonth}/{selectedYear}
+              </CardTitle>
+              
+              <div className="flex gap-2">
+                <CardButton 
+                  variant="outline"
+                  onClick={() => exportReport('Excel')}
+                  className="flex items-center"
+                >
+                  <FaFileExport className="mr-2" />
+                  Xuất Excel
+                </CardButton>
+                <CardButton 
+                  variant="outline"
+                  onClick={() => exportReport('PDF')}
+                  className="flex items-center"
+                >
+                  <FaDownload className="mr-2" />
+                  Xuất PDF
+                </CardButton>
+              </div>
+            </div>
+
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Họ tên</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phòng ban</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chức vụ</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lương cơ bản</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số ngày công</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giờ làm thêm</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lương công</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lương OT</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng lương</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khấu trừ</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lương thực nhận</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {payrollResults.map(emp => (
+                      <tr key={emp.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          NV{emp.id.toString().padStart(3, '0')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.department}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.position}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.baseSalary.toLocaleString('vi-VN')} ₫</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.attendanceDays}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.overtimeHours}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.attendancePay.toLocaleString('vi-VN')} ₫</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.overtimePay.toLocaleString('vi-VN')} ₫</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.totalPay.toLocaleString('vi-VN')} ₫</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.deductions.toLocaleString('vi-VN')} ₫</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{emp.netPay.toLocaleString('vi-VN')} ₫</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+
+            {/* Tổng kết */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+              <Card>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600 mb-2">
+                    {payrollResults.reduce((sum, emp) => sum + emp.totalPay, 0).toLocaleString('vi-VN')} ₫
+                  </div>
+                  <div className="text-sm text-gray-600">Tổng lương</div>
+                </div>
+              </Card>
+              
+              <Card>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600 mb-2">
+                    {payrollResults.reduce((sum, emp) => sum + emp.deductions, 0).toLocaleString('vi-VN')} ₫
+                  </div>
+                  <div className="text-sm text-gray-600">Tổng khấu trừ</div>
+                </div>
+              </Card>
+              
+              <Card>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600 mb-2">
+                    {payrollResults.reduce((sum, emp) => sum + emp.netPay, 0).toLocaleString('vi-VN')} ₫
+                  </div>
+                  <div className="text-sm text-gray-600">Tổng thực chi</div>
+                </div>
+              </Card>
+              
+              <Card>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600 mb-2">
+                    {payrollResults.length}
+                  </div>
+                  <div className="text-sm text-gray-600">Số nhân viên</div>
+                </div>
+              </Card>
+            </div>
+          </Card>
+        ) : (
+          // Thông báo khi chưa có kết quả tính công
+          <Card>
+            <CardContent>
+              <div className="text-center py-12">
+                <FaInfoCircle className="mx-auto text-6xl text-blue-500 mb-4" />
+                <CardTitle level="h3" className="text-xl mb-2">
+                  Chưa có kết quả tính công
+                </CardTitle>
+                <p className="text-gray-600 mb-6">
+                  Vui lòng chọn tháng và nhấn "Tính công" để xem kết quả
+                </p>
+                <div className="bg-blue-50 rounded-lg p-6 text-left max-w-md mx-auto">
+                  <h4 className="font-semibold text-blue-800 mb-3">Hướng dẫn sử dụng:</h4>
+                  <ul className="text-sm text-blue-700 space-y-2">
+                    <li>• Chọn tháng và năm cần tính công</li>
+                    <li>• Chọn phòng ban (tùy chọn)</li>
+                    <li>• Chọn loại tính công (tháng/quý/năm)</li>
+                    <li>• Nhấn nút "Tính công" để bắt đầu</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Danh sách nhân viên */}
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <CardTitle level="h3" className="text-lg flex items-center">
+              <FaUsers className="mr-2 text-blue-600" />
+              Danh sách nhân viên
+            </CardTitle>
             
-            <div className="export-actions">
-              <AdminButton 
-                variant="outline"
-                size="medium"
-                onClick={() => exportReport('Excel')}
-                icon={FaFileExport}
-              >
-                Xuất Excel
-              </AdminButton>
-              <AdminButton 
-                variant="outline"
-                size="medium"
-                onClick={() => exportReport('PDF')}
-                icon={FaDownload}
-              >
-                Xuất PDF
-              </AdminButton>
+            <div className="flex items-center">
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm nhân viên..."
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="results-table-container">
-            <table className="results-table">
-              <thead>
-                <tr>
-                  <th>Mã NV</th>
-                  <th>Họ tên</th>
-                  <th>Phòng ban</th>
-                  <th>Chức vụ</th>
-                  <th>Lương cơ bản</th>
-                  <th>Số ngày công</th>
-                  <th>Giờ làm thêm</th>
-                  <th>Lương công</th>
-                  <th>Lương OT</th>
-                  <th>Tổng lương</th>
-                  <th>Khấu trừ</th>
-                  <th>Lương thực nhận</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payrollResults.map(emp => (
-                  <tr key={emp.id}>
-                    <td className="employee-id">NV{emp.id.toString().padStart(3, '0')}</td>
-                    <td className="employee-name">{emp.name}</td>
-                    <td className="employee-dept">{emp.department}</td>
-                    <td className="employee-position">{emp.position}</td>
-                    <td className="salary-amount">{emp.baseSalary.toLocaleString('vi-VN')} ₫</td>
-                    <td className="attendance-days">{emp.attendanceDays}</td>
-                    <td className="overtime-hours">{emp.overtimeHours}</td>
-                    <td className="attendance-pay">{emp.attendancePay.toLocaleString('vi-VN')} ₫</td>
-                    <td className="overtime-pay">{emp.overtimePay.toLocaleString('vi-VN')} ₫</td>
-                    <td className="total-pay">{emp.totalPay.toLocaleString('vi-VN')} ₫</td>
-                    <td className="deductions">{emp.deductions.toLocaleString('vi-VN')} ₫</td>
-                    <td className="net-pay">{emp.netPay.toLocaleString('vi-VN')} ₫</td>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Họ tên</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phòng ban</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chức vụ</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lương cơ bản</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số ngày công</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giờ làm thêm</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Tổng kết */}
-          <div className="summary-container">
-            <div className="summary-card">
-              <h4>Tổng lương</h4>
-              <p className="summary-amount">
-                {payrollResults.reduce((sum, emp) => sum + emp.totalPay, 0).toLocaleString('vi-VN')} ₫
-              </p>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredEmployees.map(emp => (
+                    <tr key={emp.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        NV{emp.id.toString().padStart(3, '0')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.department}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.position}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.baseSalary.toLocaleString('vi-VN')} ₫</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.attendanceDays}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.overtimeHours}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <CardButton variant="primary" className="text-xs px-3 py-1">
+                            Chỉnh sửa
+                          </CardButton>
+                          <CardButton variant="outline" className="text-xs px-3 py-1">
+                            Xem chi tiết
+                          </CardButton>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            
-            <div className="summary-card">
-              <h4>Tổng khấu trừ</h4>
-              <p className="summary-amount deductions">
-                {payrollResults.reduce((sum, emp) => sum + emp.deductions, 0).toLocaleString('vi-VN')} ₫
-              </p>
-            </div>
-            
-            <div className="summary-card">
-              <h4>Tổng thực chi</h4>
-              <p className="summary-amount net-pay">
-                {payrollResults.reduce((sum, emp) => sum + emp.netPay, 0).toLocaleString('vi-VN')} ₫
-              </p>
-            </div>
-            
-            <div className="summary-card">
-              <h4>Số nhân viên</h4>
-              <p className="summary-amount">{payrollResults.length}</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        // Thông báo khi chưa có kết quả tính công
-        <div className="no-results-container">
-          <div className="no-results-card">
-            <FaInfoCircle className="no-results-icon" />
-            <h3>Chưa có kết quả tính công</h3>
-            <p>Vui lòng chọn tháng và nhấn "Tính công" để xem kết quả</p>
-            <div className="no-results-tips">
-              <h4>Hướng dẫn sử dụng:</h4>
-              <ul>
-                <li>Chọn tháng và năm cần tính công</li>
-                <li>Chọn phòng ban (tùy chọn)</li>
-                <li>Chọn loại tính công (tháng/quý/năm)</li>
-                <li>Nhấn nút "Tính công" để bắt đầu</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Danh sách nhân viên */}
-      <div className="employees-container">
-        <div className="employees-header">
-          <h3>
-            <FaUsers className="employees-icon" />
-            Danh sách nhân viên
-          </h3>
-          
-          <div className="search-box">
-            <FaSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm nhân viên..."
-              className="search-input"
-            />
-          </div>
-        </div>
-
-        <div className="employees-table-container">
-          <table className="employees-table">
-            <thead>
-              <tr>
-                <th>Mã NV</th>
-                <th>Họ tên</th>
-                <th>Phòng ban</th>
-                <th>Chức vụ</th>
-                <th>Lương cơ bản</th>
-                <th>Số ngày công</th>
-                <th>Giờ làm thêm</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEmployees.map(emp => (
-                <tr key={emp.id}>
-                  <td className="employee-id">NV{emp.id.toString().padStart(3, '0')}</td>
-                  <td className="employee-name">{emp.name}</td>
-                  <td className="employee-dept">{emp.department}</td>
-                  <td className="employee-position">{emp.position}</td>
-                  <td className="salary-amount">{emp.baseSalary.toLocaleString('vi-VN')} ₫</td>
-                  <td className="attendance-days">{emp.attendanceDays}</td>
-                  <td className="overtime-hours">{emp.overtimeHours}</td>
-                  <td className="actions">
-                    <AdminButton variant="primary" size="small">Chỉnh sửa</AdminButton>
-                    <AdminButton variant="outline" size="small">Xem chi tiết</AdminButton>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </AdminLayout>
+          </CardContent>
+        </Card>
+    </div>
   );
 };
 
