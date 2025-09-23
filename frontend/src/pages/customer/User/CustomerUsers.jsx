@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import StandardTable from '../../../components/StandardTable';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
-import { IconUsers, IconSearch, IconFilter, IconRefresh, IconAlertCircle, IconEye, IconEyeOff } from '@tabler/icons-react';
+import Pagination from '../../../components/Pagination';
+import { IconUsers, IconSearch, IconFilter, IconRefresh, IconAlertCircle } from '@tabler/icons-react';
 
 // Component quản lý người dùng cho customer - chỉ xem danh sách
 const CustomerUsers = () => {
@@ -17,8 +18,13 @@ const CustomerUsers = () => {
     role: 'all' // all, admin, employee
   });
 
+  // Phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   // Bộ lọc hiển thị cột
   const [visibleColumns, setVisibleColumns] = useState({
+    stt: true,
     userID: true,
     fullName: true,
     role: true,
@@ -89,6 +95,8 @@ const CustomerUsers = () => {
     }
 
     setFilteredUsers(filtered);
+    // Reset về trang đầu khi lọc
+    setCurrentPage(1);
   }, [users, filters]);
 
   // Tự động lọc khi filters thay đổi
@@ -123,6 +131,27 @@ const CustomerUsers = () => {
       [columnKey]: !prev[columnKey]
     }));
   }, []);
+
+  // Xử lý thay đổi trang
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Xử lý thay đổi số dòng hiển thị
+  const handleItemsPerPageChange = useCallback((newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset về trang đầu
+  }, []);
+
+  // Tính toán dữ liệu hiển thị cho trang hiện tại
+  const getPaginatedData = useCallback(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredUsers.slice(startIndex, endIndex);
+  }, [filteredUsers, currentPage, itemsPerPage]);
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
   // Badge trạng thái người dùng
   const renderStatusBadge = useCallback((status) => {
@@ -169,8 +198,8 @@ const CustomerUsers = () => {
     {
       key: 'stt',
       label: 'STT',
-      visible: visibleColumns.userID,
-      render: (_, index) => index + 1
+      visible: visibleColumns.stt,
+      render: (_, index) => (currentPage - 1) * itemsPerPage + index + 1
     },
     {
       key: 'userID',
@@ -372,36 +401,67 @@ const CustomerUsers = () => {
             </div>
           </div>
 
-          {/* Bộ lọc hiển thị cột */}
-          <div>
-            <h4 className="text-md font-medium text-gray-900 mb-4">Hiển thị cột</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {Object.entries(visibleColumns).map(([column, isVisible]) => (
-                <label key={column} className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isVisible}
-                    onChange={() => handleColumnToggle(column)}
-                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                  />
-                  <span className="text-sm text-gray-700 flex items-center">
-                    {isVisible ? <IconEye size={14} className="mr-1" /> : <IconEyeOff size={14} className="mr-1" />}
-                    {column === 'userID' && 'ID'}
-                    {column === 'fullName' && 'Họ tên'}
-                    {column === 'role' && 'Vai trò'}
-                    {column === 'email' && 'Email'}
-                    {column === 'phone' && 'Số điện thoại'}
-                    {column === 'dateOfBirth' && 'Ngày sinh'}
-                    {column === 'gender' && 'Giới tính'}
-                    {column === 'position' && 'Chức vụ'}
-                    {column === 'status' && 'Trạng thái'}
-                  </span>
-                </label>
-              ))}
+        </div>
+      </div>
+
+      {/* Cài đặt hiển thị cột */}
+      <Card>
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </div>
+            <div>
+              <CardTitle level="h3" className="text-lg font-semibold text-gray-900">Cài đặt hiển thị cột</CardTitle>
+              <p className="text-sm text-gray-500 mt-1">Chọn các cột bạn muốn hiển thị trong bảng</p>
             </div>
           </div>
         </div>
-      </div>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Object.entries(visibleColumns).map(([column, isVisible]) => (
+              <div key={column} className="column-toggle-item">
+                <label className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={isVisible}
+                      onChange={() => handleColumnToggle(column)}
+                      className="w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 focus:ring-2 transition-all duration-200"
+                    />
+                    {isVisible && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-900 group-hover:text-indigo-700 transition-colors duration-200">
+                      {column === 'stt' && 'STT'}
+                      {column === 'userID' && 'ID'}
+                      {column === 'fullName' && 'Họ và tên'}
+                      {column === 'role' && 'Vai trò'}
+                      {column === 'email' && 'Email'}
+                      {column === 'phone' && 'Số điện thoại'}
+                      {column === 'dateOfBirth' && 'Ngày sinh'}
+                      {column === 'gender' && 'Giới tính'}
+                      {column === 'position' && 'Chức vụ'}
+                      {column === 'status' && 'Trạng thái'}
+                    </span>
+                  </div>
+                  <div className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                    isVisible ? 'bg-green-400' : 'bg-gray-300'
+                  }`}></div>
+                </label>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Data Table */}
       <StandardTable
@@ -409,9 +469,8 @@ const CustomerUsers = () => {
         subtitle={`Tổng cộng: ${filteredUsers.length} người dùng`}
         icon={IconUsers}
         columns={tableColumns}
-        data={filteredUsers}
+        data={getPaginatedData()}
         onRefresh={fetchUsers}
-        onColumnToggle={handleColumnToggle}
         emptyState={
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
@@ -421,6 +480,17 @@ const CustomerUsers = () => {
             <p className="text-gray-600">Vui lòng thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
           </div>
         }
+      />
+
+      {/* Phân trang */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        itemsPerPage={itemsPerPage}
+        onItemsPerPageChange={handleItemsPerPageChange}
+        totalItems={filteredUsers.length}
+        itemsPerPageOptions={[5, 10, 20, 50]}
       />
     </div>
   );

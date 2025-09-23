@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import StandardTable from '../../../components/StandardTable';
 import Button from '../../../components/Button';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
+import Pagination from '../../../components/Pagination';
 import { FaDesktop, FaPlus, FaEdit, FaTrash, FaExclamationTriangle, FaClock } from 'react-icons/fa';
 
 const DeviceManagement = () => {
@@ -13,6 +14,10 @@ const DeviceManagement = () => {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // State cho việc bật/tắt cột - mặc định ẩn IP, Vị trí, Lần cuối
   const [visibleColumns, setVisibleColumns] = useState({
@@ -241,6 +246,27 @@ const DeviceManagement = () => {
     
     return matchesStatus && matchesSearch;
   });
+
+  // Xử lý thay đổi trang
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Xử lý thay đổi số dòng hiển thị
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset về trang đầu
+  };
+
+  // Tính toán dữ liệu hiển thị cho trang hiện tại
+  const getPaginatedData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredDevices.slice(startIndex, endIndex);
+  };
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(filteredDevices.length / itemsPerPage);
 
   // Thống kê
   const totalDevices = devices.length;
@@ -551,77 +577,164 @@ const DeviceManagement = () => {
 
         {/* Cài đặt hiển thị cột */}
         <Card>
-          <div className="flex justify-between items-center mb-4">
-            <CardTitle level="h2" className="text-lg">Cài đặt hiển thị cột</CardTitle>
-            <Button onClick={showAllColumns} variant="outline" size="sm">
-              Hiện tất cả
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+              </div>
+              <div>
+                <CardTitle level="h2" className="text-lg font-semibold text-gray-900">Cài đặt hiển thị cột</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Chọn các cột bạn muốn hiển thị trong bảng</p>
+              </div>
+            </div>
+            <Button onClick={showAllColumns} variant="outline" size="sm" className="flex items-center space-x-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Hiện tất cả</span>
             </Button>
           </div>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {columnDefinitions.map((column) => (
-                <label key={column.key} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={visibleColumns[column.key]}
-                    onChange={() => toggleColumn(column.key)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">{column.label}</span>
-                </label>
+                <div key={column.key} className="column-toggle-item">
+                  <label className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns[column.key]}
+                        onChange={() => toggleColumn(column.key)}
+                        className="w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 focus:ring-2 transition-all duration-200"
+                      />
+                      {visibleColumns[column.key] && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-900 group-hover:text-indigo-700 transition-colors duration-200">
+                        {column.label}
+                      </span>
+                    </div>
+                    <div className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                      visibleColumns[column.key] ? 'bg-green-400' : 'bg-gray-300'
+                    }`}></div>
+                  </label>
+                </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
         {/* Thống kê */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <Card>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-2">{totalDevices}</div>
-              <div className="text-sm text-gray-600">Tổng thiết bị</div>
+        <div className="stats-section">
+          <div className="mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-emerald-100 rounded-lg">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Thống kê tổng quan</h2>
+                <p className="text-sm text-gray-500 mt-1">Tổng hợp thông tin về thiết bị IoT RFID</p>
+              </div>
             </div>
-          </Card>
-          <Card>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600 mb-2">{activeDevices}</div>
-              <div className="text-sm text-gray-600">Đang hoạt động</div>
-            </div>
-          </Card>
-          <Card>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-red-600 mb-2">{inactiveDevices}</div>
-              <div className="text-sm text-gray-600">Không hoạt động</div>
-            </div>
-          </Card>
-          <Card>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600 mb-2">{maintenanceDevices}</div>
-              <div className="text-sm text-gray-600">Đang bảo trì</div>
-            </div>
-          </Card>
-        </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Tổng thiết bị */}
+            <Card className="stat-card stat-card-primary">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-blue-600 mb-1">Tổng thiết bị</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalDevices}</p>
+                    <p className="text-xs text-gray-500 mt-1">Tất cả thiết bị</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-blue-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Header và nút thêm */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Danh sách thiết bị</h3>
-              <p className="text-sm text-gray-600 mt-1">Tổng cộng: {filteredDevices.length} thiết bị</p>
-            </div>
-            <Button onClick={handleAddDevice} variant="primary" icon={<FaPlus />}>
-              Thêm thiết bị
-            </Button>
+            {/* Đang hoạt động */}
+            <Card className="stat-card stat-card-success">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-green-600 mb-1">Đang hoạt động</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{activeDevices}</p>
+                    <p className="text-xs text-gray-500 mt-1">Thiết bị hoạt động</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-green-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Không hoạt động */}
+            <Card className="stat-card stat-card-warning">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-red-600 mb-1">Không hoạt động</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{inactiveDevices}</p>
+                    <p className="text-xs text-gray-500 mt-1">Thiết bị tạm dừng</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-red-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Đang bảo trì */}
+            <Card className="stat-card stat-card-info">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-orange-600 mb-1">Đang bảo trì</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{maintenanceDevices}</p>
+                    <p className="text-xs text-gray-500 mt-1">Thiết bị bảo trì</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-orange-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        {/* Bảng thiết bị */}
+        {/* Bảng thiết bị với header tích hợp */}
         <StandardTable
           title="Danh sách thiết bị"
           subtitle={`Tổng cộng: ${filteredDevices.length} thiết bị`}
           icon={FaDesktop}
           columns={tableColumns}
-          data={filteredDevices}
+          data={getPaginatedData()}
+          actionButton={{
+            text: "Thêm thiết bị",
+            icon: <FaPlus />,
+            onClick: handleAddDevice,
+            variant: "primary"
+          }}
           emptyState={
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
@@ -631,6 +744,17 @@ const DeviceManagement = () => {
               <p className="text-gray-600">Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
             </div>
           }
+        />
+
+        {/* Phân trang */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={handleItemsPerPageChange}
+          totalItems={filteredDevices.length}
+          itemsPerPageOptions={[5, 10, 20, 50]}
         />
 
         {/* Modal thêm thiết bị */}

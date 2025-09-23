@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import StandardTable from '../../../components/StandardTable';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
+import Pagination from '../../../components/Pagination';
 import { IconClock, IconRefresh, IconCheck, IconAlertCircle } from '@tabler/icons-react';
 
 // Sử dụng cùng API_URL như Login.js
@@ -11,6 +12,10 @@ const CustomerTimekeeping = () => {
   const [actualRecordCount, setActualRecordCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Lấy thông tin user từ localStorage
   const getUserInfo = useCallback(() => {
@@ -103,6 +108,27 @@ const CustomerTimekeeping = () => {
   useEffect(() => {
     fetchAttendanceHistory();
   }, [fetchAttendanceHistory]);
+
+  // Xử lý thay đổi trang
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Xử lý thay đổi số dòng hiển thị
+  const handleItemsPerPageChange = useCallback((newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset về trang đầu
+  }, []);
+
+  // Tính toán dữ liệu hiển thị cho trang hiện tại
+  const getPaginatedData = useCallback(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return attendanceHistory.slice(startIndex, endIndex);
+  }, [attendanceHistory, currentPage, itemsPerPage]);
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(attendanceHistory.length / itemsPerPage);
 
   // Format ngày theo định dạng dd/mm/yyyy
   const formatDate = useCallback((dateString) => {
@@ -314,7 +340,7 @@ const CustomerTimekeeping = () => {
         subtitle={`Tổng: ${actualRecordCount} bản ghi`}
         icon={IconClock}
         columns={tableColumns}
-        data={attendanceHistory}
+        data={getPaginatedData()}
         onRefresh={fetchAttendanceHistory}
         emptyState={
           <div className="text-center py-12">
@@ -325,6 +351,17 @@ const CustomerTimekeeping = () => {
             <p className="text-gray-600">Hãy bắt đầu chấm công để xem lịch sử ở đây</p>
           </div>
         }
+      />
+
+      {/* Phân trang */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        itemsPerPage={itemsPerPage}
+        onItemsPerPageChange={handleItemsPerPageChange}
+        totalItems={attendanceHistory.length}
+        itemsPerPageOptions={[5, 10, 20, 50]}
       />
     </div>
   );

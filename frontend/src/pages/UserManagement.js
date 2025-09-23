@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import Card, { CardTitle, CardContent, CardActions } from '../components/Card';
 import Button from '../components/Button';
+import Pagination from '../components/Pagination';
 import { FaUsers } from 'react-icons/fa';
 
 // Trang quản lý người dùng - lấy dữ liệu từ database
@@ -12,6 +13,10 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // State cho việc bật/tắt cột - cập nhật để khớp với dữ liệu thực tế
   const [visibleColumns, setVisibleColumns] = useState({
@@ -138,6 +143,27 @@ const UserManagement = () => {
     return a.fullName.localeCompare(b.fullName);
   });
 
+  // Xử lý thay đổi trang
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Xử lý thay đổi số dòng hiển thị
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset về trang đầu
+  };
+
+  // Tính toán dữ liệu hiển thị cho trang hiện tại
+  const getPaginatedData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return sortedUsers.slice(startIndex, endIndex);
+  };
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
+
 
 
   // Hiện tất cả cột
@@ -230,228 +256,328 @@ const UserManagement = () => {
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        {/* Header Card */}
-        <Card>
-          <CardContent>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FaUsers className="text-blue-600 text-xl" />
-              </div>
-              <div>
-                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
-                  Quản lý người dùng
-                </CardTitle>
-                <p className="text-gray-600 mt-1">
-                  Quản lý thông tin và quyền hạn của người dùng trong hệ thống
-                </p>
-              </div>
+    <div className="space-y-6">
+      {/* Header Card */}
+      <Card>
+        <CardContent>
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <FaUsers className="text-blue-600 text-xl" />
             </div>
-          </CardContent>
-        </Card>
-        {/* Bộ lọc và tìm kiếm */}
-        <Card>
-          <CardTitle level="h2" className="text-lg mb-4">Bộ lọc và tìm kiếm</CardTitle>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div className="md:w-48">
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">Tất cả vai trò</option>
-                  <option value="admin">Quản trị viên</option>
-                  <option value="employee">Nhân viên</option>
-                </select>
-              </div>
-              <div className="md:w-48">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">Tất cả trạng thái</option>
-                  <option value="active">Hoạt động</option>
-                  <option value="inactive">Không hoạt động</option>
-                </select>
-              </div>
+            <div>
+              <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                Quản lý người dùng
+              </CardTitle>
+              <p className="text-gray-600 mt-1">
+                Quản lý thông tin và quyền hạn của người dùng trong hệ thống
+              </p>
             </div>
-          </CardContent>
-          <CardActions>
-            <Button onClick={fetchUsers} variant="outline" size="sm">
-              Làm mới
-            </Button>
-          </CardActions>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
+      {/* Bộ lọc và tìm kiếm */}
+      <Card>
+        <CardTitle level="h2" className="text-lg mb-4">Bộ lọc và tìm kiếm</CardTitle>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="md:w-48">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">Tất cả vai trò</option>
+                <option value="admin">Quản trị viên</option>
+                <option value="employee">Nhân viên</option>
+              </select>
+            </div>
+            <div className="md:w-48">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">Tất cả trạng thái</option>
+                <option value="active">Hoạt động</option>
+                <option value="inactive">Không hoạt động</option>
+              </select>
+            </div>
+          </div>
+        </CardContent>
+        <CardActions>
+          <Button onClick={fetchUsers} variant="outline" size="sm">
+            Làm mới
+          </Button>
+        </CardActions>
+      </Card>
 
-        {/* Thống kê */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-2">{users.length}</div>
-              <div className="text-sm text-gray-600">Tổng người dùng</div>
+      {/* Thống kê */}
+      <div className="stats-section">
+        <div className="mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Thống kê tổng quan</h2>
+              <p className="text-sm text-gray-500 mt-1">Tổng hợp thông tin về người dùng trong hệ thống</p>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Tổng người dùng */}
+          <Card className="stat-card stat-card-primary">
+            <CardContent className="p-2 sm:p-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-blue-600 mb-1">Tổng người dùng</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{users.length}</p>
+                  <p className="text-xs text-gray-500 mt-1">Tất cả người dùng</p>
+                </div>
+                <div className="p-2 sm:p-3 bg-blue-100 rounded-full mt-2 sm:mt-0 self-start">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                  </svg>
+                </div>
+              </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="text-center">
-              <div className="text-3xl font-bold text-green-600 mb-2">{users.filter(u => u.role === 'admin').length}</div>
-              <div className="text-sm text-gray-600">Quản trị viên</div>
+
+          {/* Quản trị viên */}
+          <Card className="stat-card stat-card-success">
+            <CardContent className="p-2 sm:p-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-green-600 mb-1">Quản trị viên</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{users.filter(u => u.role === 'admin').length}</p>
+                  <p className="text-xs text-gray-500 mt-1">Người quản trị</p>
+                </div>
+                <div className="p-2 sm:p-3 bg-green-100 rounded-full mt-2 sm:mt-0 self-start">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+              </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="text-center">
-              <div className="text-3xl font-bold text-purple-600 mb-2">{users.filter(u => u.role === 'employee').length}</div>
-              <div className="text-sm text-gray-600">Nhân viên</div>
+
+          {/* Nhân viên */}
+          <Card className="stat-card stat-card-info">
+            <CardContent className="p-2 sm:p-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-indigo-600 mb-1">Nhân viên</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{users.filter(u => u.role === 'employee').length}</p>
+                  <p className="text-xs text-gray-500 mt-1">Người dùng thường</p>
+                </div>
+                <div className="p-2 sm:p-3 bg-indigo-100 rounded-full mt-2 sm:mt-0 self-start">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+              </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="text-center">
-              <div className="text-3xl font-bold text-orange-600 mb-2">{users.filter(u => u.status === 'active').length}</div>
-              <div className="text-sm text-gray-600">Đang hoạt động</div>
+
+          {/* Đang hoạt động */}
+          <Card className="stat-card stat-card-warning">
+            <CardContent className="p-2 sm:p-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-orange-600 mb-1">Đang hoạt động</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{users.filter(u => u.status === 'active').length}</p>
+                  <p className="text-xs text-gray-500 mt-1">Người dùng hoạt động</p>
+                </div>
+                <div className="p-2 sm:p-3 bg-orange-100 rounded-full mt-2 sm:mt-0 self-start">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Cài đặt hiển thị cột */}
-        <Card>
-          <div className="flex justify-between items-center mb-4">
-            <CardTitle level="h2" className="text-lg">Cài đặt hiển thị cột</CardTitle>
-            <CardActions>
-              <Button onClick={showAllColumns} variant="outline" size="sm">
-                Hiện tất cả
-              </Button>
-            </CardActions>
-          </div>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {columnDefinitions.map((column) => (
-                <label key={column.key} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={visibleColumns[column.key]}
-                    onChange={() => toggleColumn(column.key)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">{column.label}</span>
-                </label>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Bảng dữ liệu */}
-        <Card>
-          <CardTitle level="h2" className="text-lg mb-4">
-            Danh sách người dùng ({sortedUsers.length})
-          </CardTitle>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    {columnDefinitions
-                      .filter(column => visibleColumns[column.key])
-                      .map((column) => (
-                        <th key={column.key} className="text-left py-3 px-4 font-medium text-gray-700">
-                          {column.label}
-                        </th>
-                      ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan={columnDefinitions.filter(col => visibleColumns[col.key]).length} className="text-center py-8 text-gray-500">
-                        Không tìm thấy người dùng nào
-                      </td>
-                    </tr>
-                  ) : (
-                    sortedUsers.map((user, index) => (
-                      <tr key={user.userID} className="border-b border-gray-100 hover:bg-gray-50">
-                        {columnDefinitions
-                          .filter(column => visibleColumns[column.key])
-                          .map((column) => {
-                            // Render cell content based on column type
-                            switch (column.key) {
-                              case 'stt':
-                                return (
-                                  <td key={column.key} className="py-3 px-4 text-gray-600">
-                                    <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">{index + 1}</span>
-                                  </td>
-                                );
-                              case 'id':
-                                return <td key={column.key} className="py-3 px-4 text-gray-700">{user.userID}</td>;
-                              case 'fullName':
-                                return <td key={column.key} className="py-3 px-4 font-medium text-gray-900">{user.fullName}</td>;
-                              case 'email':
-                                return <td key={column.key} className="py-3 px-4 text-gray-700">{user.email}</td>;
-                              case 'phone':
-                                return <td key={column.key} className="py-3 px-4 text-gray-700">{user.phone || '--'}</td>;
-                              case 'dateOfBirth':
-                                return <td key={column.key} className="py-3 px-4 text-gray-700">{formatDate(user.dateOfBirth)}</td>;
-                              case 'gender':
-                                return (
-                                  <td key={column.key} className="py-3 px-4">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      user.gender === 'female' ? 'bg-pink-100 text-pink-800' :
-                                      user.gender === 'male' ? 'bg-blue-100 text-blue-800' :
-                                      'bg-gray-100 text-gray-800'
-                                    }`}>
-                                      {formatGender(user.gender)}
-                                    </span>
-                                  </td>
-                                );
-                              case 'address':
-                                return <td key={column.key} className="py-3 px-4 text-gray-700">{user.address || '--'}</td>;
-                              case 'position':
-                                return <td key={column.key} className="py-3 px-4 text-gray-700">{user.position || '--'}</td>;
-                              case 'role':
-                                return (
-                                  <td key={column.key} className="py-3 px-4">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      user.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                                    }`}>
-                                      {formatRole(user.role)}
-                                    </span>
-                                  </td>
-                                );
-                              case 'status':
-                                return (
-                                  <td key={column.key} className="py-3 px-4">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                    }`}>
-                                      {formatStatus(user.status)}
-                                    </span>
-                                  </td>
-                                );
-                              case 'created_at':
-                                return <td key={column.key} className="py-3 px-4 text-gray-700">{formatDate(user.created_at)}</td>;
-                              default:
-                                return null;
-                            }
-                          })}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
       </div>
-    </AdminLayout>
+
+      {/* Cài đặt hiển thị cột */}
+      <Card>
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </div>
+            <div>
+              <CardTitle level="h2" className="text-lg font-semibold text-gray-900">Cài đặt hiển thị cột</CardTitle>
+              <p className="text-sm text-gray-500 mt-1">Chọn các cột bạn muốn hiển thị trong bảng</p>
+            </div>
+          </div>
+          <Button onClick={showAllColumns} variant="outline" size="sm" className="flex items-center space-x-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Hiện tất cả</span>
+          </Button>
+        </div>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {columnDefinitions.map((column) => (
+              <div key={column.key} className="column-toggle-item">
+                <label className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns[column.key]}
+                      onChange={() => toggleColumn(column.key)}
+                      className="w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 focus:ring-2 transition-all duration-200"
+                    />
+                    {visibleColumns[column.key] && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-900 group-hover:text-indigo-700 transition-colors duration-200">
+                      {column.label}
+                    </span>
+                  </div>
+                  <div className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                    visibleColumns[column.key] ? 'bg-green-400' : 'bg-gray-300'
+                  }`}></div>
+                </label>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bảng dữ liệu */}
+      <Card>
+        <CardTitle level="h2" className="text-lg mb-4">
+          Danh sách người dùng ({sortedUsers.length})
+        </CardTitle>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  {columnDefinitions
+                    .filter(column => visibleColumns[column.key])
+                    .map((column) => (
+                      <th key={column.key} className="text-left py-3 px-4 font-medium text-gray-700">
+                        {column.label}
+                      </th>
+                    ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sortedUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={columnDefinitions.filter(col => visibleColumns[col.key]).length} className="text-center py-8 text-gray-500">
+                      Không tìm thấy người dùng nào
+                    </td>
+                  </tr>
+                ) : (
+                  getPaginatedData().map((user, index) => (
+                    <tr key={user.userID} className="border-b border-gray-100 hover:bg-gray-50">
+                      {columnDefinitions
+                        .filter(column => visibleColumns[column.key])
+                        .map((column) => {
+                          // Render cell content based on column type
+                          switch (column.key) {
+                            case 'stt':
+                              return (
+                                <td key={column.key} className="py-3 px-4 text-gray-600">
+                                  <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">{(currentPage - 1) * itemsPerPage + index + 1}</span>
+                                </td>
+                              );
+                            case 'id':
+                              return <td key={column.key} className="py-3 px-4 text-gray-700">{user.userID}</td>;
+                            case 'fullName':
+                              return <td key={column.key} className="py-3 px-4 font-medium text-gray-900">{user.fullName}</td>;
+                            case 'email':
+                              return <td key={column.key} className="py-3 px-4 text-gray-700">{user.email}</td>;
+                            case 'phone':
+                              return <td key={column.key} className="py-3 px-4 text-gray-700">{user.phone || '--'}</td>;
+                            case 'dateOfBirth':
+                              return <td key={column.key} className="py-3 px-4 text-gray-700">{formatDate(user.dateOfBirth)}</td>;
+                            case 'gender':
+                              return (
+                                <td key={column.key} className="py-3 px-4">
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    user.gender === 'female' ? 'bg-pink-100 text-pink-800' :
+                                    user.gender === 'male' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {formatGender(user.gender)}
+                                  </span>
+                                </td>
+                              );
+                            case 'address':
+                              return <td key={column.key} className="py-3 px-4 text-gray-700">{user.address || '--'}</td>;
+                            case 'position':
+                              return <td key={column.key} className="py-3 px-4 text-gray-700">{user.position || '--'}</td>;
+                            case 'role':
+                              return (
+                                <td key={column.key} className="py-3 px-4">
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    user.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {formatRole(user.role)}
+                                  </span>
+                                </td>
+                              );
+                            case 'status':
+                              return (
+                                <td key={column.key} className="py-3 px-4">
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {formatStatus(user.status)}
+                                  </span>
+                                </td>
+                              );
+                            case 'created_at':
+                              return <td key={column.key} className="py-3 px-4 text-gray-700">{formatDate(user.created_at)}</td>;
+                            default:
+                              return null;
+                          }
+                        })}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Phân trang */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        itemsPerPage={itemsPerPage}
+        onItemsPerPageChange={handleItemsPerPageChange}
+        totalItems={sortedUsers.length}
+        itemsPerPageOptions={[5, 10, 20, 50]}
+      />
+    </div>
   );
 };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import StandardTable from '../../../components/StandardTable';
 import Card, { CardTitle, CardContent, CardActions } from '../../../components/Card';
 import Button from '../../../components/Button';
+import Pagination from '../../../components/Pagination';
 import { toast } from 'react-toastify';
 import { FaUserTie, FaPlus, FaEdit, FaTrash, FaExclamationTriangle, FaEye } from 'react-icons/fa';
 import './Positions.css';
@@ -18,6 +19,10 @@ const Positions = () => {
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // State cho việc bật/tắt cột
   const [visibleColumns, setVisibleColumns] = useState({
@@ -322,6 +327,27 @@ const Positions = () => {
     
     return matchesStatus && matchesSearch;
   });
+
+  // Xử lý thay đổi trang
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Xử lý thay đổi số dòng hiển thị
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset về trang đầu
+  };
+
+  // Tính toán dữ liệu hiển thị cho trang hiện tại
+  const getPaginatedData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredPositions.slice(startIndex, endIndex);
+  };
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(filteredPositions.length / itemsPerPage);
 
   // Thống kê
   const totalPositions = positions.length;
@@ -653,24 +679,55 @@ const Positions = () => {
 
         {/* Cài đặt hiển thị cột */}
         <Card>
-          <div className="flex justify-between items-center mb-4">
-            <CardTitle level="h2" className="text-lg">Cài đặt hiển thị cột</CardTitle>
-            <Button onClick={showAllColumns} variant="outline" size="sm">
-              Hiện tất cả
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+              </div>
+              <div>
+                <CardTitle level="h2" className="text-lg font-semibold text-gray-900">Cài đặt hiển thị cột</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Chọn các cột bạn muốn hiển thị trong bảng</p>
+              </div>
+            </div>
+            <Button onClick={showAllColumns} variant="outline" size="sm" className="flex items-center space-x-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Hiện tất cả</span>
             </Button>
           </div>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {columnDefinitions.map((column) => (
-                <label key={column.key} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={visibleColumns[column.key]}
-                    onChange={() => toggleColumn(column.key)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">{column.label}</span>
-                </label>
+                <div key={column.key} className="column-toggle-item">
+                  <label className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns[column.key]}
+                        onChange={() => toggleColumn(column.key)}
+                        className="w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 focus:ring-2 transition-all duration-200"
+                      />
+                      {visibleColumns[column.key] && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-900 group-hover:text-indigo-700 transition-colors duration-200">
+                        {column.label}
+                      </span>
+                    </div>
+                    <div className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                      visibleColumns[column.key] ? 'bg-green-400' : 'bg-gray-300'
+                    }`}></div>
+                  </label>
+                </div>
               ))}
             </div>
           </CardContent>
@@ -678,59 +735,125 @@ const Positions = () => {
 
         {/* Thống kê */}
         <div className="stats-section">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card>
-              <CardContent className="text-center">
-                <div className="stat-number">{totalPositions}</div>
-                <div className="stat-label">Tổng chức vụ</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="text-center">
-                <div className="stat-number">{activePositions}</div>
-                <div className="stat-label">Đang sử dụng</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="text-center">
-                <div className="stat-number">{inactivePositions}</div>
-                <div className="stat-label">Tạm ngưng</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="text-center">
-                <div className="stat-number">{totalEmployees}</div>
-                <div className="stat-label">Tổng nhân viên dự kiến</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="text-center">
-                <div className="stat-number">{totalActualEmployees}</div>
-                <div className="stat-label">Tổng nhân viên thực tế</div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Danh sách chức vụ */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Danh sách chức vụ</h3>
-              <p className="text-sm text-gray-600 mt-1">Tổng cộng: {filteredPositions.length} chức vụ</p>
+          <div className="mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-emerald-100 rounded-lg">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Thống kê tổng quan</h2>
+                <p className="text-sm text-gray-500 mt-1">Tổng hợp thông tin về chức vụ và nhân viên</p>
+              </div>
             </div>
-            <Button onClick={handleAddPosition} variant="primary" icon={<FaPlus />}>
-              Thêm chức vụ
-            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {/* Tổng chức vụ */}
+            <Card className="stat-card stat-card-primary">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-blue-600 mb-1">Tổng chức vụ</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalPositions}</p>
+                    <p className="text-xs text-gray-500 mt-1">Tất cả các chức vụ</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-blue-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Đang sử dụng */}
+            <Card className="stat-card stat-card-success">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-green-600 mb-1">Đang sử dụng</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{activePositions}</p>
+                    <p className="text-xs text-gray-500 mt-1">Chức vụ hoạt động</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-green-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tạm ngưng */}
+            <Card className="stat-card stat-card-warning">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-orange-600 mb-1">Tạm ngưng</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{inactivePositions}</p>
+                    <p className="text-xs text-gray-500 mt-1">Chức vụ tạm dừng</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-orange-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tổng nhân viên dự kiến */}
+            <Card className="stat-card stat-card-info">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-indigo-600 mb-1">Nhân viên dự kiến</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalEmployees}</p>
+                    <p className="text-xs text-gray-500 mt-1">Số lượng dự kiến</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-indigo-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tổng nhân viên thực tế */}
+            <Card className="stat-card stat-card-purple">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-purple-600 mb-1">Nhân viên thực tế</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalActualEmployees}</p>
+                    <p className="text-xs text-gray-500 mt-1">Số lượng hiện tại</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-purple-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
+        {/* Bảng chức vụ với header tích hợp */}
         <StandardTable
           title="Danh sách chức vụ"
           subtitle={`Tổng cộng: ${filteredPositions.length} chức vụ`}
           icon={FaUserTie}
           columns={tableColumns}
-          data={filteredPositions}
+          data={getPaginatedData()}
+          actionButton={{
+            text: "Thêm chức vụ",
+            icon: <FaPlus />,
+            onClick: handleAddPosition,
+            variant: "primary"
+          }}
           emptyState={
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
@@ -740,6 +863,17 @@ const Positions = () => {
               <p className="text-gray-600">Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
             </div>
           }
+        />
+
+        {/* Phân trang */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={handleItemsPerPageChange}
+          totalItems={filteredPositions.length}
+          itemsPerPageOptions={[5, 10, 20, 50]}
         />
 
         {/* Modal thêm chức vụ */}

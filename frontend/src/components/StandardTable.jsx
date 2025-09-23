@@ -11,6 +11,7 @@ import { IconRefresh, IconEye, IconEyeOff } from '@tabler/icons-react';
  * @param {Array} props.data - Dữ liệu để hiển thị
  * @param {Function} props.onRefresh - Hàm xử lý khi refresh (optional)
  * @param {Function} props.onColumnToggle - Hàm xử lý khi toggle cột (optional)
+ * @param {Object} props.actionButton - Nút hành động với {text, icon, onClick, variant} (optional)
  * @param {React.ReactNode} props.emptyState - Component hiển thị khi không có dữ liệu (optional)
  * @param {string} props.className - CSS class bổ sung (optional)
  */
@@ -22,6 +23,7 @@ const StandardTable = ({
   data = [],
   onRefresh,
   onColumnToggle,
+  actionButton,
   emptyState,
   className = ''
 }) => {
@@ -53,15 +55,30 @@ const StandardTable = ({
               <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
             )}
           </div>
-          {onRefresh && (
-            <button
-              onClick={onRefresh}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
-            >
-              <IconRefresh className="mr-2" size={16} />
-              Làm mới
-            </button>
-          )}
+          <div className="flex items-center space-x-3">
+            {actionButton && (
+              <button
+                onClick={actionButton.onClick}
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
+                  actionButton.variant === 'primary' 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {actionButton.icon && <span className="mr-2">{actionButton.icon}</span>}
+                {actionButton.text}
+              </button>
+            )}
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+              >
+                <IconRefresh className="mr-2" size={16} />
+                Làm mới
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

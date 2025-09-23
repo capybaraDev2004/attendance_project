@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Button from '../../../components/Button';
 import Card, { CardTitle, CardContent, CardActions } from '../../../components/Card';
+import Pagination from '../../../components/Pagination';
 import { FaHistory, FaCalendarAlt, FaSearch, FaFileExcel } from 'react-icons/fa';
 
 // Lịch sử ra/vào với bộ lọc theo ngày, user, thiết bị
@@ -9,6 +10,10 @@ const AttendanceHistory = () => {
   const [devices, setDevices] = useState([]);
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // refs cho input date ẩn (dùng để mở calendar native)
   const startHiddenRef = useRef(null);
@@ -131,7 +136,31 @@ const AttendanceHistory = () => {
   const handleFilter = () => {
     // Có nút "Lọc dữ liệu" để người dùng chủ động áp dụng
     fetchAttendanceHistory();
+    setCurrentPage(1); // Reset về trang đầu khi lọc
   };
+
+  // Xử lý thay đổi trang
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Xử lý thay đổi số dòng hiển thị
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset về trang đầu
+  };
+
+  // Tính toán dữ liệu hiển thị cho trang hiện tại
+  const getPaginatedData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return attendanceData.slice(startIndex, endIndex);
+  };
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(attendanceData.length / itemsPerPage);
+
+  // Badge trạng thái theo check-in/out
 
   // Badge trạng thái theo check-in/out
   const renderStatusBadge = (checkIn, checkOut) => {
@@ -382,7 +411,7 @@ const AttendanceHistory = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {attendanceData.map((record) => (
+                    {getPaginatedData().map((record, index) => (
                       <tr key={record.attendance_id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.attendance_id}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.fullName}</td>
@@ -408,6 +437,17 @@ const AttendanceHistory = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Phân trang */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={handleItemsPerPageChange}
+          totalItems={attendanceData.length}
+          itemsPerPageOptions={[5, 10, 20, 50]}
+        />
     </div>
   );
 };

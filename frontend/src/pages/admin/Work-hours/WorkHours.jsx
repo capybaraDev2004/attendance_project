@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import StandardTable from '../../../components/StandardTable';
 import Button from '../../../components/Button';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
+import Pagination from '../../../components/Pagination';
 import { FaClock, FaExclamationTriangle } from 'react-icons/fa';
 
 // ===== Cấu hình & Helpers đặt ngoài component để ổn định tham chiếu (fix ESLint deps) =====
@@ -141,6 +142,12 @@ const WorkHours = () => {
   const [selectedWorkHour, setSelectedWorkHour] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Form state cho sửa giờ làm việc
 
   // Form state cho sửa giờ làm việc
   const [formData, setFormData] = useState({
@@ -286,6 +293,27 @@ const WorkHours = () => {
                          (workHour.department || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
+
+  // Xử lý thay đổi trang
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Xử lý thay đổi số dòng hiển thị
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset về trang đầu
+  };
+
+  // Tính toán dữ liệu hiển thị cho trang hiện tại
+  const getPaginatedData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredWorkHours.slice(startIndex, endIndex);
+  };
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(filteredWorkHours.length / itemsPerPage);
 
   // Thống kê
   const totalRecords = workHours.length;
@@ -558,62 +586,138 @@ const WorkHours = () => {
         </Card>
 
         {/* Thống kê */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-          <Card>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-2">{totalRecords}</div>
-              <div className="text-sm text-gray-600">Tổng bản ghi</div>
+        <div className="stats-section">
+          <div className="mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-emerald-100 rounded-lg">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Thống kê tổng quan</h2>
+                <p className="text-sm text-gray-500 mt-1">Tổng hợp thông tin về giờ làm việc</p>
+              </div>
             </div>
-          </Card>
-          <Card>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600 mb-2">{completedRecords}</div>
-              <div className="text-sm text-gray-600">Hoàn thành</div>
-            </div>
-          </Card>
-          <Card>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-yellow-600 mb-2">{lateRecords}</div>
-              <div className="text-sm text-gray-600">Đi muộn</div>
-            </div>
-          </Card>
-          <Card>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600 mb-2">{overtimeRecords}</div>
-              <div className="text-sm text-gray-600">Làm thêm giờ</div>
-            </div>
-          </Card>
-          <Card>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600 mb-2">{totalWorkHours.toFixed(2)}</div>
-              <div className="text-sm text-gray-600">Tổng giờ làm</div>
-            </div>
-          </Card>
-          <Card>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-red-600 mb-2">{totalOvertime.toFixed(2)}</div>
-              <div className="text-sm text-gray-600">Tổng giờ thêm</div>
-            </div>
-          </Card>
-        </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {/* Tổng bản ghi */}
+            <Card className="stat-card stat-card-primary p-2 sm:p-3">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-blue-600 mb-1">Tổng bản ghi</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalRecords}</p>
+                    <p className="text-xs text-gray-500 mt-1">Tất cả bản ghi</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-blue-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Danh sách giờ làm việc</h3>
-              <p className="text-sm text-gray-600 mt-1">Tổng cộng: {filteredWorkHours.length} bản ghi</p>
-            </div>
+            {/* Hoàn thành */}
+            <Card className="stat-card stat-card-success p-2 sm:p-3">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-green-600 mb-1">Hoàn thành</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{completedRecords}</p>
+                    <p className="text-xs text-gray-500 mt-1">Đủ giờ làm</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-green-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Đi muộn */}
+            <Card className="stat-card stat-card-warning p-2 sm:p-3">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-yellow-600 mb-1">Đi muộn</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{lateRecords}</p>
+                    <p className="text-xs text-gray-500 mt-1">Đến muộn</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-yellow-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Làm thêm giờ */}
+            <Card className="stat-card stat-card-info p-2 sm:p-3">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-orange-600 mb-1">Làm thêm giờ</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{overtimeRecords}</p>
+                    <p className="text-xs text-gray-500 mt-1">Vượt giờ chuẩn</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-orange-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tổng giờ làm */}
+            <Card className="stat-card stat-card-purple p-2 sm:p-3">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-purple-600 mb-1">Tổng giờ làm</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalWorkHours.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mt-1">Giờ làm việc</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-purple-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tổng giờ thêm */}
+            <Card className="stat-card stat-card-red p-2 sm:p-3">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-red-600 mb-1">Tổng giờ thêm</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalOvertime.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mt-1">Giờ làm thêm</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-red-100 rounded-full mt-2 sm:mt-0 self-start">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        {/* Bảng giờ làm việc */}
+        {/* Bảng giờ làm việc với header tích hợp */}
         <StandardTable
           title="Danh sách giờ làm việc"
           subtitle={`Tổng cộng: ${filteredWorkHours.length} bản ghi`}
           icon={FaClock}
           columns={tableColumns}
-          data={filteredWorkHours}
+          data={getPaginatedData()}
           emptyState={
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
@@ -623,6 +727,17 @@ const WorkHours = () => {
               <p className="text-gray-600">Chưa có bản ghi giờ làm việc nào</p>
             </div>
           }
+        />
+
+        {/* Phân trang */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={handleItemsPerPageChange}
+          totalItems={filteredWorkHours.length}
+          itemsPerPageOptions={[5, 10, 20, 50]}
         />
 
         {/* Modal sửa giờ làm việc (có thể mở từ nơi khác nếu cần) */}

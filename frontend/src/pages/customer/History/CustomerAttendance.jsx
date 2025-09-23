@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import StandardTable from '../../../components/StandardTable';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
+import Pagination from '../../../components/Pagination';
 import { IconHistory, IconSearch, IconFileExport, IconCalendar, IconAlertCircle } from '@tabler/icons-react';
 
 // Component lịch sử chấm công cho customer - chỉ hiển thị lịch sử của user hiện tại
@@ -10,6 +11,10 @@ const CustomerAttendance = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+
+  // Phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // State cho date picker
   const [selectedYear] = useState(new Date().getFullYear());
@@ -167,7 +172,29 @@ const CustomerAttendance = () => {
 
   const handleFilter = useCallback(() => {
     fetchAttendanceHistory();
+    setCurrentPage(1); // Reset về trang đầu khi lọc
   }, [fetchAttendanceHistory]);
+
+  // Xử lý thay đổi trang
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Xử lý thay đổi số dòng hiển thị
+  const handleItemsPerPageChange = useCallback((newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset về trang đầu
+  }, []);
+
+  // Tính toán dữ liệu hiển thị cho trang hiện tại
+  const getPaginatedData = useCallback(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return attendanceData.slice(startIndex, endIndex);
+  }, [attendanceData, currentPage, itemsPerPage]);
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(attendanceData.length / itemsPerPage);
 
   // Badge trạng thái theo check-in/out
   const renderStatusBadge = useCallback((checkIn, checkOut) => {
@@ -445,7 +472,7 @@ const CustomerAttendance = () => {
         subtitle={`Tổng cộng: ${attendanceData.length} bản ghi`}
         icon={IconHistory}
         columns={tableColumns}
-        data={attendanceData}
+        data={getPaginatedData()}
         onRefresh={fetchAttendanceHistory}
         emptyState={
           <div className="text-center py-12">
@@ -456,6 +483,17 @@ const CustomerAttendance = () => {
             <p className="text-gray-600">Vui lòng chọn khoảng thời gian và nhấn "Lọc dữ liệu" để xem kết quả</p>
           </div>
         }
+      />
+
+      {/* Phân trang */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        itemsPerPage={itemsPerPage}
+        onItemsPerPageChange={handleItemsPerPageChange}
+        totalItems={attendanceData.length}
+        itemsPerPageOptions={[5, 10, 20, 50]}
       />
 
       {/* Date Pickers */}

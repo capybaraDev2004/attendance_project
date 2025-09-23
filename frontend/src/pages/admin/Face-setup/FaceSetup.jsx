@@ -1,11 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
+import Pagination from '../../../components/Pagination';
 import { FaUserFriends } from 'react-icons/fa';
 
 const FaceSetup = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [faceEnrollments, setFaceEnrollments] = useState({}); // Dữ liệu từ MongoDB
+
+  // Phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Trạng thái modal cài đặt
   const [installModalOpen, setInstallModalOpen] = useState(false);
@@ -399,6 +404,27 @@ const FaceSetup = () => {
   const getUserFaceEnrollment = (user) => {
     return faceEnrollments[user.userID] || null;
   };
+
+  // Xử lý thay đổi trang
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Xử lý thay đổi số dòng hiển thị
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset về trang đầu
+  };
+
+  // Tính toán dữ liệu hiển thị cho trang hiện tại
+  const getPaginatedData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return users.slice(startIndex, endIndex);
+  };
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(users.length / itemsPerPage);
 
   const openInstallModal = (user) => {
     setSelectedUserForInstall(user);
@@ -1080,14 +1106,14 @@ const FaceSetup = () => {
                       </td>
                     </tr>
                   ) : (
-                    users.map((user, index) => {
+                    getPaginatedData().map((user, index) => {
                       const installed = isUserFaceInstalled(user);
                       const enrollment = getUserFaceEnrollment(user);
                       return (
                         <tr key={user.userID} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {index + 1}
+                              {(currentPage - 1) * itemsPerPage + index + 1}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.userID}</td>
@@ -1147,6 +1173,17 @@ const FaceSetup = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Phân trang */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        itemsPerPage={itemsPerPage}
+        onItemsPerPageChange={handleItemsPerPageChange}
+        totalItems={users.length}
+        itemsPerPageOptions={[5, 10, 20, 50]}
+      />
 
       {/* Modal cài đặt nhận diện khuôn mặt */}
       {installModalOpen && (

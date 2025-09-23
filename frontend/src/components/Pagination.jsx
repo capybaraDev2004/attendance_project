@@ -1,34 +1,50 @@
 import React from "react";
 
 /**
- * Component phân trang với đầy đủ chức năng
+ * Component phân trang nâng cao với tính năng lựa chọn số dòng hiển thị
  * @param {Object} props - Các thuộc tính của component
  * @param {number} props.currentPage - Trang hiện tại
  * @param {number} props.totalPages - Tổng số trang
  * @param {Function} props.onPageChange - Hàm xử lý khi thay đổi trang
  * @param {number} props.maxVisiblePages - Số trang tối đa hiển thị (mặc định: 5)
+ * @param {number} props.itemsPerPage - Số dòng hiển thị trên mỗi trang
+ * @param {Function} props.onItemsPerPageChange - Hàm xử lý khi thay đổi số dòng hiển thị
+ * @param {number} props.totalItems - Tổng số dòng dữ liệu
+ * @param {Array} props.itemsPerPageOptions - Các tùy chọn số dòng hiển thị (mặc định: [5, 10, 20, 50])
  */
 export default function Pagination({ 
   currentPage = 1, 
   totalPages = 1, 
   onPageChange, 
-  maxVisiblePages = 5 
+  maxVisiblePages = 5,
+  itemsPerPage = 10,
+  onItemsPerPageChange,
+  totalItems = 0,
+  itemsPerPageOptions = [5, 10, 20, 50]
 }) {
-  // Tính toán các trang sẽ hiển thị
+  // Tính toán các trang sẽ hiển thị (tối đa 5 trang)
   const getVisiblePages = () => {
     const pages = [];
-    const halfVisible = Math.floor(maxVisiblePages / 2);
+    const maxPages = 5; // Giới hạn tối đa 5 trang
     
-    let startPage = Math.max(1, currentPage - halfVisible);
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    // Điều chỉnh startPage nếu endPage gần cuối
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
+    if (totalPages <= maxPages) {
+      // Nếu tổng số trang <= 5, hiển thị tất cả
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Nếu tổng số trang > 5, tính toán để hiển thị 5 trang xung quanh trang hiện tại
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, startPage + maxPages - 1);
+      
+      // Điều chỉnh nếu gần cuối
+      if (endPage - startPage + 1 < maxPages) {
+        startPage = Math.max(1, endPage - maxPages + 1);
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
     }
     
     return pages;
@@ -63,24 +79,47 @@ export default function Pagination({
     }
   };
 
-  // Nếu chỉ có 1 trang thì không hiển thị phân trang
-  if (totalPages <= 1) {
+  // Xử lý khi thay đổi số dòng hiển thị
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    if (onItemsPerPageChange && newItemsPerPage !== itemsPerPage) {
+      onItemsPerPageChange(newItemsPerPage);
+    }
+  };
+
+  // Tính toán thông tin hiển thị
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  // Nếu không có dữ liệu thì không hiển thị phân trang
+  if (totalItems === 0) {
     return null;
   }
 
   return (
-    <div className="bg-white py-10 text-center dark:bg-dark">
-      <div className="inline-flex gap-1 rounded-full border border-stroke p-3 dark:border-white/10">
-        <ul className="flex items-center gap-1">
+    <div className="bg-white rounded-lg shadow-sm border p-4 dark:bg-gray-800 dark:border-gray-700">
+      {/* Thông tin và phân trang trong cùng 1 dòng */}
+      <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
+        {/* Thông tin hiển thị */}
+        <div className="text-sm text-gray-600 dark:text-gray-300">
+          Hiển thị <span className="font-semibold text-gray-900 dark:text-white">{startItem}</span> đến <span className="font-semibold text-gray-900 dark:text-white">{endItem}</span> 
+          trong tổng số <span className="font-semibold text-gray-900 dark:text-white">{totalItems}</span> dòng
+        </div>
+        
+        {/* Phân trang và lựa chọn số dòng */}
+        <div className="flex items-center gap-15">
+          {/* Phân trang */}
+          {totalPages > 1 && (
+            <div className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-700">
+            <ul className="flex items-center gap-1">
           {/* Nút Previous */}
           <li>
             <button 
               onClick={handlePrevious}
               disabled={!canGoPrevious}
-              className={`flex h-10 min-w-10 items-center justify-center rounded-full px-2 transition-colors ${
+              className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200 ${
                 canGoPrevious 
-                  ? 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-white/5 cursor-pointer' 
-                  : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                  ? 'text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white cursor-pointer' 
+                  : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
               }`}
               title="Trang trước"
             >
@@ -99,34 +138,15 @@ export default function Pagination({
             </button>
           </li>
 
-          {/* Hiển thị trang đầu nếu cần */}
-          {visiblePages[0] > 1 && (
-            <>
-              <li>
-                <button 
-                  onClick={() => handlePageClick(1)}
-                  className="flex h-10 min-w-10 items-center justify-center rounded-full px-2 text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-white/5 transition-colors"
-                >
-                  1
-                </button>
-              </li>
-              {visiblePages[0] > 2 && (
-                <li className="flex h-10 min-w-10 items-center justify-center">
-                  <span className="text-gray-400 dark:text-gray-600">...</span>
-                </li>
-              )}
-            </>
-          )}
-
-          {/* Các trang hiển thị */}
+          {/* Các trang hiển thị (tối đa 5 trang) */}
           {visiblePages.map((page) => (
             <li key={page}>
               <button 
                 onClick={() => handlePageClick(page)}
-                className={`flex h-10 min-w-10 items-center justify-center rounded-full px-2 transition-colors ${
+                className={`flex h-9 w-9 items-center justify-center rounded-lg font-medium transition-all duration-200 ${
                   page === currentPage
-                    ? 'bg-primary text-white'
-                    : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-white/5'
+                    ? 'bg-green-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white'
                 }`}
               >
                 {page}
@@ -134,34 +154,15 @@ export default function Pagination({
             </li>
           ))}
 
-          {/* Hiển thị trang cuối nếu cần */}
-          {visiblePages[visiblePages.length - 1] < totalPages && (
-            <>
-              {visiblePages[visiblePages.length - 1] < totalPages - 1 && (
-                <li className="flex h-10 min-w-10 items-center justify-center">
-                  <span className="text-gray-400 dark:text-gray-600">...</span>
-                </li>
-              )}
-              <li>
-                <button 
-                  onClick={() => handlePageClick(totalPages)}
-                  className="flex h-10 min-w-10 items-center justify-center rounded-full px-2 text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-white/5 transition-colors"
-                >
-                  {totalPages}
-                </button>
-              </li>
-            </>
-          )}
-
           {/* Nút Next */}
           <li>
             <button 
               onClick={handleNext}
               disabled={!canGoNext}
-              className={`flex h-10 min-w-10 items-center justify-center rounded-full px-2 transition-colors ${
+              className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200 ${
                 canGoNext 
-                  ? 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-white/5 cursor-pointer' 
-                  : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                  ? 'text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white cursor-pointer' 
+                  : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
               }`}
               title="Trang sau"
             >
@@ -180,6 +181,24 @@ export default function Pagination({
             </button>
           </li>
         </ul>
+      </div>
+          )}
+          
+          {/* Lựa chọn số dòng hiển thị */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 dark:text-gray-300">Hiển thị:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => handleItemsPerPageChange(parseInt(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:border-gray-500"
+            >
+              {itemsPerPageOptions.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <span className="text-sm text-gray-600 dark:text-gray-300">dòng/trang</span>
+          </div>
+        </div>
       </div>
     </div>
   );

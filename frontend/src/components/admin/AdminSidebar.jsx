@@ -172,7 +172,7 @@ export default function AdminSidebar({
 
           {/* Content Separator */}
           <div className="sidebar-separator">
-            <span className="separator-text">Content Separator</span>
+            <span className="separator-text"></span>
           </div>
 
           {/* Secondary Menu Group */}

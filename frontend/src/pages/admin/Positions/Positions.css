@@ -274,6 +274,76 @@
   100% { transform: rotate(360deg); }
 }
 
+/* ===== STATS SECTION STYLES ===== */
+.stats-section {
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  transition: all 0.3s ease;
+  border: 1px solid #e5e7eb;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover::before {
+  transform: scaleX(1);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.stat-card-primary::before {
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+}
+
+.stat-card-success::before {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.stat-card-warning::before {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.stat-card-info::before {
+  background: linear-gradient(90deg, #6366f1, #4f46e5);
+}
+
+.stat-card-purple::before {
+  background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+}
+
+/* ===== COLUMN TOGGLE STYLES ===== */
+.column-toggle-item {
+  transition: all 0.2s ease;
+}
+
+.column-toggle-item:hover {
+  transform: translateY(-1px);
+}
+
+.column-toggle-item label {
+  transition: all 0.2s ease;
+}
+
+.column-toggle-item label:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 /* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
   .modal-content {
@@ -305,6 +375,17 @@
   .modal-header h3 {
     font-size: 20px;
   }
+
+  /* Stats responsive */
+  .stats-section .grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Column settings responsive */
+  .column-toggle-item label {
+    padding: 0.75rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -322,4 +403,6 @@
   .form-group textarea {
     padding: 10px 12px;
   }
+
+  /* Stats mobile - already handled by responsive classes */
 }
