@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Máy chủ: 127.0.0.1
--- Thời gian đã tạo: Th9 21, 2025 lúc 10:49 AM
--- Phiên bản máy phục vụ: 10.4.32-MariaDB
--- Phiên bản PHP: 8.2.12
+-- Host: 127.0.0.1
+-- Generation Time: Sep 24, 2025 at 03:54 PM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,13 +18,13 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Cơ sở dữ liệu: `attendance_app`
+-- Database: `attendance_app`
 --
 
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `attendance`
+-- Table structure for table `attendance`
 --
 
 CREATE TABLE `attendance` (
@@ -33,8 +33,6 @@ CREATE TABLE `attendance` (
   `work_date` date NOT NULL,
   `check_in` timestamp NOT NULL DEFAULT current_timestamp(),
   `check_out` timestamp NULL DEFAULT NULL,
-  `first_confidence` decimal(5,4) DEFAULT NULL,
-  `last_confidence` decimal(5,4) DEFAULT NULL,
   `device_in_id` int(11) DEFAULT NULL,
   `device_out_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -42,18 +40,38 @@ CREATE TABLE `attendance` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Đang đổ dữ liệu cho bảng `attendance`
+-- Dumping data for table `attendance`
 --
 
-INSERT INTO `attendance` (`attendance_id`, `user_id`, `work_date`, `check_in`, `check_out`, `first_confidence`, `last_confidence`, `device_in_id`, `device_out_id`, `created_at`, `updated_at`) VALUES
-(66, 3, '2025-09-06', '2025-09-06 01:04:58', '2025-09-06 11:07:38', NULL, NULL, 1, 1, '2025-09-06 16:04:58', '2025-09-07 13:21:58'),
-(73, 5, '2025-09-09', '2025-09-09 06:45:14', NULL, NULL, NULL, 1, NULL, '2025-09-09 06:45:14', '2025-09-09 06:45:14'),
-(74, 3, '2025-09-20', '2025-09-20 12:50:34', '2025-09-20 12:50:43', NULL, NULL, 1, 1, '2025-09-20 12:50:34', '2025-09-20 12:50:43');
+INSERT INTO `attendance` (`attendance_id`, `user_id`, `work_date`, `check_in`, `check_out`, `device_in_id`, `device_out_id`, `created_at`, `updated_at`) VALUES
+(66, 3, '2025-09-06', '2025-09-06 01:04:58', '2025-09-06 11:07:38', 1, 1, '2025-09-06 16:04:58', '2025-09-07 13:21:58'),
+(73, 5, '2025-09-09', '2025-09-09 06:45:14', NULL, 1, NULL, '2025-09-09 06:45:14', '2025-09-09 06:45:14'),
+(74, 3, '2025-09-20', '2025-09-20 12:50:34', '2025-09-20 12:50:43', 1, 1, '2025-09-20 12:50:34', '2025-09-20 12:50:43'),
+(77, 3, '2025-09-24', '2025-09-24 13:53:38', '2025-09-24 13:53:47', 1, 1, '2025-09-24 13:53:38', '2025-09-24 13:53:47');
 
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `devices`
+-- Table structure for table `attendance_records`
+--
+
+CREATE TABLE `attendance_records` (
+  `recordID` int(11) NOT NULL,
+  `userID` int(11) NOT NULL,
+  `work_date` date NOT NULL,
+  `total_hours` decimal(5,2) DEFAULT 0.00,
+  `standard_hours` decimal(5,2) DEFAULT 8.00,
+  `overtime_hours` decimal(5,2) DEFAULT 0.00,
+  `work_unit` decimal(4,2) DEFAULT 0.00,
+  `note` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `devices`
 --
 
 CREATE TABLE `devices` (
@@ -67,7 +85,7 @@ CREATE TABLE `devices` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Đang đổ dữ liệu cho bảng `devices`
+-- Dumping data for table `devices`
 --
 
 INSERT INTO `devices` (`device_id`, `device_code`, `device_name`, `location`, `is_active`, `created_at`, `updated_at`) VALUES
@@ -76,7 +94,7 @@ INSERT INTO `devices` (`device_id`, `device_code`, `device_name`, `location`, `i
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `face_data`
+-- Table structure for table `face_data`
 --
 
 CREATE TABLE `face_data` (
@@ -90,7 +108,7 @@ CREATE TABLE `face_data` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Đang đổ dữ liệu cho bảng `face_data`
+-- Dumping data for table `face_data`
 --
 
 INSERT INTO `face_data` (`face_id`, `user_id`, `face_encoding`, `face_image_path`, `created_at`, `updated_at`, `is_active`) VALUES
@@ -99,7 +117,7 @@ INSERT INTO `face_data` (`face_id`, `user_id`, `face_encoding`, `face_image_path
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `face_recognition_logs`
+-- Table structure for table `face_recognition_logs`
 --
 
 CREATE TABLE `face_recognition_logs` (
@@ -115,7 +133,7 @@ CREATE TABLE `face_recognition_logs` (
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `face_recognition_settings`
+-- Table structure for table `face_recognition_settings`
 --
 
 CREATE TABLE `face_recognition_settings` (
@@ -127,7 +145,7 @@ CREATE TABLE `face_recognition_settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Đang đổ dữ liệu cho bảng `face_recognition_settings`
+-- Dumping data for table `face_recognition_settings`
 --
 
 INSERT INTO `face_recognition_settings` (`setting_id`, `setting_name`, `setting_value`, `description`, `updated_at`) VALUES
@@ -139,7 +157,7 @@ INSERT INTO `face_recognition_settings` (`setting_id`, `setting_name`, `setting_
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `positions`
+-- Table structure for table `positions`
 --
 
 CREATE TABLE `positions` (
@@ -158,7 +176,7 @@ CREATE TABLE `positions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Đang đổ dữ liệu cho bảng `positions`
+-- Dumping data for table `positions`
 --
 
 INSERT INTO `positions` (`ID`, `Title`, `Code`, `Description`, `Department`, `Level`, `EmployeeCount`, `SalaryMin`, `SalaryMax`, `Status`, `created_at`, `updated_at`) VALUES
@@ -172,7 +190,7 @@ INSERT INTO `positions` (`ID`, `Title`, `Code`, `Description`, `Department`, `Le
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `shifts`
+-- Table structure for table `shifts`
 --
 
 CREATE TABLE `shifts` (
@@ -188,7 +206,7 @@ CREATE TABLE `shifts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Bảng quản lý ca làm việc';
 
 --
--- Đang đổ dữ liệu cho bảng `shifts`
+-- Dumping data for table `shifts`
 --
 
 INSERT INTO `shifts` (`shift_id`, `shift_name`, `start_time`, `end_time`, `break_duration`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
@@ -197,7 +215,7 @@ INSERT INTO `shifts` (`shift_id`, `shift_name`, `start_time`, `end_time`, `break
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `users`
+-- Table structure for table `users`
 --
 
 CREATE TABLE `users` (
@@ -218,7 +236,7 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Đang đổ dữ liệu cho bảng `users`
+-- Dumping data for table `users`
 --
 
 INSERT INTO `users` (`userID`, `fullName`, `userName`, `password`, `address`, `role`, `email`, `phone`, `dateOfBirth`, `gender`, `position`, `status`, `created_at`, `updated_at`) VALUES
@@ -236,11 +254,11 @@ INSERT INTO `users` (`userID`, `fullName`, `userName`, `password`, `address`, `r
 (12, 'Bùi Thị J', 'buithij', '123456', 'Quảng Ninh', 'employee', 'thij@example.com', '0900000000', '1998-08-08', 'female', 'Lập trình viên Junior', 'active', '2025-08-20 07:05:48', '2025-09-07 12:32:38');
 
 --
--- Chỉ mục cho các bảng đã đổ
+-- Indexes for dumped tables
 --
 
 --
--- Chỉ mục cho bảng `attendance`
+-- Indexes for table `attendance`
 --
 ALTER TABLE `attendance`
   ADD PRIMARY KEY (`attendance_id`),
@@ -251,7 +269,14 @@ ALTER TABLE `attendance`
   ADD KEY `attendance_ibfk_3` (`device_out_id`);
 
 --
--- Chỉ mục cho bảng `devices`
+-- Indexes for table `attendance_records`
+--
+ALTER TABLE `attendance_records`
+  ADD PRIMARY KEY (`recordID`),
+  ADD KEY `fk_attendance_user` (`userID`);
+
+--
+-- Indexes for table `devices`
 --
 ALTER TABLE `devices`
   ADD PRIMARY KEY (`device_id`),
@@ -259,7 +284,7 @@ ALTER TABLE `devices`
   ADD KEY `idx_device_active` (`is_active`);
 
 --
--- Chỉ mục cho bảng `face_data`
+-- Indexes for table `face_data`
 --
 ALTER TABLE `face_data`
   ADD PRIMARY KEY (`face_id`),
@@ -267,7 +292,7 @@ ALTER TABLE `face_data`
   ADD KEY `idx_face_data_active` (`is_active`);
 
 --
--- Chỉ mục cho bảng `face_recognition_logs`
+-- Indexes for table `face_recognition_logs`
 --
 ALTER TABLE `face_recognition_logs`
   ADD PRIMARY KEY (`log_id`),
@@ -275,7 +300,7 @@ ALTER TABLE `face_recognition_logs`
   ADD KEY `idx_recognition_logs_date` (`recognized_at`);
 
 --
--- Chỉ mục cho bảng `face_recognition_settings`
+-- Indexes for table `face_recognition_settings`
 --
 ALTER TABLE `face_recognition_settings`
   ADD PRIMARY KEY (`setting_id`),
@@ -283,13 +308,13 @@ ALTER TABLE `face_recognition_settings`
   ADD KEY `idx_settings_name` (`setting_name`);
 
 --
--- Chỉ mục cho bảng `positions`
+-- Indexes for table `positions`
 --
 ALTER TABLE `positions`
   ADD PRIMARY KEY (`ID`);
 
 --
--- Chỉ mục cho bảng `shifts`
+-- Indexes for table `shifts`
 --
 ALTER TABLE `shifts`
   ADD PRIMARY KEY (`shift_id`),
@@ -298,70 +323,76 @@ ALTER TABLE `shifts`
   ADD KEY `idx_shift_times` (`start_time`,`end_time`);
 
 --
--- Chỉ mục cho bảng `users`
+-- Indexes for table `users`
 --
 ALTER TABLE `users`
   ADD PRIMARY KEY (`userID`),
   ADD UNIQUE KEY `userName` (`userName`);
 
 --
--- AUTO_INCREMENT cho các bảng đã đổ
+-- AUTO_INCREMENT for dumped tables
 --
 
 --
--- AUTO_INCREMENT cho bảng `attendance`
+-- AUTO_INCREMENT for table `attendance`
 --
 ALTER TABLE `attendance`
-  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=75;
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=78;
 
 --
--- AUTO_INCREMENT cho bảng `devices`
+-- AUTO_INCREMENT for table `attendance_records`
+--
+ALTER TABLE `attendance_records`
+  MODIFY `recordID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `devices`
 --
 ALTER TABLE `devices`
   MODIFY `device_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT cho bảng `face_data`
+-- AUTO_INCREMENT for table `face_data`
 --
 ALTER TABLE `face_data`
   MODIFY `face_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT cho bảng `face_recognition_logs`
+-- AUTO_INCREMENT for table `face_recognition_logs`
 --
 ALTER TABLE `face_recognition_logs`
   MODIFY `log_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT cho bảng `face_recognition_settings`
+-- AUTO_INCREMENT for table `face_recognition_settings`
 --
 ALTER TABLE `face_recognition_settings`
   MODIFY `setting_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- AUTO_INCREMENT cho bảng `positions`
+-- AUTO_INCREMENT for table `positions`
 --
 ALTER TABLE `positions`
   MODIFY `ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
--- AUTO_INCREMENT cho bảng `shifts`
+-- AUTO_INCREMENT for table `shifts`
 --
 ALTER TABLE `shifts`
   MODIFY `shift_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT cho bảng `users`
+-- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
   MODIFY `userID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
--- Các ràng buộc cho các bảng đã đổ
+-- Constraints for dumped tables
 --
 
 --
--- Các ràng buộc cho bảng `attendance`
+-- Constraints for table `attendance`
 --
 ALTER TABLE `attendance`
   ADD CONSTRAINT `attendance_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`userID`) ON DELETE CASCADE,
@@ -369,13 +400,19 @@ ALTER TABLE `attendance`
   ADD CONSTRAINT `attendance_ibfk_3` FOREIGN KEY (`device_out_id`) REFERENCES `devices` (`device_id`) ON DELETE SET NULL;
 
 --
--- Các ràng buộc cho bảng `face_data`
+-- Constraints for table `attendance_records`
+--
+ALTER TABLE `attendance_records`
+  ADD CONSTRAINT `fk_attendance_user` FOREIGN KEY (`userID`) REFERENCES `users` (`userID`);
+
+--
+-- Constraints for table `face_data`
 --
 ALTER TABLE `face_data`
   ADD CONSTRAINT `face_data_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`userID`) ON DELETE CASCADE;
 
 --
--- Các ràng buộc cho bảng `face_recognition_logs`
+-- Constraints for table `face_recognition_logs`
 --
 ALTER TABLE `face_recognition_logs`
   ADD CONSTRAINT `face_recognition_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`userID`) ON DELETE SET NULL;

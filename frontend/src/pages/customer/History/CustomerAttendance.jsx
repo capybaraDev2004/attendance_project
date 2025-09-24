@@ -196,11 +196,90 @@ const CustomerAttendance = () => {
   // Tính tổng số trang
   const totalPages = Math.ceil(attendanceData.length / itemsPerPage);
 
-  // Badge trạng thái theo check-in/out
-  const renderStatusBadge = useCallback((checkIn, checkOut) => {
-    if (!checkIn) return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Chưa vào</span>;
-    if (!checkOut) return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Đang làm việc</span>;
-    return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Đã tan ca</span>;
+  // (Đã bỏ cột trạng thái)
+
+  // Tính toán ghi chú: Đến muộn / Đúng giờ / Làm vượt giờ
+  const renderNoteBadge = useCallback((record) => {
+    const formatMinutes = (totalMins) => {
+      const minutes = Math.max(0, Math.round(totalMins));
+      if (minutes < 60) return `${minutes}p`;
+      const hours = Math.floor(minutes / 60);
+      const remain = minutes % 60;
+      return `${hours}h${remain}p`;
+    };
+    // Mặc định ca hành chính: 08:00 - 17:30
+
+    const checkInDate = record.check_in ? new Date(record.check_in) : null;
+    const checkOutDate = record.check_out ? new Date(record.check_out) : null;
+
+    // Lấy mốc ca theo chính ngày của check-in/out để tránh lệch ngày
+    const shiftStart = checkInDate
+      ? new Date(checkInDate.getFullYear(), checkInDate.getMonth(), checkInDate.getDate(), 8, 0, 0)
+      : null;
+
+    const isLate = checkInDate && shiftStart ? checkInDate > shiftStart : false;
+    // Thời gian làm thực tế = (checkout - checkin) - 60 phút ăn
+    const workedMinutesRaw = checkInDate && checkOutDate
+      ? Math.max(0, Math.round((checkOutDate.getTime() - checkInDate.getTime()) / 60000))
+      : 0;
+    const workedMinutes = Math.max(0, workedMinutesRaw - 60);
+    // Vượt giờ kể từ khi vượt mốc 8 giờ 30 phút (510 phút) sau khi đã trừ ăn trưa
+    const OVERTIME_THRESHOLD_MINUTES = 8 * 60 + 30;
+    const overtimeMinutes = Math.max(0, workedMinutes - OVERTIME_THRESHOLD_MINUTES);
+    const isOvertime = overtimeMinutes > 0;
+
+    if (isOvertime) {
+      return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Làm vượt giờ ({formatMinutes(overtimeMinutes)})</span>;
+    }
+    if (isLate) {
+      const diffMs = shiftStart ? (checkInDate.getTime() - shiftStart.getTime()) : 0;
+      const diffMins = diffMs / 60000;
+      return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Đến muộn ({formatMinutes(diffMins)})</span>;
+    }
+    if (checkInDate) {
+      return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Đúng giờ</span>;
+    }
+    return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">--</span>;
+  }, []);
+
+  // Tính số "công" dựa trên thời gian làm việc và mốc 8h30
+  const renderWorkUnits = useCallback((record) => {
+    const checkInDate = record.check_in ? new Date(record.check_in) : null;
+    const checkOutDate = record.check_out ? new Date(record.check_out) : null;
+    if (!checkInDate || !checkOutDate) {
+      return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">--</span>;
+    }
+
+    // Trừ 60 phút ăn để ra giờ làm thực tế
+    const workedMinutesRaw = Math.max(0, Math.round((checkOutDate.getTime() - checkInDate.getTime()) / 60000));
+    const workedMinutes = Math.max(0, workedMinutesRaw - 60);
+    const FULL_DAY_MINUTES = 8 * 60 + 30; // 8h30 = 510 phút
+
+    // Nếu dưới 8h30: làm tròn theo bậc 0, 0.25, 0.5, 0.75, 1.0
+    if (workedMinutes < FULL_DAY_MINUTES) {
+      const ratio = workedMinutes / FULL_DAY_MINUTES;
+      let units = 0;
+      if (ratio >= 0.75) units = 0.75;
+      else if (ratio >= 0.5) units = 0.5;
+      else if (ratio >= 0.25) units = 0.25;
+      else units = 0;
+
+      const display = units.toFixed(2);
+      return (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
+          {display} công
+        </span>
+      );
+    }
+
+    // Đủ 8h30 trở lên: chỉ hiển thị 1 công và ghi rõ số giờ vượt
+    const overtimeMinutes = workedMinutes - FULL_DAY_MINUTES;
+    const overtimeHours = (overtimeMinutes / 60).toFixed(2);
+    return (
+      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
+        1 công (+ {overtimeHours}h)
+      </span>
+    );
   }, []);
 
   // Hàm format ngày theo định dạng dd/mm/yyyy
@@ -252,11 +331,18 @@ const CustomerAttendance = () => {
       render: (record) => record.device_out_name || '--'
     },
     {
-      key: 'status',
-      label: 'TRẠNG THÁI',
+      key: 'note',
+      label: 'GHI CHÚ',
       visible: true,
-      render: (record) => renderStatusBadge(record.check_in, record.check_out)
-    }
+      render: (record) => renderNoteBadge(record)
+    },
+    {
+      key: 'work_units',
+      label: 'CHẤM CÔNG',
+      visible: true,
+      render: (record) => renderWorkUnits(record)
+    },
+    
   ];
 
   // Component Date Picker

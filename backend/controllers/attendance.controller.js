@@ -61,6 +61,66 @@ async function checkIn(req, res, next) {
   }
 }
 
+// Tính thống kê công và upsert vào bảng attendance_records
+async function upsertAttendanceRecord({ userId, workDate, checkIn, checkOut }) {
+  try {
+    if (!checkIn || !checkOut) return; // chỉ xử lý khi đủ cả 2 mốc
+
+    // Tính phút làm việc thực tế (trừ 60 phút ăn)
+    const inDate = new Date(checkIn);
+    const outDate = new Date(checkOut);
+    const workedMinutesRaw = Math.max(0, Math.round((outDate.getTime() - inDate.getTime()) / 60000));
+    const workedMinutes = Math.max(0, workedMinutesRaw - 60);
+
+    const FULL_DAY_MINUTES = 8 * 60 + 30; // 8h30 = 510 phút
+
+    // Tổng giờ làm trong ngày
+    const totalHours = +(workedMinutes / 60).toFixed(2);
+    const standardHours = 8; // giờ chuẩn hiển thị theo mô tả
+
+    // Giờ vượt tính theo mốc 8h30 sau khi trừ ăn
+    const overtimeMinutes = Math.max(0, workedMinutes - FULL_DAY_MINUTES);
+    const overtimeHours = +(overtimeMinutes / 60).toFixed(2);
+
+    // Tính work_unit theo yêu cầu
+    let workUnit = 0;
+    if (workedMinutes < FULL_DAY_MINUTES) {
+      const ratio = workedMinutes / FULL_DAY_MINUTES;
+      if (ratio >= 0.75) workUnit = 0.75;
+      else if (ratio >= 0.5) workUnit = 0.5;
+      else if (ratio >= 0.25) workUnit = 0.25;
+      else workUnit = 0;
+    } else {
+      workUnit = +(1 + overtimeMinutes / 60).toFixed(2);
+    }
+
+    // Upsert vào attendance_records
+    const [exists] = await pool.execute(
+      'SELECT recordID FROM attendance_records WHERE userID = ? AND work_date = ?',
+      [userId, workDate]
+    );
+
+    if (exists.length > 0) {
+      await pool.execute(
+        `UPDATE attendance_records
+         SET total_hours = ?, standard_hours = ?, overtime_hours = ?, work_unit = ?, updated_at = NOW()
+         WHERE recordID = ?`,
+        [totalHours, standardHours, overtimeHours, workUnit, exists[0].recordID]
+      );
+    } else {
+      await pool.execute(
+        `INSERT INTO attendance_records
+         (userID, work_date, total_hours, standard_hours, overtime_hours, work_unit)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [userId, workDate, totalHours, standardHours, overtimeHours, workUnit]
+      );
+    }
+  } catch (err) {
+    // Không throw để không chặn luồng chấm công; chỉ log ra server
+    console.error('Failed to upsert attendance_records:', err);
+  }
+}
+
 // Check-out cho admin
 async function checkOut(req, res, next) {
   try {
@@ -99,6 +159,19 @@ async function checkOut(req, res, next) {
       'UPDATE attendance SET check_out = ?, device_out_id = ?, updated_at = NOW() WHERE attendance_id = ?',
       [checkOutTime, device_id, existingRecords[0].attendance_id]
     );
+
+    // Lấy lại bản ghi vừa cập nhật để tính công và cập nhật attendance_records
+    const [updatedRows] = await pool.execute(
+      'SELECT work_date, check_in, check_out FROM attendance WHERE attendance_id = ?',
+      [existingRecords[0].attendance_id]
+    );
+    const updated = updatedRows[0];
+    await upsertAttendanceRecord({
+      userId: user_id,
+      workDate: updated.work_date,
+      checkIn: updated.check_in,
+      checkOut: updated.check_out
+    });
 
     const [userInfo] = await pool.execute(
       'SELECT fullName FROM users WHERE userID = ?',

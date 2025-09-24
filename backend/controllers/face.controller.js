@@ -1,6 +1,58 @@
 // backend/controllers/face.controller.js
 const { getDb } = require('../config/mongo');
 
+// Upsert bản ghi công hằng ngày vào attendance_records
+async function upsertAttendanceRecordMySQL(pool, { userId, workDate, checkIn, checkOut }) {
+  try {
+    if (!checkIn || !checkOut) return;
+    const inDate = new Date(checkIn);
+    const outDate = new Date(checkOut);
+    const workedMinutesRaw = Math.max(0, Math.round((outDate.getTime() - inDate.getTime()) / 60000));
+    const workedMinutes = Math.max(0, workedMinutesRaw - 60); // trừ 60p ăn
+
+    const FULL_DAY_MINUTES = 8 * 60 + 30; // 510
+    const totalHours = +(workedMinutes / 60).toFixed(2);
+    const standardHours = 8;
+    const overtimeMinutes = Math.max(0, workedMinutes - FULL_DAY_MINUTES);
+    const overtimeHours = +(overtimeMinutes / 60).toFixed(2);
+
+    let workUnit = 0;
+    if (workedMinutes < FULL_DAY_MINUTES) {
+      const ratio = workedMinutes / FULL_DAY_MINUTES;
+      if (ratio >= 0.75) workUnit = 0.75;
+      else if (ratio >= 0.5) workUnit = 0.5;
+      else if (ratio >= 0.25) workUnit = 0.25;
+      else workUnit = 0;
+    } else {
+      workUnit = +(1 + overtimeMinutes / 60).toFixed(2);
+    }
+
+    const [exists] = await pool.execute(
+      'SELECT recordID FROM attendance_records WHERE userID = ? AND work_date = ?',
+      [userId, workDate]
+    );
+
+    if (exists.length > 0) {
+      await pool.execute(
+        `UPDATE attendance_records
+         SET total_hours = ?, standard_hours = ?, overtime_hours = ?, work_unit = ?, updated_at = NOW()
+         WHERE recordID = ?`,
+        [totalHours, standardHours, overtimeHours, workUnit, exists[0].recordID]
+      );
+    } else {
+      await pool.execute(
+        `INSERT INTO attendance_records
+         (userID, work_date, total_hours, standard_hours, overtime_hours, work_unit)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [userId, workDate, totalHours, standardHours, overtimeHours, workUnit]
+      );
+    }
+    console.log('🧾 attendance_records upserted:', { userId, workDate, totalHours, overtimeHours, workUnit });
+  } catch (err) {
+    console.error('❌ upsertAttendanceRecordMySQL failed:', err.message);
+  }
+}
+
 // Hàm helper để lấy thời gian Việt Nam chính xác theo định dạng MySQL datetime
 function getVietnamTime() {
   const now = new Date();
@@ -619,6 +671,23 @@ async function faceAttendanceCurrent(req, res, next) {
         } else {
           attendanceId = targetId;
           console.log('✅ Đã cập nhật check_out vào bảng attendance với ID:', attendanceId);
+          // Sau khi cập nhật check_out thành công, đồng bộ sang attendance_records
+          try {
+            const [attRow] = await pool.execute(
+              'SELECT user_id, work_date, check_in, check_out FROM attendance WHERE attendance_id = ?',
+              [attendanceId]
+            );
+            if (attRow.length > 0) {
+              await upsertAttendanceRecordMySQL(pool, {
+                userId: attRow[0].user_id,
+                workDate: attRow[0].work_date,
+                checkIn: attRow[0].check_in,
+                checkOut: attRow[0].check_out
+              });
+            }
+          } catch (syncErr) {
+            console.error('⚠️ Lỗi đồng bộ attendance_records sau checkout:', syncErr.message);
+          }
         }
       }
     } catch (attendanceErr) {
