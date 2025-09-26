@@ -83,15 +83,16 @@ async function upsertAttendanceRecord({ userId, workDate, checkIn, checkOut }) {
     const overtimeHours = +(overtimeMinutes / 60).toFixed(2);
 
     // Tính work_unit theo yêu cầu
+    // work_unit chỉ nhận 0, 0.25, 0.5, 0.75, 1 (không cộng giờ vượt)
     let workUnit = 0;
-    if (workedMinutes < FULL_DAY_MINUTES) {
+    if (workedMinutes >= FULL_DAY_MINUTES) {
+      workUnit = 1;
+    } else {
       const ratio = workedMinutes / FULL_DAY_MINUTES;
       if (ratio >= 0.75) workUnit = 0.75;
       else if (ratio >= 0.5) workUnit = 0.5;
       else if (ratio >= 0.25) workUnit = 0.25;
       else workUnit = 0;
-    } else {
-      workUnit = +(1 + overtimeMinutes / 60).toFixed(2);
     }
 
     // Upsert vào attendance_records
@@ -468,4 +469,57 @@ async function userHistory(req, res, next) {
   }
 }
 
-module.exports = { checkIn, checkOut, history, userHistory };
+// API: Lấy tổng hợp attendance_records theo tháng và (tùy chọn) theo user
+// Query: month=YYYY-MM hoặc start_date, end_date; user_id=optional
+async function recordsByMonth(req, res, next) {
+  try {
+    const { month, start_date, end_date, user_id } = req.query;
+
+    // Xác định khoảng thời gian
+    let startDate = start_date;
+    let endDate = end_date;
+    if (month) {
+      // Tạo khoảng [đầu tháng, cuối tháng]
+      const [y, m] = month.split('-');
+      const first = new Date(Number(y), Number(m) - 1, 1);
+      const last = new Date(Number(y), Number(m), 0);
+      startDate = first.toISOString().slice(0, 10);
+      endDate = last.toISOString().slice(0, 10);
+    }
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'Thiếu tham số thời gian (month hoặc start_date/end_date)' });
+    }
+
+    // Tổng hợp theo userID
+    let query = `
+      SELECT ar.userID,
+             u.fullName,
+             COUNT(ar.recordID) AS working_days,
+             COALESCE(SUM(ar.work_unit), 0) AS total_work_units,
+             COALESCE(SUM(ar.total_hours), 0) AS total_hours,
+             COALESCE(SUM(ar.overtime_hours), 0) AS total_overtime_hours
+      FROM attendance_records ar
+      JOIN users u ON u.userID = ar.userID
+      WHERE ar.work_date BETWEEN ? AND ?
+    `;
+    const params = [startDate, endDate];
+    if (user_id && user_id !== 'all') {
+      query += ' AND ar.userID = ?';
+      params.push(user_id);
+    }
+    query += ' GROUP BY ar.userID, u.fullName ORDER BY u.fullName ASC';
+
+    const [rows] = await pool.execute(query, params);
+
+    return res.json({
+      success: true,
+      range: { startDate, endDate },
+      data: rows
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { checkIn, checkOut, history, userHistory, recordsByMonth };

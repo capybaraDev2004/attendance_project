@@ -41,13 +41,7 @@ export default function CustomerSidebar({
       path: '/face-scan',
       description: 'Chấm công bằng khuôn mặt'
     },
-    {
-      id: 'camera',
-      label: 'Camera',
-      icon: TablerIcons.IconCamera,
-      path: '/camera',
-      description: 'Chấm công bằng camera'
-    }
+    // Đã xóa menu Camera theo yêu cầu
   ];
 
   const secondaryMenuItems = [

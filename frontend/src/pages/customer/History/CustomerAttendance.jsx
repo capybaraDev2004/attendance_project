@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import StandardTable from '../../../components/StandardTable';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
 import Pagination from '../../../components/Pagination';
@@ -11,6 +11,8 @@ const CustomerAttendance = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const startPickerRef = useRef(null);
+  const endPickerRef = useRef(null);
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,7 +89,7 @@ const CustomerAttendance = () => {
     setFilters((prev) => ({ ...prev, [key]: formatted }));
   }, []);
 
-  // Xử lý chọn ngày từ date picker
+  // Xử lý chọn ngày từ date picker (không auto refresh)
   const handleDatePickerSelect = useCallback((key, date) => {
     const formatDateForDisplay = (dateObj) => {
       const day = String(dateObj.getDate()).padStart(2, '0');
@@ -95,8 +97,14 @@ const CustomerAttendance = () => {
       const year = dateObj.getFullYear();
       return `${day}/${month}/${year}`;
     };
-    
-    setFilters((prev) => ({ ...prev, [key]: formatDateForDisplay(date) }));
+    // Giới hạn không vượt quá ngày hiện tại
+    const today = new Date();
+    const chosen = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const clamped = chosen > new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      : chosen;
+
+    setFilters((prev) => ({ ...prev, [key]: formatDateForDisplay(clamped) }));
     
     // Đóng date picker
     if (key === 'startDate') {
@@ -163,12 +171,13 @@ const CustomerAttendance = () => {
     setCurrentUser(user);
   }, [getCurrentUser]);
 
-  // Tự động tải dữ liệu khi có currentUser hoặc khi filters thay đổi
+  // Chỉ tự động tải 1 lần khi có currentUser (không auto theo filters)
   useEffect(() => {
     if (currentUser) {
       fetchAttendanceHistory();
     }
-  }, [currentUser, fetchAttendanceHistory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
 
   const handleFilter = useCallback(() => {
     fetchAttendanceHistory();
@@ -282,6 +291,70 @@ const CustomerAttendance = () => {
     );
   }, []);
 
+  // Tổng hợp: tổng công (work_unit), tổng giờ OT, số ngày OFF theo bộ lọc, công chuẩn (tháng hiện tại - CN)
+  const computeTotals = useCallback(() => {
+    const FULL_DAY_MINUTES = 8 * 60 + 30; // 510
+    let totalUnits = 0;
+    let totalOvertimeHours = 0;
+    const workingDateSet = new Set(); // các ngày có work_unit > 0
+
+    attendanceData.forEach((record) => {
+      const checkInDate = record.check_in ? new Date(record.check_in) : null;
+      const checkOutDate = record.check_out ? new Date(record.check_out) : null;
+      if (!checkInDate || !checkOutDate) return;
+      const workedMinutesRaw = Math.max(0, Math.round((checkOutDate.getTime() - checkInDate.getTime()) / 60000));
+      const workedMinutes = Math.max(0, workedMinutesRaw - 60);
+
+      // work_unit bậc 0/0.25/0.5/0.75/1
+      if (workedMinutes >= FULL_DAY_MINUTES) {
+        totalUnits += 1;
+        workingDateSet.add(record.work_date);
+      }
+      else {
+        const ratio = workedMinutes / FULL_DAY_MINUTES;
+        if (ratio >= 0.75) { totalUnits += 0.75; workingDateSet.add(record.work_date); }
+        else if (ratio >= 0.5) { totalUnits += 0.5; workingDateSet.add(record.work_date); }
+        else if (ratio >= 0.25) { totalUnits += 0.25; workingDateSet.add(record.work_date); }
+      }
+
+      // OT giờ
+      if (workedMinutes > FULL_DAY_MINUTES) {
+        totalOvertimeHours += (workedMinutes - FULL_DAY_MINUTES) / 60;
+      }
+    });
+
+    // Số ngày OFF trong khoảng lọc
+    const parseDDMMYYYY = (s) => {
+      const [d, m, y] = s.split('/').map((v) => parseInt(v, 10));
+      return new Date(y, m - 1, d);
+    };
+    const start = parseDDMMYYYY(filters.startDate);
+    const end = parseDDMMYYYY(filters.endDate);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const totalDaysInRange = Math.floor((end.getTime() - start.getTime()) / dayMs) + 1;
+    // off = tổng số ngày trong range - số ngày có work_unit > 0
+    const offDays = Math.max(0, totalDaysInRange - workingDateSet.size);
+
+    // Công chuẩn tháng hiện tại = số ngày trong tháng hiện tại - số CN trong tháng
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth(); // 0-11
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let sundays = 0;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dt = new Date(year, month, day);
+      if (dt.getDay() === 0) sundays += 1; // 0 = Sunday
+    }
+    const standardWorkingDays = daysInMonth - sundays;
+
+    return {
+      totalUnits: parseFloat(totalUnits.toFixed(2)),
+      totalOvertimeHours: parseFloat(totalOvertimeHours.toFixed(2)),
+      offDays,
+      standardWorkingDays
+    };
+  }, [attendanceData, filters.startDate, filters.endDate]);
+
   // Hàm format ngày theo định dạng dd/mm/yyyy
   const formatDateToDDMMYYYY = useCallback((dateString) => {
     if (!dateString) return '--';
@@ -346,7 +419,7 @@ const CustomerAttendance = () => {
   ];
 
   // Component Date Picker
-  const DatePicker = ({ isOpen, onClose, onSelect }) => {
+  const DatePicker = ({ isOpen, onClose, onSelect, inline = false }) => {
     if (!isOpen) return null;
     
     const today = new Date();
@@ -359,52 +432,68 @@ const CustomerAttendance = () => {
     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     const calendarDays = generateCalendarDays(selectedYear, selectedMonth);
     
-    return (
-      <div className="date-picker-overlay" onClick={onClose}>
-        <div className="date-picker" onClick={(e) => e.stopPropagation()}>
-          <div className="date-picker-header">
+    const content = (
+      <div className="bg-white rounded-lg shadow-lg w-80 max-w-full animate-[fadeIn_120ms_ease-out]" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-4 py-3 border-b">
             <button 
-              className="date-picker-nav"
+              className="px-2 py-1 rounded hover:bg-gray-100"
               onClick={() => setSelectedMonth(prev => prev === 0 ? 11 : prev - 1)}
             >
               ‹
             </button>
-            <span className="date-picker-title">
+            <span className="font-semibold text-gray-900">
               {monthNames[selectedMonth]} {selectedYear}
             </span>
             <button 
-              className="date-picker-nav"
+              className="px-2 py-1 rounded hover:bg-gray-100"
               onClick={() => setSelectedMonth(prev => prev === 11 ? 0 : prev + 1)}
             >
               ›
             </button>
           </div>
           
-          <div className="date-picker-calendar">
-            <div className="date-picker-weekdays">
+          <div className="px-4 py-3">
+            <div className="grid grid-cols-7 gap-2 mb-2 text-xs font-medium text-gray-500">
               {dayNames.map(day => (
-                <div key={day} className="date-picker-weekday">{day}</div>
+                <div key={day} className="text-center">{day}</div>
               ))}
             </div>
             
-            <div className="date-picker-days">
+            <div className="grid grid-cols-7 gap-2">
               {calendarDays.map((day, index) => (
                 <button
                   key={index}
-                  className={`date-picker-day ${day ? '' : 'empty'} ${
-                    day && day.getDate() === today.getDate() && 
-                    day.getMonth() === today.getMonth() && 
-                    day.getFullYear() === today.getFullYear() ? 'today' : ''
+                  className={`h-8 text-sm rounded flex items-center justify-center transition-colors ${
+                    day ? 'hover:bg-green-50' : 'opacity-0 cursor-default'
+                  } ${
+                    day && day.getDate() === today.getDate() &&
+                    day.getMonth() === today.getMonth() &&
+                    day.getFullYear() === today.getFullYear() ? 'border border-green-500 text-green-700' : ''
+                  } ${
+                    day && day > today ? 'opacity-40 cursor-not-allowed' : ''
                   }`}
-                  onClick={() => day && onSelect(day)}
-                  disabled={!day}
+                  onClick={() => day && day <= today && onSelect(day)}
+                  disabled={!day || (day && day > today)}
                 >
                   {day ? day.getDate() : ''}
                 </button>
               ))}
             </div>
           </div>
+      </div>
+    );
+
+    if (inline) {
+      return (
+        <div className="absolute left-0 top-full mt-2 z-50" onClick={(e) => e.stopPropagation()}>
+          {content}
         </div>
+      );
+    }
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-20 flex items-start md:items-center justify-center z-50 p-4" onClick={onClose}>
+        {content}
       </div>
     );
   };
@@ -490,43 +579,64 @@ const CustomerAttendance = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Ngày bắt đầu:</label>
-                <div className="flex">
+                <div className="relative" ref={startPickerRef} onBlur={(e) => {
+                  // Nếu blur ra ngoài container thì đóng picker
+                  setTimeout(() => {
+                    if (startPickerRef.current && !startPickerRef.current.contains(document.activeElement)) {
+                      setShowStartDatePicker(false);
+                    }
+                  }, 0);
+                }}>
                   <input
                     type="text"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full pr-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     placeholder="dd/mm/yyyy"
                     value={filters.startDate}
                     onChange={(e) => handleDateInputChange('startDate', e.target.value)}
+                    onFocus={() => setShowStartDatePicker(true)}
+                    onClick={() => setShowStartDatePicker(true)}
                     maxLength="10"
                   />
-                  <button
-                    type="button"
-                    className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200 transition-colors"
-                    onClick={() => setShowStartDatePicker(true)}
-                  >
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                     <IconCalendar size={16} />
-                  </button>
+                  </span>
+                  <DatePicker
+                    isOpen={showStartDatePicker}
+                    onClose={() => setShowStartDatePicker(false)}
+                    onSelect={(date) => handleDatePickerSelect('startDate', date)}
+                    inline
+                  />
                 </div>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Ngày kết thúc:</label>
-                <div className="flex">
+                <div className="relative" ref={endPickerRef} onBlur={(e) => {
+                  setTimeout(() => {
+                    if (endPickerRef.current && !endPickerRef.current.contains(document.activeElement)) {
+                      setShowEndDatePicker(false);
+                    }
+                  }, 0);
+                }}>
                   <input
                     type="text"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full pr-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     placeholder="dd/mm/yyyy"
                     value={filters.endDate}
                     onChange={(e) => handleDateInputChange('endDate', e.target.value)}
+                    onFocus={() => setShowEndDatePicker(true)}
+                    onClick={() => setShowEndDatePicker(true)}
                     maxLength="10"
                   />
-                  <button
-                    type="button"
-                    className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200 transition-colors"
-                    onClick={() => setShowEndDatePicker(true)}
-                  >
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                     <IconCalendar size={16} />
-                  </button>
+                  </span>
+                  <DatePicker
+                    isOpen={showEndDatePicker}
+                    onClose={() => setShowEndDatePicker(false)}
+                    onSelect={(date) => handleDatePickerSelect('endDate', date)}
+                    inline
+                  />
                 </div>
               </div>
             </div>
@@ -571,6 +681,31 @@ const CustomerAttendance = () => {
         }
       />
 
+      {/* Summary Totals */}
+      {(() => {
+        const totals = computeTotals();
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+            <div className="rounded-lg p-4 text-right border border-green-200 bg-green-50">
+              <p className="text-sm text-green-700">Tổng công chuẩn</p>
+              <p className="text-2xl font-bold text-green-900">{totals.totalUnits} công</p>
+            </div>
+            <div className="rounded-lg p-4 text-right border border-purple-200 bg-purple-50">
+              <p className="text-sm text-purple-700">Tổng giờ làm thêm</p>
+              <p className="text-2xl font-bold text-purple-900">{totals.totalOvertimeHours} h</p>
+            </div>
+            <div className="rounded-lg p-4 text-right border border-red-200 bg-red-50">
+              <p className="text-sm text-red-700">OFF (ngày không công)</p>
+              <p className="text-2xl font-bold text-red-900">{totals.offDays} ngày</p>
+            </div>
+            <div className="rounded-lg p-4 text-right border border-blue-200 bg-blue-50">
+              <p className="text-sm text-blue-700">Công chuẩn (tháng hiện tại)</p>
+              <p className="text-2xl font-bold text-blue-900">{totals.standardWorkingDays} ngày</p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Phân trang */}
       <Pagination
         currentPage={currentPage}
@@ -583,16 +718,7 @@ const CustomerAttendance = () => {
       />
 
       {/* Date Pickers */}
-      <DatePicker
-        isOpen={showStartDatePicker}
-        onClose={() => setShowStartDatePicker(false)}
-        onSelect={(date) => handleDatePickerSelect('startDate', date)}
-      />
-      <DatePicker
-        isOpen={showEndDatePicker}
-        onClose={() => setShowEndDatePicker(false)}
-        onSelect={(date) => handleDatePickerSelect('endDate', date)}
-      />
+      {/* (removed global inline pickers; now each input renders its own inline picker) */}
     </div>
   );
 };
