@@ -253,10 +253,10 @@ async function history(req, res, next) {
 // Hàm chuyển đổi phút thành giờ và phút
 function formatTime(minutes) {
   if (minutes <= 0) return '';
-  
+
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  
+
   if (hours > 0 && remainingMinutes > 0) {
     return `${hours} giờ ${remainingMinutes} phút`;
   } else if (hours > 0) {
@@ -279,9 +279,9 @@ function formatDate(dateString) {
 async function userHistory(req, res, next) {
   try {
     const { user_id } = req.params;
-    
+
     console.log('🔍 API userHistory được gọi với user_id:', user_id);
-    
+
     if (!user_id) {
       console.error('❌ Thiếu user_id trong request');
       return res.status(400).json({
@@ -307,7 +307,7 @@ async function userHistory(req, res, next) {
     const [shifts] = await pool.execute(
       'SELECT * FROM shifts WHERE is_active = 1 ORDER BY shift_id LIMIT 1'
     );
-    
+
     console.log('📅 Ca làm việc:', shifts);
     const defaultShift = shifts[0] || { start_time: '08:00:00', end_time: '17:30:00' };
     const startTime = defaultShift.start_time;
@@ -341,7 +341,7 @@ async function userHistory(req, res, next) {
     // Nhóm dữ liệu theo ngày và xử lý
     const groupedByDate = {};
     let actualRecordCount = 0; // Đếm số bản ghi thực tế (không tính header ngày)
-    
+
     rows.forEach(record => {
       const dateKey = record.work_date;
       if (!groupedByDate[dateKey]) {
@@ -351,7 +351,7 @@ async function userHistory(req, res, next) {
           checkOut: null
         };
       }
-      
+
       // Xử lý check-in
       if (record.check_in) {
         actualRecordCount++; // Tăng đếm cho mỗi check-in
@@ -361,10 +361,10 @@ async function userHistory(req, res, next) {
         const expectedStartTime = new Date(workDate);
         const [hours, minutes] = startTime.split(':');
         expectedStartTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        
+
         const timeDiff = checkInTime.getTime() - expectedStartTime.getTime();
         const minutesLate = Math.floor(timeDiff / (1000 * 60));
-        
+
         let status = 'Đúng giờ';
         if (minutesLate > 0) {
           const lateText = formatTime(minutesLate);
@@ -393,10 +393,10 @@ async function userHistory(req, res, next) {
         const expectedEndTime = new Date(workDate);
         const [hours, minutes] = endTime.split(':');
         expectedEndTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        
+
         const timeDiff = checkOutTime.getTime() - expectedEndTime.getTime();
         const minutesLate = Math.floor(timeDiff / (1000 * 60));
-        
+
         let status = 'Đúng giờ';
         if (minutesLate < -5) {
           status = `Sớm ${Math.abs(minutesLate)} phút`;
@@ -422,7 +422,7 @@ async function userHistory(req, res, next) {
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .map(dateGroup => {
         const result = [];
-        
+
         // Thêm header ngày
         result.push({
           id: `date_${dateGroup.date}`,
@@ -433,7 +433,7 @@ async function userHistory(req, res, next) {
           location: '',
           isDateHeader: true
         });
-        
+
         // Thêm check-in nếu có
         if (dateGroup.checkIn) {
           result.push({
@@ -441,7 +441,7 @@ async function userHistory(req, res, next) {
             date: dateGroup.date
           });
         }
-        
+
         // Thêm check-out nếu có
         if (dateGroup.checkOut) {
           result.push({
@@ -449,7 +449,7 @@ async function userHistory(req, res, next) {
             date: dateGroup.date
           });
         }
-        
+
         return result;
       }).flat();
 
@@ -468,4 +468,88 @@ async function userHistory(req, res, next) {
   }
 }
 
-module.exports = { checkIn, checkOut, history, userHistory };
+/* -------------------------------------------------------
+   ESP8266 RFID: nhiều lần quét trong ngày (pairing logic)
+   - Nếu bản ghi mới nhất của hôm nay chưa có check_out -> set check_out
+   - Ngược lại -> tạo bản ghi check_in mới
+   - Sau khi ghi DB -> emit realtime bằng socket.io
+------------------------------------------------------- */
+async function scanRFID(req, res, next) {
+  try {
+    const { uid, device_id } = req.body;
+    const io = req.app.get('io');
+
+    if (!uid || !device_id) {
+      return res.status(400).json({ success: false, message: 'Thiếu uid hoặc device_id' });
+    }
+
+    // Tìm user theo UID
+    const [userRows] = await pool.execute(
+      'SELECT userID, fullName FROM users WHERE rfid_uid = ? AND status = 1 LIMIT 1',
+      [uid]
+    );
+    if (!userRows.length) {
+      return res.status(404).json({ success: false, message: 'UID không hợp lệ' });
+    }
+    const user = userRows[0];
+
+    // Lấy bản ghi mới nhất hôm nay
+    const [lastRows] = await pool.execute(
+      `SELECT * FROM attendance 
+       WHERE user_id = ? AND work_date = CURDATE()
+       ORDER BY attendance_id DESC LIMIT 1`,
+      [user.userID]
+    );
+
+    let action, recordId;
+    if (!lastRows.length || (lastRows[0].check_in && lastRows[0].check_out)) {
+      // Tạo bản ghi check-in mới
+      const [result] = await pool.execute(
+        `INSERT INTO attendance (user_id, rfid_uid, work_date, check_in, device_in_id, status)
+         VALUES (?, ?, CURDATE(), NOW(), ?, 'present')`,
+        [user.userID, uid, device_id]
+      );
+      recordId = result.insertId;
+      action = 'Check-in';
+    } else {
+      // Cập nhật check-out
+      await pool.execute(
+        `UPDATE attendance 
+           SET check_out = NOW(), device_out_id = ?, updated_at = NOW()
+         WHERE attendance_id = ?`,
+        [device_id, lastRows[0].attendance_id]
+      );
+      recordId = lastRows[0].attendance_id;
+      action = 'Check-out';
+    }
+
+    // Emit realtime payload
+    const now = new Date();
+    const payload = {
+      id: recordId,
+      date: now.toISOString().split('T')[0],
+      time: now.toTimeString().substring(0, 5),
+      type: action,
+      status: 'Đúng giờ',
+      location: 'RFID Device',
+      userName: user.fullName
+    };
+
+    if (io) {
+      io.emit('attendanceUpdate', payload);
+      console.log('📡 Emit attendanceUpdate:', payload);
+    }
+
+    return res.json({
+      success: true,
+      action,
+      message: `✅ ${user.fullName} ${action}`,
+      data: payload
+    });
+  } catch (err) {
+    console.error('❌ scanRFID error:', err);
+    next(err);
+  }
+}
+
+module.exports = { checkIn, checkOut, history, userHistory, scanRFID };
