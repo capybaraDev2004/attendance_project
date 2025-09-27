@@ -13,7 +13,6 @@ import CustomerHome from './pages/customer/CustomerHome';
 import CustomerAttendance from './pages/customer/History/CustomerAttendance';
 import CustomerTimekeeping from './pages/customer/Timekeeping/CustomerTimekeeping';
 import CustomerLogout from './pages/customer/CustomerLogout';
-import CustomerCamera from './pages/customer/Camera/CustomerCamera';
 import FaceScan from './pages/customer/Face-scan/FaceScan';
 
 function App() {
@@ -41,7 +40,6 @@ function App() {
             <Route index element={<CustomerHome />} />
             <Route path="users" element={<CustomerUsers />} />
             <Route path="face-scan" element={<FaceScan />} />
-            <Route path="camera" element={<CustomerCamera />} />
             <Route path="attendance" element={<CustomerAttendance />} />
             <Route path="timekeeping" element={<CustomerTimekeeping />} />
             <Route path="logout" element={<CustomerLogout />} />

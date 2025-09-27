@@ -83,15 +83,16 @@ async function upsertAttendanceRecord({ userId, workDate, checkIn, checkOut }) {
     const overtimeHours = +(overtimeMinutes / 60).toFixed(2);
 
     // Tính work_unit theo yêu cầu
+    // work_unit chỉ nhận 0, 0.25, 0.5, 0.75, 1 (không cộng giờ vượt)
     let workUnit = 0;
-    if (workedMinutes < FULL_DAY_MINUTES) {
+    if (workedMinutes >= FULL_DAY_MINUTES) {
+      workUnit = 1;
+    } else {
       const ratio = workedMinutes / FULL_DAY_MINUTES;
       if (ratio >= 0.75) workUnit = 0.75;
       else if (ratio >= 0.5) workUnit = 0.5;
       else if (ratio >= 0.25) workUnit = 0.25;
       else workUnit = 0;
-    } else {
-      workUnit = +(1 + overtimeMinutes / 60).toFixed(2);
     }
 
     // Upsert vào attendance_records
@@ -464,90 +465,6 @@ async function userHistory(req, res, next) {
     });
   } catch (err) {
     console.error('❌ Lỗi trong userHistory:', err);
-    next(err);
-  }
-}
-
-/* -------------------------------------------------------
-   ESP8266 RFID: nhiều lần quét trong ngày (pairing logic)
-   - Nếu bản ghi mới nhất của hôm nay chưa có check_out -> set check_out
-   - Ngược lại -> tạo bản ghi check_in mới
-   - Sau khi ghi DB -> emit realtime bằng socket.io
-------------------------------------------------------- */
-async function scanRFID(req, res, next) {
-  try {
-    const { uid, device_id } = req.body;
-    const io = req.app.get('io');
-
-    if (!uid || !device_id) {
-      return res.status(400).json({ success: false, message: 'Thiếu uid hoặc device_id' });
-    }
-
-    // Tìm user theo UID
-    const [userRows] = await pool.execute(
-      'SELECT userID, fullName FROM users WHERE rfid_uid = ? AND status = 1 LIMIT 1',
-      [uid]
-    );
-    if (!userRows.length) {
-      return res.status(404).json({ success: false, message: 'UID không hợp lệ' });
-    }
-    const user = userRows[0];
-
-    // Lấy bản ghi mới nhất hôm nay
-    const [lastRows] = await pool.execute(
-      `SELECT * FROM attendance 
-       WHERE user_id = ? AND work_date = CURDATE()
-       ORDER BY attendance_id DESC LIMIT 1`,
-      [user.userID]
-    );
-
-    let action, recordId;
-    if (!lastRows.length || (lastRows[0].check_in && lastRows[0].check_out)) {
-      // Tạo bản ghi check-in mới
-      const [result] = await pool.execute(
-        `INSERT INTO attendance (user_id, rfid_uid, work_date, check_in, device_in_id, status)
-         VALUES (?, ?, CURDATE(), NOW(), ?, 'present')`,
-        [user.userID, uid, device_id]
-      );
-      recordId = result.insertId;
-      action = 'Check-in';
-    } else {
-      // Cập nhật check-out
-      await pool.execute(
-        `UPDATE attendance 
-           SET check_out = NOW(), device_out_id = ?, updated_at = NOW()
-         WHERE attendance_id = ?`,
-        [device_id, lastRows[0].attendance_id]
-      );
-      recordId = lastRows[0].attendance_id;
-      action = 'Check-out';
-    }
-
-    // Emit realtime payload
-    const now = new Date();
-    const payload = {
-      id: recordId,
-      date: now.toISOString().split('T')[0],
-      time: now.toTimeString().substring(0, 5),
-      type: action,
-      status: 'Đúng giờ',
-      location: 'RFID Device',
-      userName: user.fullName
-    };
-
-    if (io) {
-      io.emit('attendanceUpdate', payload);
-      console.log('📡 Emit attendanceUpdate:', payload);
-    }
-
-    return res.json({
-      success: true,
-      action,
-      message: `✅ ${user.fullName} ${action}`,
-      data: payload
-    });
-  } catch (err) {
-    console.error('❌ scanRFID error:', err);
     next(err);
   }
 }

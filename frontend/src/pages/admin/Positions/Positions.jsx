@@ -28,12 +28,15 @@ const Positions = () => {
   const [visibleColumns, setVisibleColumns] = useState({
     stt: true,
     title: true,
-    department: true,
-    level: true,
-    employeeCount: false,
+    department: false,
+    level: false,
+    // Hiển thị mặc định cột Số nhân viên dự kiến
+    employeeCount: true,
     actualEmployeeCount: true,
     salary: true,
     status: true,
+    // Cột tổng thể hiện đủ/thừa/thiếu
+    summary: true,
     actions: true
   });
 
@@ -411,6 +414,8 @@ const Positions = () => {
     { key: 'actualEmployeeCount', label: 'Nhân viên thực tế', width: '150px' },
     { key: 'salary', label: 'Mức lương', width: '200px' },
     { key: 'status', label: 'Trạng thái', width: '120px' },
+    // Cột tổng sau trạng thái để hiển thị đủ/thừa/thiếu
+    { key: 'summary', label: 'Tổng', width: '160px' },
     { key: 'actions', label: 'Thao tác', width: '100px' }
   ];
 
@@ -510,6 +515,33 @@ const Positions = () => {
                 {formatStatus(position.status)}
               </span>
             )
+          };
+        case 'summary':
+          return {
+            key: 'summary',
+            label: 'Tổng',
+            visible: true,
+            render: (position) => {
+              // Tính toán chênh lệch giữa thực tế và dự kiến
+              const planned = Number(position.employeeCount || 0);
+              const actual = Number(position.actualEmployeeCount || 0);
+              const diff = actual - planned;
+              // Xác định màu và nội dung hiển thị
+              let badgeClass = 'bg-green-100 text-green-800';
+              let text = 'Đủ';
+              if (diff > 0) {
+                badgeClass = 'bg-yellow-100 text-yellow-800';
+                text = `Thừa ${diff}`;
+              } else if (diff < 0) {
+                badgeClass = 'bg-red-100 text-red-800';
+                text = `Thiếu ${Math.abs(diff)}`;
+              }
+              return (
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${badgeClass}`}>
+                  {text}
+                </span>
+              );
+            }
           };
         case 'actions':
           return {

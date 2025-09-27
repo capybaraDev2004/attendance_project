@@ -34,13 +34,7 @@ export default function AdminSidebar({
       path: '/admin/users',
       description: 'Quản lý thông tin nhân viên'
     },
-    {
-      id: 'attendance',
-      label: 'Chấm công',
-      icon: TablerIcons.IconClock,
-      path: '/admin/attendance',
-      description: 'Theo dõi chấm công'
-    },
+    // Đã xóa menu Chấm công theo yêu cầu
     {
       id: 'history',
       label: 'Lịch sử chấm công',

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Card, { CardTitle, CardContent, CardActions, CardButton } from '../../../components/Card';
-import { FaCalculator, FaCalendarAlt, FaUsers, FaFileExport, FaSearch, FaFilter, FaDownload, FaInfoCircle } from 'react-icons/fa';
+import { FaCalculator, FaCalendarAlt, FaUsers, FaFileExport, FaFilter, FaDownload, FaInfoCircle } from 'react-icons/fa';
 
 const PayrollCalculation = () => {
   // State cho form tính công
@@ -10,15 +10,7 @@ const PayrollCalculation = () => {
   // const [selectedEmployee, setSelectedEmployee] = useState(''); // Tạm thời comment vì chưa sử dụng
   const [calculationType, setCalculationType] = useState('monthly');
 
-  // State cho danh sách nhân viên
-  const [employees] = useState([
-    { id: 1, name: 'Nguyễn Văn A', department: 'IT', position: 'Developer', baseSalary: 15000000, attendanceDays: 22, overtimeHours: 8 },
-    { id: 2, name: 'Trần Thị B', department: 'HR', position: 'Manager', baseSalary: 20000000, attendanceDays: 21, overtimeHours: 5 },
-    { id: 3, name: 'Lê Văn C', department: 'Sales', position: 'Sales Rep', baseSalary: 12000000, attendanceDays: 20, overtimeHours: 12 },
-    { id: 4, name: 'Phạm Thị D', department: 'Marketing', position: 'Designer', baseSalary: 14000000, attendanceDays: 23, overtimeHours: 6 },
-  ]);
-
-  // State cho kết quả tính công
+  // Kết quả tổng hợp từ attendance_records
   const [payrollResults, setPayrollResults] = useState([]);
   const [isCalculating, setIsCalculating] = useState(false);
 
@@ -44,33 +36,37 @@ const PayrollCalculation = () => {
   // Danh sách năm (5 năm gần nhất)
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
-  // Hàm tính công
-  const calculatePayroll = () => {
-    setIsCalculating(true);
-    
-    // Mô phỏng tính toán
-    setTimeout(() => {
-      const results = employees.map(emp => {
-        const baseSalary = emp.baseSalary;
-        const dailyRate = baseSalary / 26; // Lương theo ngày
-        const attendancePay = emp.attendanceDays * dailyRate;
-        const overtimePay = emp.overtimeHours * (dailyRate / 8) * 1.5; // Làm thêm giờ x1.5
-        const totalPay = attendancePay + overtimePay;
-        
-        return {
-          ...emp,
-          dailyRate: Math.round(dailyRate),
-          attendancePay: Math.round(attendancePay),
-          overtimePay: Math.round(overtimePay),
-          totalPay: Math.round(totalPay),
-          deductions: Math.round(totalPay * 0.105), // BHXH, BHYT, BHTN
-          netPay: Math.round(totalPay * 0.895)
-        };
-      });
-      
-      setPayrollResults(results);
+  // Hàm lấy dữ liệu thực tế từ backend: tổng công (work_unit) và tổng giờ theo tháng
+  const calculatePayroll = async () => {
+    if (!selectedMonth) return;
+    try {
+      setIsCalculating(true);
+      const monthParam = `${selectedYear}-${selectedMonth}`; // YYYY-MM
+      const res = await fetch(`http://localhost:3001/api/attendance/records?month=${encodeURIComponent(monthParam)}`);
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Phản hồi không hợp lệ từ máy chủ');
+      }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || `HTTP ${res.status}`);
+      }
+      const json = await res.json();
+      const normalized = (json.data || []).map((row) => ({
+        userID: row.userID,
+        fullName: row.fullName,
+        workingDays: Number(row.working_days || 0),
+        totalWorkUnits: Number(row.total_work_units || 0),
+        totalHours: Number(row.total_hours || 0),
+        totalOvertimeHours: Number(row.total_overtime_hours || 0),
+      }));
+      setPayrollResults(normalized);
+    } catch (error) {
+      console.error('Lỗi lấy dữ liệu tính công:', error);
+      alert(error.message || 'Không thể lấy dữ liệu tính công');
+    } finally {
       setIsCalculating(false);
-    }, 2000);
+    }
   };
 
   // Hàm xuất báo cáo
@@ -78,13 +74,7 @@ const PayrollCalculation = () => {
     alert(`Đang xuất báo cáo định dạng ${format}...`);
   };
 
-  // Hàm lọc nhân viên
-  const filteredEmployees = employees.filter(emp => {
-    if (selectedDepartment && selectedDepartment !== 'Tất cả') {
-      return emp.department === selectedDepartment;
-    }
-    return true;
-  });
+  // Không dùng dữ liệu mẫu, bảng dưới hiển thị theo payrollResults
 
   return (
     <div className="space-y-6">
@@ -240,35 +230,21 @@ const PayrollCalculation = () => {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Họ tên</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phòng ban</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chức vụ</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lương cơ bản</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số ngày công</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giờ làm thêm</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lương công</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lương OT</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng lương</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khấu trừ</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lương thực nhận</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số ngày ghi nhận</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng công</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng giờ</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giờ tăng ca</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {payrollResults.map(emp => (
-                      <tr key={emp.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          NV{emp.id.toString().padStart(3, '0')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.department}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.position}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.baseSalary.toLocaleString('vi-VN')} ₫</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.attendanceDays}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.overtimeHours}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.attendancePay.toLocaleString('vi-VN')} ₫</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.overtimePay.toLocaleString('vi-VN')} ₫</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.totalPay.toLocaleString('vi-VN')} ₫</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.deductions.toLocaleString('vi-VN')} ₫</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{emp.netPay.toLocaleString('vi-VN')} ₫</td>
+                    {payrollResults.map(row => (
+                      <tr key={row.userID} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">NV{String(row.userID).padStart(3, '0')}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.fullName}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.workingDays}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.totalWorkUnits}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.totalHours.toFixed(2)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.totalOvertimeHours.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -280,28 +256,22 @@ const PayrollCalculation = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
               <Card>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600 mb-2">
-                    {payrollResults.reduce((sum, emp) => sum + emp.totalPay, 0).toLocaleString('vi-VN')} ₫
-                  </div>
-                  <div className="text-sm text-gray-600">Tổng lương</div>
+                  <div className="text-2xl font-bold text-blue-600 mb-2">{payrollResults.reduce((sum, r) => sum + r.totalWorkUnits, 0).toFixed(2)}</div>
+                  <div className="text-sm text-gray-600">Tổng công (work units)</div>
                 </div>
               </Card>
               
               <Card>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600 mb-2">
-                    {payrollResults.reduce((sum, emp) => sum + emp.deductions, 0).toLocaleString('vi-VN')} ₫
-                  </div>
-                  <div className="text-sm text-gray-600">Tổng khấu trừ</div>
+                  <div className="text-2xl font-bold text-red-600 mb-2">{payrollResults.reduce((sum, r) => sum + r.totalHours, 0).toFixed(2)}</div>
+                  <div className="text-sm text-gray-600">Tổng giờ làm</div>
                 </div>
               </Card>
               
               <Card>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600 mb-2">
-                    {payrollResults.reduce((sum, emp) => sum + emp.netPay, 0).toLocaleString('vi-VN')} ₫
-                  </div>
-                  <div className="text-sm text-gray-600">Tổng thực chi</div>
+                  <div className="text-2xl font-bold text-green-600 mb-2">{payrollResults.reduce((sum, r) => sum + r.totalOvertimeHours, 0).toFixed(2)}</div>
+                  <div className="text-sm text-gray-600">Tổng giờ tăng ca</div>
                 </div>
               </Card>
               
@@ -341,70 +311,7 @@ const PayrollCalculation = () => {
           </Card>
         )}
 
-        {/* Danh sách nhân viên */}
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <CardTitle level="h3" className="text-lg flex items-center">
-              <FaUsers className="mr-2 text-blue-600" />
-              Danh sách nhân viên
-            </CardTitle>
-            
-            <div className="flex items-center">
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm nhân viên..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-          </div>
-
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã NV</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Họ tên</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phòng ban</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chức vụ</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lương cơ bản</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số ngày công</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giờ làm thêm</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredEmployees.map(emp => (
-                    <tr key={emp.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        NV{emp.id.toString().padStart(3, '0')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.department}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.position}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.baseSalary.toLocaleString('vi-VN')} ₫</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.attendanceDays}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.overtimeHours}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <CardButton variant="primary" className="text-xs px-3 py-1">
-                            Chỉnh sửa
-                          </CardButton>
-                          <CardButton variant="outline" className="text-xs px-3 py-1">
-                            Xem chi tiết
-                          </CardButton>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Đã bỏ danh sách nhân viên mẫu để tránh nhầm lẫn dữ liệu */}
     </div>
   );
 };

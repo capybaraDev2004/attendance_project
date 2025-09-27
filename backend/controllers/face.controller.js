@@ -16,15 +16,16 @@ async function upsertAttendanceRecordMySQL(pool, { userId, workDate, checkIn, ch
     const overtimeMinutes = Math.max(0, workedMinutes - FULL_DAY_MINUTES);
     const overtimeHours = +(overtimeMinutes / 60).toFixed(2);
 
+    // work_unit chỉ nhận 0, 0.25, 0.5, 0.75, 1 (không cộng giờ vượt)
     let workUnit = 0;
-    if (workedMinutes < FULL_DAY_MINUTES) {
+    if (workedMinutes >= FULL_DAY_MINUTES) {
+      workUnit = 1;
+    } else {
       const ratio = workedMinutes / FULL_DAY_MINUTES;
       if (ratio >= 0.75) workUnit = 0.75;
       else if (ratio >= 0.5) workUnit = 0.5;
       else if (ratio >= 0.25) workUnit = 0.25;
       else workUnit = 0;
-    } else {
-      workUnit = +(1 + overtimeMinutes / 60).toFixed(2);
     }
 
     const [exists] = await pool.execute(
