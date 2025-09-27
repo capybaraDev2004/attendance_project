@@ -1,6 +1,20 @@
 // backend/controllers/attendance.controller.js
 const { pool } = require('../config/database');
 
+// API đếm số lần chấm công hôm nay (theo số bản ghi attendance có check_in trong ngày)
+async function getTodayCount(req, res, next) {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT COUNT(*) AS count
+       FROM attendance
+       WHERE work_date = CURDATE() AND check_in IS NOT NULL`
+    );
+    return res.json({ success: true, count: rows[0]?.count || 0 });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Check-in cho admin
 async function checkIn(req, res, next) {
   try {
@@ -522,4 +536,4 @@ async function recordsByMonth(req, res, next) {
   }
 }
 
-module.exports = { checkIn, checkOut, history, userHistory, recordsByMonth };
+module.exports = { checkIn, checkOut, history, userHistory, recordsByMonth, getTodayCount };

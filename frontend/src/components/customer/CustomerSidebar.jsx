@@ -28,13 +28,6 @@ export default function CustomerSidebar({
       description: 'Tổng quan cá nhân'
     },
     {
-      id: 'timekeeping',
-      label: 'Chấm công',
-      icon: TablerIcons.IconClock,
-      path: '/timekeeping',
-      description: 'Chấm công vào/ra'
-    },
-    {
       id: 'face-scan',
       label: 'Quét khuôn mặt',
       icon: TablerIcons.IconFaceId,

@@ -11,7 +11,6 @@ import CustomerUsers from './pages/customer/User/CustomerUsers';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import CustomerHome from './pages/customer/CustomerHome';
 import CustomerAttendance from './pages/customer/History/CustomerAttendance';
-import CustomerTimekeeping from './pages/customer/Timekeeping/CustomerTimekeeping';
 import CustomerLogout from './pages/customer/CustomerLogout';
 import FaceScan from './pages/customer/Face-scan/FaceScan';
 
@@ -41,7 +40,6 @@ function App() {
             <Route path="users" element={<CustomerUsers />} />
             <Route path="face-scan" element={<FaceScan />} />
             <Route path="attendance" element={<CustomerAttendance />} />
-            <Route path="timekeeping" element={<CustomerTimekeeping />} />
             <Route path="logout" element={<CustomerLogout />} />
           </Route>
         </Route>
