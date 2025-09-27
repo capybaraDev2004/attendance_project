@@ -268,10 +268,10 @@ async function history(req, res, next) {
 // Hàm chuyển đổi phút thành giờ và phút
 function formatTime(minutes) {
   if (minutes <= 0) return '';
-  
+
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  
+
   if (hours > 0 && remainingMinutes > 0) {
     return `${hours} giờ ${remainingMinutes} phút`;
   } else if (hours > 0) {
@@ -294,9 +294,9 @@ function formatDate(dateString) {
 async function userHistory(req, res, next) {
   try {
     const { user_id } = req.params;
-    
+
     console.log('🔍 API userHistory được gọi với user_id:', user_id);
-    
+
     if (!user_id) {
       console.error('❌ Thiếu user_id trong request');
       return res.status(400).json({
@@ -322,7 +322,7 @@ async function userHistory(req, res, next) {
     const [shifts] = await pool.execute(
       'SELECT * FROM shifts WHERE is_active = 1 ORDER BY shift_id LIMIT 1'
     );
-    
+
     console.log('📅 Ca làm việc:', shifts);
     const defaultShift = shifts[0] || { start_time: '08:00:00', end_time: '17:30:00' };
     const startTime = defaultShift.start_time;
@@ -356,7 +356,7 @@ async function userHistory(req, res, next) {
     // Nhóm dữ liệu theo ngày và xử lý
     const groupedByDate = {};
     let actualRecordCount = 0; // Đếm số bản ghi thực tế (không tính header ngày)
-    
+
     rows.forEach(record => {
       const dateKey = record.work_date;
       if (!groupedByDate[dateKey]) {
@@ -366,7 +366,7 @@ async function userHistory(req, res, next) {
           checkOut: null
         };
       }
-      
+
       // Xử lý check-in
       if (record.check_in) {
         actualRecordCount++; // Tăng đếm cho mỗi check-in
@@ -376,10 +376,10 @@ async function userHistory(req, res, next) {
         const expectedStartTime = new Date(workDate);
         const [hours, minutes] = startTime.split(':');
         expectedStartTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        
+
         const timeDiff = checkInTime.getTime() - expectedStartTime.getTime();
         const minutesLate = Math.floor(timeDiff / (1000 * 60));
-        
+
         let status = 'Đúng giờ';
         if (minutesLate > 0) {
           const lateText = formatTime(minutesLate);
@@ -408,10 +408,10 @@ async function userHistory(req, res, next) {
         const expectedEndTime = new Date(workDate);
         const [hours, minutes] = endTime.split(':');
         expectedEndTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        
+
         const timeDiff = checkOutTime.getTime() - expectedEndTime.getTime();
         const minutesLate = Math.floor(timeDiff / (1000 * 60));
-        
+
         let status = 'Đúng giờ';
         if (minutesLate < -5) {
           status = `Sớm ${Math.abs(minutesLate)} phút`;
@@ -437,7 +437,7 @@ async function userHistory(req, res, next) {
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .map(dateGroup => {
         const result = [];
-        
+
         // Thêm header ngày
         result.push({
           id: `date_${dateGroup.date}`,
@@ -448,7 +448,7 @@ async function userHistory(req, res, next) {
           location: '',
           isDateHeader: true
         });
-        
+
         // Thêm check-in nếu có
         if (dateGroup.checkIn) {
           result.push({
@@ -456,7 +456,7 @@ async function userHistory(req, res, next) {
             date: dateGroup.date
           });
         }
-        
+
         // Thêm check-out nếu có
         if (dateGroup.checkOut) {
           result.push({
@@ -464,7 +464,7 @@ async function userHistory(req, res, next) {
             date: dateGroup.date
           });
         }
-        
+
         return result;
       }).flat();
 
@@ -482,7 +482,6 @@ async function userHistory(req, res, next) {
     next(err);
   }
 }
-
 // API: Lấy tổng hợp attendance_records theo tháng và (tùy chọn) theo user
 // Query: month=YYYY-MM hoặc start_date, end_date; user_id=optional
 async function recordsByMonth(req, res, next) {

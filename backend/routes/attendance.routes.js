@@ -10,6 +10,7 @@ router.get('/history', history);
 router.get('/user-history/:user_id', userHistory);
 // Tổng hợp attendance_records theo tháng
 router.get('/records', recordsByMonth);
+
 // Đếm số lần chấm công hôm nay
 router.get('/today-count', getTodayCount);
 

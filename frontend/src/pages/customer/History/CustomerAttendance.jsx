@@ -1,8 +1,14 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef  } from 'react';
+import { io } from 'socket.io-client';
 import StandardTable from '../../../components/StandardTable';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
 import Pagination from '../../../components/Pagination';
 import { IconHistory, IconSearch, IconFileExport, IconCalendar, IconAlertCircle } from '@tabler/icons-react';
+
+const DEFAULT_HOST = typeof window !== 'undefined' && window.location && window.location.hostname
+  ? window.location.hostname
+  : 'localhost';
+const API_URL = process.env.REACT_APP_API_URL || `http://${DEFAULT_HOST}:3001`;
 
 // Component lịch sử chấm công cho customer - chỉ hiển thị lịch sử của user hiện tại
 const CustomerAttendance = () => {
@@ -17,7 +23,7 @@ const CustomerAttendance = () => {
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  
+
   // State cho date picker
   const [selectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -27,10 +33,10 @@ const CustomerAttendance = () => {
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth(); // 0-11
-    
+
     // Tạo ngày 1 của tháng hiện tại
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
-    
+
     // Format thành dd/mm/yyyy cho hiển thị
     const formatDateForDisplay = (date) => {
       const day = String(date.getDate()).padStart(2, '0');
@@ -38,7 +44,7 @@ const CustomerAttendance = () => {
       const year = date.getFullYear();
       return `${day}/${month}/${year}`;
     };
-    
+
     return {
       startDate: formatDateForDisplay(firstDayOfMonth), // Ngày 1 của tháng hiện tại
       endDate: formatDateForDisplay(today) // Ngày hiện tại
@@ -70,10 +76,10 @@ const CustomerAttendance = () => {
   const handleDateInputChange = useCallback((key, value) => {
     // Chỉ cho phép nhập số và dấu /
     const cleaned = value.replace(/[^\d/]/g, '');
-    
+
     // Giới hạn độ dài
     if (cleaned.length > 10) return;
-    
+
     // Tự động thêm dấu /
     let formatted = cleaned;
     if (cleaned.length >= 2 && !cleaned.includes('/')) {
@@ -85,7 +91,7 @@ const CustomerAttendance = () => {
         formatted = parts[0] + '/' + parts[1].slice(0, 2) + '/' + parts[1].slice(2);
       }
     }
-    
+
     setFilters((prev) => ({ ...prev, [key]: formatted }));
   }, []);
 
@@ -120,26 +126,26 @@ const CustomerAttendance = () => {
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay();
-    
+
     const days = [];
-    
+
     // Thêm các ngày trống ở đầu tháng
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(null);
     }
-    
+
     // Thêm các ngày trong tháng
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(new Date(year, month, day));
     }
-    
+
     return days;
   }, []);
 
   // Gọi API lấy lịch sử chỉ của user hiện tại
   const fetchAttendanceHistory = useCallback(async () => {
     if (!currentUser) return;
-    
+
     setLoading(true);
     try {
       const queryParams = new URLSearchParams({
@@ -148,10 +154,10 @@ const CustomerAttendance = () => {
         user_id: currentUser.userID, // Chỉ lấy lịch sử của user hiện tại
         device_id: 'all' // Không filter theo device
       });
-      
-      const response = await fetch(`http://localhost:3001/api/attendance/history?${queryParams}`);
+
+      const response = await fetch(`${API_URL}/api/attendance/history?${queryParams}`);
       const data = await response.json();
-      
+
       if (data.success) {
         setAttendanceData(data.attendance);
       } else {
@@ -164,6 +170,40 @@ const CustomerAttendance = () => {
       setLoading(false);
     }
   }, [currentUser, filters.startDate, filters.endDate, convertToAPIDate]);
+
+  // Lắng nghe realtime từ Socket.IO và tự refresh khi có quét RFID của chính user này
+  useEffect(() => {
+    const socket = io(API_URL, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      path: '/socket.io',
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000
+    });
+
+    socket.on('connect', () => {
+      console.log('🔌 Socket connected (history):', socket.id);
+    });
+
+    socket.on('attendanceUpdate', (payload) => {
+      // payload: { id, date, time, type, status, location, userName }
+      if (!currentUser) return;
+      if (payload && payload.userName === currentUser.fullName) {
+        // Tải lại lịch sử để đồng bộ dữ liệu bảng
+        fetchAttendanceHistory();
+      }
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('❌ Socket disconnected (history):', reason);
+    });
+    socket.on('connect_error', (err) => {
+      console.error('⚠️ Socket connect_error (history):', err.message);
+    });
+
+    return () => socket.disconnect();
+  }, [currentUser, fetchAttendanceHistory]);
 
   useEffect(() => {
     // Lấy thông tin user hiện tại
@@ -415,20 +455,20 @@ const CustomerAttendance = () => {
       visible: true,
       render: (record) => renderWorkUnits(record)
     },
-    
+
   ];
 
   // Component Date Picker
   const DatePicker = ({ isOpen, onClose, onSelect, inline = false }) => {
     if (!isOpen) return null;
-    
+
     const today = new Date();
-    
+
     const monthNames = [
       'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
       'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
     ];
-    
+
     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     const calendarDays = generateCalendarDays(selectedYear, selectedMonth);
     
@@ -444,6 +484,7 @@ const CustomerAttendance = () => {
             <span className="font-semibold text-gray-900">
               {monthNames[selectedMonth]} {selectedYear}
             </span>
+
             <button 
               className="px-2 py-1 rounded hover:bg-gray-100"
               onClick={() => setSelectedMonth(prev => prev === 11 ? 0 : prev + 1)}
@@ -451,6 +492,7 @@ const CustomerAttendance = () => {
               ›
             </button>
           </div>
+
           
           <div className="px-4 py-3">
             <div className="grid grid-cols-7 gap-2 mb-2 text-xs font-medium text-gray-500">
@@ -571,7 +613,7 @@ const CustomerAttendance = () => {
             Bộ lọc dữ liệu
           </h3>
         </div>
-        
+
         <div className="p-6">
           {/* Lọc theo ngày */}
           <div className="mb-6">
@@ -608,7 +650,7 @@ const CustomerAttendance = () => {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Ngày kết thúc:</label>
                 <div className="relative" ref={endPickerRef} onBlur={(e) => {

@@ -6,7 +6,8 @@ const {
   updateUser, 
   deleteUser, 
   createAccount, 
-  resetPassword 
+  resetPassword,
+  getByUID
 } = require('../controllers/users.controller');
 
 const router = express.Router();
@@ -29,4 +30,6 @@ router.post('/:userID/account', createAccount);
 // Cấp lại mật khẩu
 router.put('/:userID/password', resetPassword);
 
+
+router.get('/by-uid/:uid', getByUID);
 module.exports = router;

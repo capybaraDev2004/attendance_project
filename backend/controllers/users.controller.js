@@ -35,6 +35,21 @@ async function getUsers(req, res, next) {
     next(err);
   }
 }
+// Lấy theo UID RFID
+async function getByUID(req, res) {
+  try {
+    const { uid } = req.params;
+    if (!uid) return res.status(400).json({ error: 'uid required' });
+
+    const [rows] = await pool.execute('SELECT * FROM users WHERE uid = ?', [uid]);
+
+    if (!rows.length) return res.status(404).json({ error: 'not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server error' });
+  }
+}
 
 // Thêm người dùng mới (chỉ có thông tin cá nhân, chưa có tài khoản)
 async function createUser(req, res, next) {
@@ -358,11 +373,11 @@ async function resetPassword(req, res, next) {
   }
 }
 
-module.exports = { 
-  getUsers, 
+module.exports = { getUsers, 
   createUser, 
   updateUser, 
   deleteUser, 
   createAccount, 
-  resetPassword 
-};
+  resetPassword,
+  getByUID };
+
