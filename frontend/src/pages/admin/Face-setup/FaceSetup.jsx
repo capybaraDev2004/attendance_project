@@ -7,6 +7,10 @@ const FaceSetup = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [faceEnrollments, setFaceEnrollments] = useState({}); // Dữ liệu từ MongoDB
+  // Modal xác nhận chung cho Xóa/Bật-Tắt
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
+  // Thông báo thành công
+  const [successToast, setSuccessToast] = useState({ open: false, message: '' });
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,6 +87,7 @@ const FaceSetup = () => {
               enrollmentsMap[enrollment.userID] = {
                 userID: enrollment.userID,
                 fullName: enrollment.fullName,
+                is_active: enrollment.is_active !== false,
                 createdAt: enrollment.createdAt,
                 updatedAt: enrollment.updatedAt
               };
@@ -323,37 +328,9 @@ const FaceSetup = () => {
         console.timeEnd('Load face-api models');
         
         if (loadedModels.length === 0) {
-          console.warn('Không thể load models thật, tạo fallback models');
-          
-          // Tạo fallback models cho tất cả
-          const fallbackModels = ['tinyFaceDetector', 'faceLandmark68Net', 'faceRecognitionNet'];
-          fallbackModels.forEach(modelName => {
-            if (fa.nets[modelName]) {
-              fa.nets[modelName].isLoaded = () => true;
-              fa.nets[modelName].loaded = true;
-              
-              // Thêm method giả cho detectSingleFace nếu cần
-              if (modelName === 'tinyFaceDetector' && !fa.detectSingleFace) {
-                fa.detectSingleFace = () => Promise.resolve([{
-                  detection: { box: { x: 0, y: 0, width: 100, height: 100 } },
-                  landmarks: { positions: Array(68).fill({ x: 0, y: 0 }) },
-                  descriptor: Array(128).fill(0.1)
-                }]);
-              }
-              
-              console.log(`${modelName} fallback model đã sẵn sàng`);
-            }
-          });
-          
-          // Kiểm tra lại sau khi tạo fallback
-          const fallbackStatus = checkModelStatus();
-          if (fallbackStatus) {
-            console.log('Fallback models đã sẵn sàng');
-            loadedModels = fallbackModels;
-            failedModels = [];
-          } else {
-            throw new Error('Không thể load bất kỳ model nào và fallback cũng thất bại. Vui lòng kiểm tra mạng và tải lại trang.');
-          }
+          // Không can thiệp nội bộ đối tượng model để tránh lỗi "getter only".
+          // Chỉ cảnh báo để người dùng tải lại/kiểm tra server weights.
+          throw new Error('Không thể tải các model nhận diện. Vui lòng kiểm tra server weights và mạng, sau đó tải lại trang.');
         }
 
         if (failedModels.length > 0) {
@@ -1004,8 +981,44 @@ const FaceSetup = () => {
     }
   };
 
-  // Xóa dữ liệu nhận diện (chưa hiển thị nút trong UI)
-  // const deleteFaceData = (userID) => {};
+  // Xóa dữ liệu nhận diện
+  const deleteFaceData = async (userID) => {
+    setConfirmModal({ open: false, title: '', message: '', onConfirm: null });
+    try {
+      const res = await fetch(`http://localhost:3001/api/face/enroll/${userID}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Xóa thất bại');
+      setFaceEnrollments(prev => {
+        const next = { ...prev };
+        delete next[userID];
+        return next;
+      });
+      setSuccessToast({ open: true, message: 'Đã xóa dữ liệu khuôn mặt' });
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  // Bật/Tắt dữ liệu nhận diện
+  const toggleFaceActive = async (userID, enable) => {
+    setConfirmModal({ open: false, title: '', message: '', onConfirm: null });
+    try {
+      const res = await fetch(`http://localhost:3001/api/face/enroll/${userID}/toggle`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: enable })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Cập nhật trạng thái thất bại');
+      setFaceEnrollments(prev => ({
+        ...prev,
+        [userID]: { ...(prev[userID] || {}), is_active: !!enable, updatedAt: new Date().toISOString() }
+      }));
+      setSuccessToast({ open: true, message: enable ? 'Đã kích hoạt khuôn mặt' : 'Đã vô hiệu hóa khuôn mặt' });
+    } catch (e) {
+      alert(e.message);
+    }
+  };
 
   // Xem ảnh đã đăng ký (nếu có lưu kèm ảnh)
   // const viewFaceImage = (userID) => {};
@@ -1130,23 +1143,65 @@ const FaceSetup = () => {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center space-x-2">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                installed ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {installed ? 'ĐÃ CÀI ĐẶT' : 'CHƯA CÀI ĐẶT'}
-                              </span>
-                              <button 
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                                  installed || !modelsLoaded
-                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                                }`}
-                                onClick={() => openInstallModal(user)}
-                                disabled={installed || !modelsLoaded}
-                              >
-                                {installed ? 'Đã cài đặt' : 'Cài đặt'}
-                              </button>
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  installed ? (faceEnrollments[user.userID]?.is_active !== false ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800') : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {installed ? (faceEnrollments[user.userID]?.is_active !== false ? 'ĐÃ CÀI ĐẶT' : 'ĐÃ CÀI ĐẶT (KHÓA)') : 'CHƯA CÀI ĐẶT'}
+                                </span>
+                                <button 
+                                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                                    installed || !modelsLoaded
+                                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                                  }`}
+                                  onClick={() => openInstallModal(user)}
+                                  disabled={installed || !modelsLoaded}
+                                >
+                                  {installed ? 'Đã cài đặt' : 'Cài đặt'}
+                                </button>
+                              </div>
+                              {installed && (
+                                <div className="flex items-center space-x-2 pt-1 border-t border-gray-100">
+                                  <button
+                                    className="px-3 py-1 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-700"
+                                    onClick={() => setConfirmModal({
+                                      open: true,
+                                      title: 'Xóa dữ liệu khuôn mặt',
+                                      message: `Bạn chắc chắn muốn xóa khuôn mặt của ${user.fullName}?`,
+                                      onConfirm: () => deleteFaceData(user.userID)
+                                    })}
+                                  >
+                                    Xóa
+                                  </button>
+                                  {faceEnrollments[user.userID]?.is_active !== false ? (
+                                    <button
+                                      className="px-3 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600"
+                                      onClick={() => setConfirmModal({
+                                        open: true,
+                                        title: 'Vô hiệu hóa khuôn mặt',
+                                        message: `Khóa nhận diện của ${user.fullName}?`,
+                                        onConfirm: () => toggleFaceActive(user.userID, false)
+                                      })}
+                                    >
+                                      Vô hiệu hóa
+                                    </button>
+                                  ) : (
+                                    <button
+                                      className="px-3 py-1 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700"
+                                      onClick={() => setConfirmModal({
+                                        open: true,
+                                        title: 'Kích hoạt khuôn mặt',
+                                        message: `Mở khóa nhận diện của ${user.fullName}?`,
+                                        onConfirm: () => toggleFaceActive(user.userID, true)
+                                      })}
+                                    >
+                                      Kích hoạt
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1261,12 +1316,91 @@ const FaceSetup = () => {
         </div>
       )}
 
+      {/* Modal xác nhận */}
+      {confirmModal.open && (
+        <div className="modal-overlay" onClick={() => setConfirmModal({ open: false, title: '', message: '', onConfirm: null })}>
+          <div className="modal-content confirm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="modal-header">
+              <div className="modal-icon warning" aria-hidden>!</div>
+              <div className="modal-title-group">
+                <h3 className="modal-title">{confirmModal.title}</h3>
+                <p className="modal-subtitle">Hành động này có thể ảnh hưởng đến việc chấm công của người dùng.</p>
+              </div>
+            </div>
+            <div className="modal-body">
+              <p>{confirmModal.message}</p>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-danger" onClick={confirmModal.onConfirm}>Xác nhận</button>
+              <button className="btn btn-outline" onClick={() => setConfirmModal({ open: false, title: '', message: '', onConfirm: null })}>Hủy</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast thành công đơn giản */}
+      {successToast.open && (
+        <div style={{ position: 'fixed', right: 16, bottom: 16, background: '#16a34a', color: '#fff', padding: '10px 14px', borderRadius: 8, zIndex: 9999 }}
+             onAnimationEnd={() => setSuccessToast({ open: false, message: '' })}
+        >
+          {successToast.message}
+        </div>
+      )}
+
       {/* Keyframes spinner */}
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
+
+        /* Overlay tối mờ toàn màn hình */
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(17, 24, 39, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          z-index: 9999;
+          animation: overlayFade .15s ease-out;
+        }
+        @keyframes overlayFade { from { opacity: 0 } to { opacity: 1 } }
+
+        /* Hộp thoại chuẩn chung */
+        .modal-content {
+          width: 100%;
+          max-width: 520px;
+          background: #ffffff;
+          border-radius: 16px;
+          box-shadow: 0 20px 40px rgba(2, 6, 23, 0.2);
+          padding: 20px;
+          transform: translateY(6px);
+          animation: dialogPop .18s ease-out;
+        }
+        @keyframes dialogPop {
+          from { opacity: 0; transform: translateY(16px) scale(0.98); }
+          to { opacity: 1; transform: translateY(6px) scale(1); }
+        }
+
+        /* Header hiện đại: icon + tiêu đề */
+        .modal-header { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+        .modal-title { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; }
+        .modal-subtitle { margin: 2px 0 0; font-size: 12px; color: #64748b; }
+        .modal-title-group { display: flex; flex-direction: column; }
+        .modal-icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; }
+        .modal-icon.warning { background: #fef3c7; color: #b45309; }
+
+        .modal-body { margin: 12px 0 16px; color: #0f172a; line-height: 1.5; }
+
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+        .btn { height: 36px; padding: 0 14px; border-radius: 10px; font-weight: 600; letter-spacing: .2px; transition: all .15s ease; }
+        .btn:focus { outline: 2px solid #e2e8f0; outline-offset: 2px; }
+        .btn-danger { background: #dc2626; color: #fff; border: none; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-outline { background: #fff; color: #0f172a; border: 1px solid #e2e8f0; }
+        .btn-outline:hover { background: #f8fafc; }
       `}</style>
     </div>
   );

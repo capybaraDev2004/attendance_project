@@ -535,4 +535,141 @@ async function recordsByMonth(req, res, next) {
   }
 }
 
-module.exports = { checkIn, checkOut, history, userHistory, recordsByMonth, getTodayCount };
+// API: Tổng hợp bảng lương theo tháng
+// Query: month=YYYY-MM (ưu tiên) hoặc start_date, end_date
+// Yêu cầu: lấy tất cả nhân viên active, lương cơ bản = salaryRank (nếu không có, dùng 0),
+// tính: tổng công (sum work_unit làm tròn 0.25), tổng giờ làm thêm (sum overtime_hours),
+// tổng ngày đi muộn (đếm số ngày attendance.check_in > start_time ca), tiền phạt = 50,000/ngày muộn
+// công thức lương:
+// - nếu đủ 26 công: total = base + (overtimeHours * 150% * base/26) - penalties
+// - nếu < 26 công: total = (base/26 * actualDays) - penalties
+async function payrollByMonth(req, res, next) {
+  try {
+    const { month, start_date, end_date, user_id } = req.query;
+
+    // Xác định khoảng thời gian
+    let startDate = start_date;
+    let endDate = end_date;
+    if (month) {
+      const [y, m] = month.split('-');
+      const first = new Date(Number(y), Number(m) - 1, 1);
+      const last = new Date(Number(y), Number(m), 0);
+      startDate = first.toISOString().slice(0, 10);
+      endDate = last.toISOString().slice(0, 10);
+    }
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'Thiếu tham số thời gian (month hoặc start_date/end_date)' });
+    }
+
+    // Lấy ca làm việc để xác định giờ bắt đầu cho tính đi muộn
+    const [shifts] = await pool.execute(
+      'SELECT * FROM shifts WHERE is_active = 1 ORDER BY shift_id LIMIT 1'
+    );
+    const defaultShift = shifts[0] || { start_time: '08:00:00' };
+    const startTime = defaultShift.start_time; // HH:MM:SS
+
+    // Lấy tất cả nhân viên active, cùng thông tin vị trí để lấy phòng ban (nếu có)
+    // Gỉa định users có cột position (title) để join với positions lấy department, đồng thời có salaryRank (nếu không có sẽ trả null)
+    const [users] = await pool.execute(`
+      SELECT 
+        u.userID,
+        u.fullName,
+        u.position,
+        u.status,
+        COALESCE(u.salaryRank, 0) AS salaryRank,
+        p.Department AS department
+      FROM users u
+      LEFT JOIN positions p ON TRIM(p.Title) = TRIM(u.position)
+      WHERE u.status = 'active'
+      ORDER BY u.fullName ASC
+    `);
+
+    // Tổng hợp attendance_records theo user trong khoảng
+    let recordsQuery = `SELECT 
+         ar.userID,
+         COALESCE(SUM(ar.work_unit), 0) AS total_work_units,
+         COALESCE(SUM(ar.overtime_hours), 0) AS total_overtime_hours
+       FROM attendance_records ar
+       WHERE ar.work_date BETWEEN ? AND ?`;
+    const recParams = [startDate, endDate];
+    if (user_id && user_id !== 'all') {
+      recordsQuery += ' AND ar.userID = ?';
+      recParams.push(user_id);
+    }
+    recordsQuery += ' GROUP BY ar.userID';
+    const [records] = await pool.execute(recordsQuery, recParams);
+
+    // Tính số ngày đi muộn từ bảng attendance dựa vào start_time của ca làm
+    let lateQuery = `SELECT a.user_id AS userID, COUNT(*) AS late_days
+       FROM attendance a
+       WHERE a.work_date BETWEEN ? AND ?
+         AND a.check_in IS NOT NULL
+         AND TIME(a.check_in) > ?`;
+    const lateParams = [startDate, endDate, startTime];
+    if (user_id && user_id !== 'all') {
+      lateQuery += ' AND a.user_id = ?';
+      lateParams.push(user_id);
+    }
+    lateQuery += ' GROUP BY a.user_id';
+    const [lateRows] = await pool.execute(lateQuery, lateParams);
+
+    const userIdToRecord = new Map(records.map(r => [r.userID, r]));
+    const userIdToLate = new Map(lateRows.map(r => [r.userID, r.late_days]));
+
+    const LATE_PENALTY_PER_DAY = 50000; // 50,000 VND
+    const REQUIRED_DAYS = 26;
+
+    // Tổng hợp kết quả theo từng user active
+    const activeUsers = (user_id && user_id !== 'all') ? users.filter(u => u.userID == user_id) : users;
+    const result = activeUsers.map(u => {
+      const rec = userIdToRecord.get(u.userID) || { total_work_units: 0, total_overtime_hours: 0 };
+      const totalWorkUnits = Number(rec.total_work_units) || 0;
+      const totalOvertimeHours = Number(rec.total_overtime_hours) || 0;
+      // Làm tròn về bội số 0.25 để phù hợp quy ước work_unit
+      const roundedWorkUnits = Math.round(totalWorkUnits * 4) / 4;
+      const actualWorkingDays = Math.min(roundedWorkUnits, REQUIRED_DAYS);
+
+      const lateDays = Number(userIdToLate.get(u.userID) || 0);
+      const totalPenaltyAmount = lateDays * LATE_PENALTY_PER_DAY;
+
+      const baseSalary = Number(u.salaryRank || 0);
+
+      let totalSalary = 0;
+      if (actualWorkingDays >= REQUIRED_DAYS) {
+        // Đủ 26 công
+        const overtimePayPerHour = 1.5 * (baseSalary / REQUIRED_DAYS);
+        const overtimePay = totalOvertimeHours * overtimePayPerHour;
+        totalSalary = baseSalary + overtimePay - totalPenaltyAmount;
+      } else {
+        // Không đủ 26 công
+        const dailyRate = baseSalary / REQUIRED_DAYS;
+        totalSalary = dailyRate * actualWorkingDays - totalPenaltyAmount;
+      }
+
+      return {
+        userID: u.userID,
+        fullName: u.fullName,
+        department: u.department || null,
+        position: u.position || null,
+        salaryRank: baseSalary,
+        totalWorkDays: +actualWorkingDays.toFixed(2),
+        totalOvertimeHours: +Number(totalOvertimeHours || 0).toFixed(2),
+        totalLateDays: lateDays,
+        totalPenaltyAmount,
+        totalSalary: Math.round(totalSalary) // cho phép âm theo yêu cầu, làm tròn VND
+      };
+    });
+
+    return res.json({
+      success: true,
+      range: { startDate, endDate },
+      count: result.length,
+      data: result
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { checkIn, checkOut, history, userHistory, recordsByMonth, getTodayCount, payrollByMonth };

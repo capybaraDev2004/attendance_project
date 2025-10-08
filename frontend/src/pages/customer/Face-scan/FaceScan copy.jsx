@@ -267,7 +267,10 @@ const FaceScan = () => {
           try { data = text ? JSON.parse(text) : {}; } catch (_) { data = {}; }
 
           if (!res.ok || !data.success) {
-            throw new Error(data.message || `HTTP ${res.status}: ${res.statusText}`);
+            const friendly = (res.status === 403)
+              ? (data.message || 'Tài khoản nhận diện của bạn đã bị khóa, chi tiết vui lòng liên hệ phòng kĩ thuật!')
+              : (data.message || `HTTP ${res.status}: ${res.statusText}`);
+            throw new Error(friendly);
           }
 
           setScanResult({

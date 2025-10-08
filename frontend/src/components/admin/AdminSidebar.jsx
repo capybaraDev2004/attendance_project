@@ -86,6 +86,13 @@ export default function AdminSidebar({
       icon: TablerIcons.IconCalculator,
       path: '/admin/calculate',
       description: 'Tính tổng thời làm việc'
+    },
+    {
+      id: 'salary-management',
+      label: 'Quản lý tính lương',
+      icon: TablerIcons.IconCurrencyDollar,
+      path: '/admin/salary-management',
+      description: 'Quản lý và tính toán lương nhân viên'
     }
   ];
 

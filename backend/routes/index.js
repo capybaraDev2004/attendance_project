@@ -25,4 +25,3 @@ router.use('/api/positions', positionsRoutes); // đăng ký API chức vụ
 router.use('/', systemRoutes);
 
 module.exports = router;
-module.exports = router;

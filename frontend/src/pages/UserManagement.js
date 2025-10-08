@@ -33,8 +33,27 @@ const UserManagement = () => {
     address: '',
     position: '',
     role: 'employee',
-    status: 'active'
+    status: 'active',
+    salaryRank: ''
   });
+
+  // Danh sách chức vụ từ API
+  const [positions, setPositions] = useState([]);
+
+  useEffect(() => {
+    const fetchPositions = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/positions');
+        const data = await res.json();
+        if (!res.ok) throw new Error('Không tải được chức vụ');
+        // API trả mảng trực tiếp
+        setPositions(Array.isArray(data) ? data : (data.data || []));
+      } catch (e) {
+        console.warn('Không thể tải danh sách chức vụ:', e.message);
+      }
+    };
+    fetchPositions();
+  }, []);
 
   // State cho việc bật/tắt cột - cập nhật để khớp với dữ liệu thực tế
   const [visibleColumns, setVisibleColumns] = useState({
@@ -258,6 +277,93 @@ const UserManagement = () => {
     }
     
     return '';
+  };
+
+  // Chuyển từ dd/mm/yyyy sang yyyy-mm-dd
+  const parseDisplayDate = (display) => {
+    if (!display) return '';
+    const parts = display.split('/');
+    if (parts.length !== 3) return '';
+    const [d, m, y] = parts;
+    if (!d || !m || !y) return '';
+    return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  };
+
+  // Mở native date picker và trả về ISO yyyy-mm-dd
+  const openNativeDatePicker = (initialIso, onPicked) => {
+    try {
+      const input = document.createElement('input');
+      input.type = 'date';
+      input.style.position = 'fixed';
+      input.style.left = '-10000px';
+      input.value = initialIso || '';
+      document.body.appendChild(input);
+      const onChange = () => {
+        const v = input.value; // yyyy-mm-dd
+        onPicked && onPicked(v || '');
+        cleanup();
+      };
+      const cleanup = () => {
+        input.removeEventListener('change', onChange);
+        document.body.removeChild(input);
+      };
+      input.addEventListener('change', onChange);
+      if (input.showPicker) {
+        input.showPicker();
+      } else {
+        input.click();
+      }
+    } catch (_) {/* noop */}
+  };
+
+  // ===== Inline Calendar Dropdown (đẹp, hiển thị ngay dưới ô input) =====
+  const monthNamesVi = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+  const weekNamesVi = ['T2','T3','T4','T5','T6','T7','CN'];
+  const getDaysMatrix = (year, month) => {
+    // month: 0-11
+    const first = new Date(year, month, 1);
+    const startDay = (first.getDay() + 6) % 7; // Mon=0
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < startDay; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  };
+
+  const today = new Date();
+  const [addCalOpen, setAddCalOpen] = useState(false);
+  const [addCalYear, setAddCalYear] = useState(today.getFullYear());
+  const [addCalMonth, setAddCalMonth] = useState(today.getMonth());
+  const [editCalOpen, setEditCalOpen] = useState(false);
+  const [editCalYear, setEditCalYear] = useState(today.getFullYear());
+  const [editCalMonth, setEditCalMonth] = useState(today.getMonth());
+
+  const openCalendarFor = (mode) => {
+    const iso = formData.dateOfBirth;
+    let base = today;
+    if (iso) {
+      const d = new Date(iso);
+      if (!isNaN(d.getTime())) base = d;
+    }
+    if (mode === 'add') {
+      setAddCalYear(base.getFullYear());
+      setAddCalMonth(base.getMonth());
+      setAddCalOpen(true);
+    } else {
+      setEditCalYear(base.getFullYear());
+      setEditCalMonth(base.getMonth());
+      setEditCalOpen(true);
+    }
+  };
+
+  const pickCalendarDate = (day, mode) => {
+    if (!day) return;
+    const y = mode === 'add' ? addCalYear : editCalYear;
+    const m = mode === 'add' ? addCalMonth : editCalMonth; // 0-11
+    const iso = `${y}-${String(m + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    setFormData({ ...formData, dateOfBirth: iso });
+    mode === 'add' ? setAddCalOpen(false) : setEditCalOpen(false);
   };
 
   // Reset form data
@@ -1009,24 +1115,58 @@ const UserManagement = () => {
                     Ngày sinh
                   </label>
                   <div className="relative">
-                    <input
-                      type="date"
+                    <div className="relative">
+                      <input
+                      type="text"
+                      inputMode="numeric"
                       id="addDateOfBirth"
-                      value={formData.dateOfBirth}
-                      onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                      value={formData.dateOfBirth ? formatDateForDisplay(formData.dateOfBirth) : ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        // Chuẩn hóa dd/mm/yyyy khi gõ
+                        const cleaned = v.replace(/[^0-9/]/g, '');
+                        // Lưu tạm ở dạng yyyy-mm-dd cho backend
+                        const iso = parseDisplayDate(cleaned);
+                        setFormData({ ...formData, dateOfBirth: iso });
+                      }}
+                      onFocus={() => openCalendarFor('add')}
+                      onClick={() => openCalendarFor('add')}
+                      onFocus={(e) => {
+                        // Nếu trống, set về hôm nay theo dd/mm/yyyy để gợi ý
+                        if (!formData.dateOfBirth) {
+                          const today = new Date();
+                          const dd = String(today.getDate()).padStart(2, '0');
+                          const mm = String(today.getMonth() + 1).padStart(2, '0');
+                          const yyyy = today.getFullYear();
+                          const iso = `${yyyy}-${mm}-${dd}`;
+                          setFormData({ ...formData, dateOfBirth: iso });
+                        }
+                      }}
+                      placeholder="dd/mm/yyyy"
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                      />
+                      {/* Calendar dropdown for Add */}
+                      <div className={`${addCalOpen ? 'block' : 'hidden'} absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg`}
+                           onMouseDown={(e)=>e.preventDefault()}>
+                        <div className="flex items-center justify-between px-3 py-2 border-b">
+                          <button type="button" className="px-2 py-1 text-gray-600 hover:text-gray-900"
+                            onClick={() => { let m=addCalMonth-1, y=addCalYear; if(m<0){m=11;y--;} setAddCalMonth(m); setAddCalYear(y); }}>&lt;</button>
+                          <div className="text-sm font-semibold text-gray-800">{monthNamesVi[addCalMonth]} {addCalYear}</div>
+                          <button type="button" className="px-2 py-1 text-gray-600 hover:text-gray-900"
+                            onClick={() => { let m=addCalMonth+1, y=addCalYear; if(m>11){m=0;y++;} setAddCalMonth(m); setAddCalYear(y); }}>&gt;</button>
+                        </div>
+                        <div className="grid grid-cols-7 gap-1 p-2 text-center text-xs text-gray-500">
+                          {weekNamesVi.map(d => (<div key={d} className="py-1">{d}</div>))}
+                          {getDaysMatrix(addCalYear, addCalMonth).map((d, idx) => (
+                            <button key={idx} type="button" disabled={!d}
+                              className={`py-2 rounded-md ${d? 'hover:bg-blue-50' : 'opacity-40 cursor-default'}`}
+                              onClick={() => pickCalendarDate(d, 'add')}>{d || ''}</button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  {formData.dateOfBirth && (
-                    <p className="text-sm text-gray-500">
-                      Hiển thị: {formatDateForDisplay(formData.dateOfBirth)}
-                    </p>
-                  )}
+                  {/* Đã bỏ dòng hiển thị để tránh trùng nội dung */}
                 </div>
 
                 {/* Giới tính */}
@@ -1053,23 +1193,50 @@ const UserManagement = () => {
                   </div>
                 </div>
 
-                {/* Chức vụ */}
+                {/* Chức vụ - chọn từ danh sách có sẵn */}
                 <div className="space-y-2">
                   <label htmlFor="addPosition" className="block text-sm font-semibold text-gray-700">
                     Chức vụ
                   </label>
                   <div className="relative">
-                    <input
-                      type="text"
+                    <select
                       id="addPosition"
                       value={formData.position}
                       onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white appearance-none"
+                    >
+                      <option value="">-- Chọn chức vụ --</option>
+                      {positions.map(p => (
+                        <option key={p.id} value={p.title}>{p.title}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lương cơ bản (salaryRank) */}
+                <div className="space-y-2">
+                  <label htmlFor="addSalary" className="block text-sm font-semibold text-gray-700">
+                    Lương cơ bản
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      id="addSalary"
+                      value={formData.salaryRank}
+                      onChange={(e) => setFormData({ ...formData, salaryRank: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="Nhập chức vụ"
+                      placeholder="Nhập lương cơ bản"
                     />
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-2.21 0-4 1.343-4 3s1.79 3 4 3 4 1.343 4 3-1.79 3-4 3m0-12V4m0 16v-2" />
                       </svg>
                     </div>
                   </div>
@@ -1098,28 +1265,8 @@ const UserManagement = () => {
                   </div>
                 </div>
 
-                {/* Trạng thái */}
-                <div className="space-y-2">
-                  <label htmlFor="addStatus" className="block text-sm font-semibold text-gray-700">
-                    Trạng thái
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="addStatus"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white appearance-none"
-                    >
-                      <option value="active">Hoạt động</option>
-                      <option value="inactive">Không hoạt động</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
+                {/* Trạng thái: mặc định Hoạt động, ẩn chọn trong form thêm */}
+                <input type="hidden" value={formData.status} readOnly />
               </div>
 
               {/* Địa chỉ */}
@@ -1261,24 +1408,45 @@ const UserManagement = () => {
                     Ngày sinh
                   </label>
                   <div className="relative">
-                    <input
-                      type="date"
+                    <div className="relative">
+                      <input
+                      type="text"
+                      inputMode="numeric"
                       id="editDateOfBirth"
-                      value={formData.dateOfBirth}
-                      onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                      value={formData.dateOfBirth ? formatDateForDisplay(formData.dateOfBirth) : ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const cleaned = v.replace(/[^0-9/]/g, '');
+                        const iso = parseDisplayDate(cleaned);
+                        setFormData({ ...formData, dateOfBirth: iso });
+                      }}
+                      onFocus={() => openCalendarFor('edit')}
+                      onClick={() => openCalendarFor('edit')}
+                      placeholder="dd/mm/yyyy"
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                      />
+                      {/* Calendar dropdown for Edit */}
+                      <div className={`${editCalOpen ? 'block' : 'hidden'} absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg`}
+                           onMouseDown={(e)=>e.preventDefault()}>
+                        <div className="flex items-center justify-between px-3 py-2 border-b">
+                          <button type="button" className="px-2 py-1 text-gray-600 hover:text-gray-900"
+                            onClick={() => { let m=editCalMonth-1, y=editCalYear; if(m<0){m=11;y--;} setEditCalMonth(m); setEditCalYear(y); }}>&lt;</button>
+                          <div className="text-sm font-semibold text-gray-800">{monthNamesVi[editCalMonth]} {editCalYear}</div>
+                          <button type="button" className="px-2 py-1 text-gray-600 hover:text-gray-900"
+                            onClick={() => { let m=editCalMonth+1, y=editCalYear; if(m>11){m=0;y++;} setEditCalMonth(m); setEditCalYear(y); }}>&gt;</button>
+                        </div>
+                        <div className="grid grid-cols-7 gap-1 p-2 text-center text-xs text-gray-500">
+                          {weekNamesVi.map(d => (<div key={d} className="py-1">{d}</div>))}
+                          {getDaysMatrix(editCalYear, editCalMonth).map((d, idx) => (
+                            <button key={idx} type="button" disabled={!d}
+                              className={`py-2 rounded-md ${d? 'hover:bg-emerald-50' : 'opacity-40 cursor-default'}`}
+                              onClick={() => pickCalendarDate(d, 'edit')}>{d || ''}</button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  {formData.dateOfBirth && (
-                    <p className="text-sm text-gray-500">
-                      Hiển thị: {formatDateForDisplay(formData.dateOfBirth)}
-                    </p>
-                  )}
+                  {/* Đã bỏ dòng hiển thị để tránh trùng nội dung */}
                 </div>
 
                 {/* Giới tính */}
@@ -1322,6 +1490,30 @@ const UserManagement = () => {
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lương cơ bản (salaryRank) */}
+                <div className="space-y-2">
+                  <label htmlFor="editSalary" className="block text-sm font-semibold text-gray-700">
+                    Lương cơ bản
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      id="editSalary"
+                      value={formData.salaryRank}
+                      onChange={(e) => setFormData({ ...formData, salaryRank: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="Nhập lương cơ bản"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-2.21 0-4 1.343-4 3s1.79 3 4 3 4 1.343 4 3-1.79 3-4 3m0-12V4m0 16v-2" />
                       </svg>
                     </div>
                   </div>
