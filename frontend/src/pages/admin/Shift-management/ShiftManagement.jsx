@@ -449,59 +449,60 @@ const ShiftManagement = () => {
 
         {/* Modal thêm ca làm việc */}
         {showAddModal && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h2>Thêm ca làm việc mới</h2>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget){ setShowAddModal(false); resetForm(); }}}>
+            <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden" onMouseDown={(e)=>e.stopPropagation()}>
+              <div className="px-6 py-4 border-b flex items-center justify-between bg-gradient-to-r from-blue-600 to-cyan-600">
+                <h2 className="text-white text-lg font-semibold">Thêm ca làm việc mới</h2>
                 <button 
-                  className="modal-close"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    resetForm();
-                  }}
+                  className="text-white/80 hover:text-white text-2xl leading-none"
+                  onClick={() => { setShowAddModal(false); resetForm(); }}
+                  aria-label="Đóng"
                 >
                   ×
                 </button>
               </div>
-              
-              <form onSubmit={handleAddShift} className="shift-form">
-                <div className="form-group">
-                  <label>Tên ca làm việc *</label>
+
+              <form onSubmit={handleAddShift} className="p-6 space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên ca làm việc *</label>
                   <input
                     type="text"
                     name="shift_name"
                     value={formData.shift_name}
                     onChange={handleInputChange}
                     placeholder="VD: Ca sáng, Ca chiều..."
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                     required
                   />
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Giờ bắt đầu *</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ bắt đầu *</label>
                     <input
                       type="time"
                       name="start_time"
                       value={formData.start_time}
                       onChange={handleInputChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                       required
                     />
                   </div>
-                  <div className="form-group">
-                    <label>Giờ kết thúc *</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ kết thúc *</label>
                     <input
                       type="time"
                       name="end_time"
                       value={formData.end_time}
                       onChange={handleInputChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Thời gian nghỉ giữa ca (phút)</label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian nghỉ giữa ca (phút)</label>
                   <input
                     type="number"
                     name="break_duration"
@@ -510,36 +511,27 @@ const ShiftManagement = () => {
                     min="0"
                     max="120"
                     placeholder="0"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Mô tả</label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
                   <textarea
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
                     placeholder="Mô tả chi tiết về ca làm việc..."
                     rows="3"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 resize-none"
                   />
                 </div>
 
-                <div className="form-actions">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      resetForm();
-                    }}
-                    variant="outline"
-                  >
+                <div className="flex items-center justify-end gap-3 pt-2 border-t">
+                  <Button type="button" variant="outline" onClick={() => { setShowAddModal(false); resetForm(); }}>
                     Hủy
                   </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={loading}
-                  >
+                  <Button type="submit" variant="primary" disabled={loading}>
                     {loading ? 'Đang tạo...' : 'Tạo ca làm việc'}
                   </Button>
                 </div>
@@ -550,60 +542,60 @@ const ShiftManagement = () => {
 
         {/* Modal sửa ca làm việc */}
         {showEditModal && selectedShift && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h2>Chỉnh sửa ca làm việc</h2>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget){ setShowEditModal(false); setSelectedShift(null); resetForm(); }}}>
+            <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden" onMouseDown={(e)=>e.stopPropagation()}>
+              <div className="px-6 py-4 border-b flex items-center justify-between bg-gradient-to-r from-emerald-600 to-green-600">
+                <h2 className="text-white text-lg font-semibold">Chỉnh sửa ca làm việc</h2>
                 <button 
-                  className="modal-close"
-                  onClick={() => {
-                    setShowEditModal(false);
-                    setSelectedShift(null);
-                    resetForm();
-                  }}
+                  className="text-white/80 hover:text-white text-2xl leading-none"
+                  onClick={() => { setShowEditModal(false); setSelectedShift(null); resetForm(); }}
+                  aria-label="Đóng"
                 >
                   ×
                 </button>
               </div>
-              
-              <form onSubmit={handleEditShift} className="shift-form">
-                <div className="form-group">
-                  <label>Tên ca làm việc *</label>
+
+              <form onSubmit={handleEditShift} className="p-6 space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên ca làm việc *</label>
                   <input
                     type="text"
                     name="shift_name"
                     value={formData.shift_name}
                     onChange={handleInputChange}
                     placeholder="VD: Ca sáng, Ca chiều..."
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50"
                     required
                   />
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Giờ bắt đầu *</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ bắt đầu *</label>
                     <input
                       type="time"
                       name="start_time"
                       value={formData.start_time}
                       onChange={handleInputChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50"
                       required
                     />
                   </div>
-                  <div className="form-group">
-                    <label>Giờ kết thúc *</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ kết thúc *</label>
                     <input
                       type="time"
                       name="end_time"
                       value={formData.end_time}
                       onChange={handleInputChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Thời gian nghỉ giữa ca (phút)</label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian nghỉ giữa ca (phút)</label>
                   <input
                     type="number"
                     name="break_duration"
@@ -612,37 +604,27 @@ const ShiftManagement = () => {
                     min="0"
                     max="120"
                     placeholder="0"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Mô tả</label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
                   <textarea
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
                     placeholder="Mô tả chi tiết về ca làm việc..."
                     rows="3"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50 resize-none"
                   />
                 </div>
 
-                <div className="form-actions">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShowEditModal(false);
-                      setSelectedShift(null);
-                      resetForm();
-                    }}
-                    variant="outline"
-                  >
+                <div className="flex items-center justify-end gap-3 pt-2 border-t">
+                  <Button type="button" variant="outline" onClick={() => { setShowEditModal(false); setSelectedShift(null); resetForm(); }}>
                     Hủy
                   </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={loading}
-                  >
+                  <Button type="submit" variant="primary" disabled={loading}>
                     {loading ? 'Đang cập nhật...' : 'Cập nhật'}
                   </Button>
                 </div>
