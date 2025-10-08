@@ -16,8 +16,10 @@ async function getUsers(req, res, next) {
         dateOfBirth, 
         gender, 
         position, 
+        salaryRank,
         status, 
-        created_at
+        created_at,
+        (CASE WHEN COALESCE(userName, '') <> '' AND COALESCE(password, '') <> '' THEN 1 ELSE 0 END) AS hasAccount
       FROM users 
       ORDER BY userID ASC
     `);
@@ -62,6 +64,7 @@ async function createUser(req, res, next) {
       gender, 
       address, 
       position, 
+      salaryRank,
       role = 'employee',
       status = 'active'
     } = req.body;
@@ -103,14 +106,16 @@ async function createUser(req, res, next) {
     }
 
     // Tạo user mới
+    const salaryNum = salaryRank !== undefined && salaryRank !== null && salaryRank !== '' ? Number(salaryRank) : 0;
+
     const [result] = await pool.execute(`
       INSERT INTO users (
         fullName, email, phone, dateOfBirth, gender, 
-        address, position, role, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        address, position, salaryRank, role, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `, [
       fullName, email, phone || null, dateOfBirth || null, gender || null,
-      address || null, position || null, role, status
+      address || null, position || null, salaryNum, role, status
     ]);
 
     return res.json({
@@ -135,6 +140,7 @@ async function updateUser(req, res, next) {
       gender, 
       address, 
       position, 
+      salaryRank,
       role,
       status
     } = req.body;
@@ -196,15 +202,17 @@ async function updateUser(req, res, next) {
     }
 
     // Cập nhật user
+    const salaryNum = salaryRank !== undefined && salaryRank !== null && salaryRank !== '' ? Number(salaryRank) : 0;
+
     await pool.execute(`
       UPDATE users SET 
         fullName = ?, email = ?, phone = ?, dateOfBirth = ?, 
-        gender = ?, address = ?, position = ?, role = ?, 
+        gender = ?, address = ?, position = ?, salaryRank = ?, role = ?, 
         status = ?, updated_at = NOW()
       WHERE userID = ?
     `, [
       fullName, email, phone || null, dateOfBirth || null, 
-      gender || null, address || null, position || null, 
+      gender || null, address || null, position || null, salaryNum,
       role, status, userID
     ]);
 

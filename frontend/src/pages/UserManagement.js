@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import AdminLayout from '../components/AdminLayout';
 import Card, { CardTitle, CardContent, CardActions } from '../components/Card';
 import Button from '../components/Button';
@@ -83,6 +84,7 @@ const UserManagement = () => {
     { key: 'gender', label: 'Giới tính', width: '110px' },
     { key: 'address', label: 'Địa chỉ', width: '200px' },
     { key: 'position', label: 'Chức vụ', width: '140px' },
+    { key: 'salaryRank', label: 'Lương cơ bản', width: '140px' },
     { key: 'role', label: 'Vai trò', width: '160px' },
     { key: 'status', label: 'Trạng thái', width: '150px' },
     { key: 'actions', label: 'Thao tác', width: '200px' },
@@ -181,6 +183,18 @@ const UserManagement = () => {
     // Cuối cùng: sắp xếp theo tên
     return a.fullName.localeCompare(b.fullName);
   });
+
+  // Kiểm tra người dùng đã có tài khoản đăng nhập chưa (ẩn nút tạo tài khoản)
+  const hasAccount = (user) => {
+    // Ưu tiên cờ từ backend (đảm bảo chính xác, không cần username/password)
+    if (user.hasAccount === 1 || user.hasAccount === true) return true;
+    if (user.hasAccount === 0 || user.hasAccount === false) return false;
+
+    // Dự phòng: suy luận nếu backend cũ không gửi cờ hasAccount
+    const username = user.userName || user.username || user.accountUsername;
+    const password = user.password || user.hashedPassword || user.pass;
+    return Boolean(username && String(username).trim() && password && String(password).trim());
+  };
 
   // Xử lý thay đổi trang
   const handlePageChange = (page) => {
@@ -289,32 +303,6 @@ const UserManagement = () => {
     return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
   };
 
-  // Mở native date picker và trả về ISO yyyy-mm-dd
-  const openNativeDatePicker = (initialIso, onPicked) => {
-    try {
-      const input = document.createElement('input');
-      input.type = 'date';
-      input.style.position = 'fixed';
-      input.style.left = '-10000px';
-      input.value = initialIso || '';
-      document.body.appendChild(input);
-      const onChange = () => {
-        const v = input.value; // yyyy-mm-dd
-        onPicked && onPicked(v || '');
-        cleanup();
-      };
-      const cleanup = () => {
-        input.removeEventListener('change', onChange);
-        document.body.removeChild(input);
-      };
-      input.addEventListener('change', onChange);
-      if (input.showPicker) {
-        input.showPicker();
-      } else {
-        input.click();
-      }
-    } catch (_) {/* noop */}
-  };
 
   // ===== Inline Calendar Dropdown (đẹp, hiển thị ngay dưới ô input) =====
   const monthNamesVi = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
@@ -398,6 +386,7 @@ const UserManagement = () => {
       gender: user.gender || 'male',
       address: user.address || '',
       position: user.position || '',
+      salaryRank: user.salaryRank ?? '',
       role: user.role || 'employee',
       status: user.status || 'active'
     });
@@ -430,14 +419,14 @@ const UserManagement = () => {
       const data = await response.json();
 
       if (data.success) {
-        alert('Xóa người dùng thành công');
+        toast.success('Xóa người dùng thành công');
         fetchUsers(); // Refresh danh sách
       } else {
-        alert(data.message || 'Lỗi khi xóa người dùng');
+        toast.error(data.message || 'Lỗi khi xóa người dùng');
       }
     } catch (err) {
       console.error('Lỗi khi xóa user:', err);
-      alert('Lỗi khi xóa người dùng');
+      toast.error('Lỗi khi xóa người dùng');
     }
   };
 
@@ -462,15 +451,15 @@ const UserManagement = () => {
       const data = await response.json();
 
       if (data.success) {
-        alert('Thêm người dùng thành công');
+        toast.success('Thêm người dùng thành công');
         setShowAddModal(false);
         fetchUsers(); // Refresh danh sách
       } else {
-        alert(data.message || 'Lỗi khi thêm người dùng');
+        toast.error(data.message || 'Lỗi khi thêm người dùng');
       }
     } catch (err) {
       console.error('Lỗi khi thêm user:', err);
-      alert('Lỗi khi thêm người dùng');
+      toast.error('Lỗi khi thêm người dùng');
     }
   };
 
@@ -495,15 +484,15 @@ const UserManagement = () => {
       const data = await response.json();
 
       if (data.success) {
-        alert('Cập nhật người dùng thành công');
+        toast.success('Cập nhật người dùng thành công');
         setShowEditModal(false);
         fetchUsers(); // Refresh danh sách
       } else {
-        alert(data.message || 'Lỗi khi cập nhật người dùng');
+        toast.error(data.message || 'Lỗi khi cập nhật người dùng');
       }
     } catch (err) {
       console.error('Lỗi khi cập nhật user:', err);
-      alert('Lỗi khi cập nhật người dùng');
+      toast.error('Lỗi khi cập nhật người dùng');
     }
   };
 
@@ -515,7 +504,7 @@ const UserManagement = () => {
     const password = e.target.password.value;
 
     if (!username || !password) {
-      alert('Vui lòng nhập đầy đủ thông tin');
+      toast.error('Vui lòng nhập đầy đủ thông tin');
       return;
     }
 
@@ -531,15 +520,15 @@ const UserManagement = () => {
       const data = await response.json();
 
       if (data.success) {
-        alert('Tạo tài khoản thành công');
+        toast.success('Tạo tài khoản thành công');
         setShowAccountModal(false);
         fetchUsers(); // Refresh danh sách
       } else {
-        alert(data.message || 'Lỗi khi tạo tài khoản');
+        toast.error(data.message || 'Lỗi khi tạo tài khoản');
       }
     } catch (err) {
       console.error('Lỗi khi tạo tài khoản:', err);
-      alert('Lỗi khi tạo tài khoản');
+      toast.error('Lỗi khi tạo tài khoản');
     }
   };
 
@@ -550,7 +539,7 @@ const UserManagement = () => {
     const password = e.target.password.value;
 
     if (!password) {
-      alert('Vui lòng nhập mật khẩu mới');
+      toast.error('Vui lòng nhập mật khẩu mới');
       return;
     }
 
@@ -566,14 +555,14 @@ const UserManagement = () => {
       const data = await response.json();
 
       if (data.success) {
-        alert('Cấp lại mật khẩu thành công');
+        toast.success('Cấp lại mật khẩu thành công');
         setShowPasswordModal(false);
       } else {
-        alert(data.message || 'Lỗi khi cấp lại mật khẩu');
+        toast.error(data.message || 'Lỗi khi cấp lại mật khẩu');
       }
     } catch (err) {
       console.error('Lỗi khi cấp lại mật khẩu:', err);
-      alert('Lỗi khi cấp lại mật khẩu');
+      toast.error('Lỗi khi cấp lại mật khẩu');
     }
   };
 
@@ -592,6 +581,18 @@ const UserManagement = () => {
       return 'Chưa xác định';
     }
     return role === 'admin' ? 'QUẢN TRỊ VIÊN' : 'NHÂN VIÊN';
+  };
+
+  // Định dạng tiền tệ VND cho lương cơ bản
+  const formatCurrencyVND = (value) => {
+    if (value === null || value === undefined || value === '') return '--';
+    try {
+      const num = Number(value);
+      if (isNaN(num)) return '--';
+      return num.toLocaleString('vi-VN');
+    } catch (_) {
+      return String(value);
+    }
   };
 
   // Hàm format gender
@@ -924,6 +925,8 @@ const UserManagement = () => {
                               );
                             case 'address':
                               return <td key={column.key} className="py-3 px-4 text-gray-700">{user.address || '--'}</td>;
+                            case 'salaryRank':
+                              return <td key={column.key} className="py-3 px-4 text-gray-700">{formatCurrencyVND(user.salaryRank)}</td>;
                             case 'position':
                               return <td key={column.key} className="py-3 px-4 text-gray-700">{user.position || '--'}</td>;
                             case 'role':
@@ -959,7 +962,7 @@ const UserManagement = () => {
                                     >
                                       <FaEdit className="w-5 h-5" />
                                     </Button>
-                                    {!user.userName && (
+                                    {!hasAccount(user) && (
                                       <Button 
                                         onClick={() => handleCreateAccount(user)} 
                                         variant="primary" 
@@ -970,7 +973,7 @@ const UserManagement = () => {
                                         <FaUserPlus className="w-5 h-5" />
                                       </Button>
                                     )}
-                                    {user.userName && (
+                                    {hasAccount(user) && (
                                       <Button 
                                         onClick={() => handleResetPassword(user)} 
                                         variant="outline" 
@@ -1023,8 +1026,8 @@ const UserManagement = () => {
 
       {/* Modal thêm người dùng */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget) setShowAddModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onMouseDown={(e)=>e.stopPropagation()}>
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 rounded-t-2xl">
               <div className="flex items-center space-x-3">
@@ -1129,10 +1132,10 @@ const UserManagement = () => {
                         const iso = parseDisplayDate(cleaned);
                         setFormData({ ...formData, dateOfBirth: iso });
                       }}
-                      onFocus={() => openCalendarFor('add')}
                       onClick={() => openCalendarFor('add')}
-                      onFocus={(e) => {
-                        // Nếu trống, set về hôm nay theo dd/mm/yyyy để gợi ý
+                      onFocus={() => {
+                        // Mở lịch và nếu đang trống thì gợi ý bằng hôm nay
+                        openCalendarFor('add');
                         if (!formData.dateOfBirth) {
                           const today = new Date();
                           const dd = String(today.getDate()).padStart(2, '0');
@@ -1316,8 +1319,8 @@ const UserManagement = () => {
 
       {/* Modal sửa người dùng */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget) setShowEditModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onMouseDown={(e)=>e.stopPropagation()}>
             {/* Header */}
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-8 py-6 rounded-t-2xl">
               <div className="flex items-center space-x-3">
@@ -1473,23 +1476,26 @@ const UserManagement = () => {
                   </div>
                 </div>
 
-                {/* Chức vụ */}
+                {/* Chức vụ - chuyển sang dropdown lấy từ API để tránh nhập sai */}
                 <div className="space-y-2">
                   <label htmlFor="editPosition" className="block text-sm font-semibold text-gray-700">
                     Chức vụ
                   </label>
                   <div className="relative">
-                    <input
-                      type="text"
+                    <select
                       id="editPosition"
                       value={formData.position}
                       onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="Nhập chức vụ"
-                    />
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white appearance-none"
+                    >
+                      <option value="">-- Chọn chức vụ --</option>
+                      {positions.map(p => (
+                        <option key={p.id} value={p.title}>{p.title}</option>
+                      ))}
+                    </select>
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </div>
                   </div>
@@ -1613,17 +1619,17 @@ const UserManagement = () => {
 
       {/* Modal tạo tài khoản */}
       {showAccountModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget) setShowAccountModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onMouseDown={(e)=>e.stopPropagation()}>
             {/* Header */}
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-6 rounded-t-2xl">
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-6 rounded-t-2xl">
               <div className="flex items-center space-x-3">
                 <div className="p-3 bg-white bg-opacity-20 rounded-xl">
                   <FaUserPlus className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-white">Tạo tài khoản</h3>
-                  <p className="text-purple-100 mt-1">Cho {selectedUser?.fullName}</p>
+                  <p className="text-blue-100 mt-1">Cho {selectedUser?.fullName}</p>
                 </div>
               </div>
             </div>
@@ -1641,7 +1647,7 @@ const UserManagement = () => {
                       type="text"
                       id="accountUsername"
                       name="username"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
                       placeholder="Nhập tên đăng nhập"
                       required
                     />
@@ -1663,7 +1669,7 @@ const UserManagement = () => {
                       type="password"
                       id="accountPassword"
                       name="password"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
                       placeholder="Nhập mật khẩu"
                       required
                     />
@@ -1688,7 +1694,7 @@ const UserManagement = () => {
                 </Button>
                 <Button 
                   type="submit"
-                  className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   Tạo tài khoản
                 </Button>
@@ -1700,8 +1706,8 @@ const UserManagement = () => {
 
       {/* Modal cấp lại mật khẩu */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget) setShowPasswordModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onMouseDown={(e)=>e.stopPropagation()}>
             {/* Header */}
             <div className="bg-gradient-to-r from-orange-600 to-red-600 px-8 py-6 rounded-t-2xl">
               <div className="flex items-center space-x-3">
