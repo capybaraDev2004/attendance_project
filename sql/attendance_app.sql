@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 24, 2025 at 03:54 PM
+-- Generation Time: Oct 08, 2025 at 04:39 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -45,9 +45,10 @@ CREATE TABLE `attendance` (
 
 INSERT INTO `attendance` (`attendance_id`, `user_id`, `work_date`, `check_in`, `check_out`, `device_in_id`, `device_out_id`, `created_at`, `updated_at`) VALUES
 (66, 3, '2025-09-06', '2025-09-06 01:04:58', '2025-09-06 11:07:38', 1, 1, '2025-09-06 16:04:58', '2025-09-07 13:21:58'),
-(73, 5, '2025-09-09', '2025-09-09 06:45:14', NULL, 1, NULL, '2025-09-09 06:45:14', '2025-09-09 06:45:14'),
 (74, 3, '2025-09-20', '2025-09-20 12:50:34', '2025-09-20 12:50:43', 1, 1, '2025-09-20 12:50:34', '2025-09-20 12:50:43'),
-(77, 3, '2025-09-24', '2025-09-24 13:53:38', '2025-09-24 13:53:47', 1, 1, '2025-09-24 13:53:38', '2025-09-24 13:53:47');
+(78, 3, '2025-09-24', '2025-09-24 14:17:38', '2025-09-24 14:17:52', 1, 1, '2025-09-24 14:17:38', '2025-09-24 14:17:52'),
+(80, 3, '2025-09-25', '2025-09-25 01:00:00', '2025-09-25 11:51:58', 1, 1, '2025-09-25 11:51:13', '2025-09-25 11:51:58'),
+(83, 3, '2025-10-08', '2025-10-08 08:40:18', '2025-10-08 08:42:59', 1, 1, '2025-10-08 08:40:18', '2025-10-08 08:42:59');
 
 -- --------------------------------------------------------
 
@@ -67,6 +68,17 @@ CREATE TABLE `attendance_records` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `attendance_records`
+--
+
+INSERT INTO `attendance_records` (`recordID`, `userID`, `work_date`, `total_hours`, `standard_hours`, `overtime_hours`, `work_unit`, `note`, `created_at`, `updated_at`) VALUES
+(1, 3, '2025-09-06', 9.05, 8.00, 0.55, 1.00, NULL, '2025-09-24 13:58:06', '2025-09-25 11:55:59'),
+(2, 3, '2025-09-20', 0.00, 8.00, 0.00, 0.00, NULL, '2025-09-24 13:58:06', '2025-09-24 13:58:06'),
+(4, 3, '2025-09-24', 0.00, 8.00, 0.00, 0.00, NULL, '2025-09-24 14:17:52', '2025-09-24 14:17:52'),
+(6, 3, '2025-09-25', 9.87, 8.00, 1.37, 1.00, NULL, '2025-09-25 11:51:58', '2025-09-25 11:51:58'),
+(9, 3, '2025-10-08', 0.00, 8.00, 0.00, 0.00, NULL, '2025-10-08 08:42:59', '2025-10-08 08:42:59');
 
 -- --------------------------------------------------------
 
@@ -89,7 +101,8 @@ CREATE TABLE `devices` (
 --
 
 INSERT INTO `devices` (`device_id`, `device_code`, `device_name`, `location`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, 'face_recognition', 'Face Recognition System', 'Web Application', 1, '2025-09-05 05:48:57', '2025-09-05 05:48:57');
+(1, 'face_recognition', 'Face Recognition System', 'Web Application', 1, '2025-09-05 05:48:57', '2025-10-08 07:57:20'),
+(3, 'rfid-chm-cng-1758902288757', 'RFID chấm công', 'Văn phòng chính', 1, '2025-09-26 15:58:08', '2025-09-26 15:58:08');
 
 -- --------------------------------------------------------
 
@@ -210,7 +223,7 @@ CREATE TABLE `shifts` (
 --
 
 INSERT INTO `shifts` (`shift_id`, `shift_name`, `start_time`, `end_time`, `break_duration`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, 'Ca hành chính', '08:00:00', '17:30:00', 60, '', 1, '2025-09-06 16:41:43', '2025-09-07 12:45:47');
+(1, 'Ca hành chính', '08:00:00', '17:30:00', 60, '', 1, '2025-09-06 16:41:43', '2025-09-26 09:20:07');
 
 -- --------------------------------------------------------
 
@@ -230,6 +243,7 @@ CREATE TABLE `users` (
   `dateOfBirth` date DEFAULT NULL,
   `gender` enum('male','female','other') DEFAULT NULL,
   `position` varchar(100) DEFAULT NULL,
+  `salaryRank` double NOT NULL,
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -239,19 +253,19 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`userID`, `fullName`, `userName`, `password`, `address`, `role`, `email`, `phone`, `dateOfBirth`, `gender`, `position`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'Vũ Minh Quân', 'quandoggy', '123456', 'chuồng chó', 'employee', 'quanngu@gmail.com', '0123456789', '2004-03-17', 'female', 'Nhân viên kinh doanh', 'active', '2025-08-19 16:16:22', '2025-09-07 12:32:38'),
-(2, 'Capybara', 'capybara', '123456', 'Từ Sơn - Bắc Ninh', 'admin', 'capybaradev2004@gmail.com', '0352135115', '2004-02-28', 'male', 'Giám đốc điều hành', 'active', '2025-08-19 16:16:22', '2025-09-07 12:32:54'),
-(3, 'Nguyễn Tiến Toán', 'toan', '123456', 'Hà Nội', 'employee', 'nguyentientoan28022004@gmail.com', '0342822004', '1990-01-15', 'male', 'Lập trình viên Junior', 'active', '2025-08-20 07:05:48', '2025-09-07 12:32:38'),
-(4, 'Đào Văn Tâm', 'tam', '123456', 'Vĩnh Phú', 'employee', 'thib@example.com', '0922222222', '1992-05-20', 'female', 'Chuyên viên nhân sự', 'active', '2025-08-20 07:05:48', '2025-09-07 12:32:38'),
-(5, 'Bùi Xuân Lộc', 'loc', '123456', 'Đà Nẵng', 'employee', 'vanc@example.com', '0933333333', '1995-03-10', 'female', 'Lập trình viên Junior', 'active', '2025-08-20 07:05:48', '2025-09-07 12:32:38'),
-(6, 'Phạm Thị D', 'phamthid', '123456', 'Cần Thơ', 'employee', 'thid@example.com', '0944444444', '1993-07-25', 'female', 'Giám đốc điều hành', 'inactive', '2025-08-20 07:05:48', '2025-09-07 12:32:38'),
-(7, 'Hoàng Văn E', 'hoangvane', '123456', 'Hải Phòng', 'employee', 'vane@example.com', '0955555555', '1991-09-12', 'male', 'Giám đốc điều hành', 'active', '2025-08-20 07:05:48', '2025-09-07 12:32:38'),
-(8, 'Vũ Thị F', 'vuthif', '123456', 'Nha Trang', 'employee', 'thif@example.com', '0966666666', '1996-11-02', 'female', 'Chuyên viên nhân sự', 'active', '2025-08-20 07:05:48', '2025-09-07 12:32:38'),
-(9, 'Đặng Văn G', 'dangvang', '123456', 'Bắc Ninh', 'employee', 'vang@example.com', '0977777777', '1989-12-30', 'male', 'Chuyên viên nhân sự', 'active', '2025-08-20 07:05:48', '2025-09-07 12:32:38'),
-(10, 'Ngô Thị H', 'ngothih', '123456', 'Thanh Hóa', 'employee', 'thih@example.com', '0988888888', '1994-04-18', 'female', 'Lập trình viên Junior', 'inactive', '2025-08-20 07:05:48', '2025-09-07 12:32:38'),
-(11, 'Phan Văn I', 'phanvani', '123456', 'Huế', 'employee', 'vani@example.com', '0999999999', '1997-06-22', 'male', 'Chuyên viên nhân sự', 'active', '2025-08-20 07:05:48', '2025-09-07 12:32:38'),
-(12, 'Bùi Thị J', 'buithij', '123456', 'Quảng Ninh', 'employee', 'thij@example.com', '0900000000', '1998-08-08', 'female', 'Lập trình viên Junior', 'active', '2025-08-20 07:05:48', '2025-09-07 12:32:38');
+INSERT INTO `users` (`userID`, `fullName`, `userName`, `password`, `address`, `role`, `email`, `phone`, `dateOfBirth`, `gender`, `position`, `salaryRank`, `status`, `created_at`, `updated_at`) VALUES
+(1, 'Vũ Minh Quân', 'quandoggy', '123456', 'chuồng heo', 'employee', 'quanngu@gmail.com', '0123456789', '2004-03-16', 'female', 'Nhân viên kinh doanh', 10000000, 'active', '2025-08-19 16:16:22', '2025-10-08 07:20:59'),
+(2, 'Capybara', 'capybara', '123456', 'Từ Sơn - Bắc Ninh', 'admin', 'capybaradev2004@gmail.com', '0352135115', '2004-02-28', 'male', 'Giám đốc điều hành', 100000000, 'active', '2025-08-19 16:16:22', '2025-10-08 07:21:03'),
+(3, 'Nguyễn Tiến Toán', 'toan', '123456', 'Hà Nội', 'employee', 'nguyentientoan28022004@gmail.com', '0342822004', '1990-01-15', 'male', 'Lập trình viên Junior', 100000000, 'active', '2025-08-20 07:05:48', '2025-10-08 08:02:54'),
+(4, 'Đào Văn Tâm', 'tam', '123456', 'Vĩnh Phú', 'employee', 'thib@example.com', '0922222222', '1992-05-20', 'female', 'Chuyên viên nhân sự', 25000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:12'),
+(5, 'Bùi Xuân Lộc', 'loc', '123456', 'Đà Nẵng', 'employee', 'vanc@example.com', '0933333333', '1995-03-10', 'female', 'Lập trình viên Junior', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:15'),
+(6, 'Phạm Thị D', 'phamthid', '123456', 'Cần Thơ', 'employee', 'thid@example.com', '0944444444', '1993-07-25', 'female', 'Giám đốc điều hành', 10000000, 'inactive', '2025-08-20 07:05:48', '2025-10-08 07:21:16'),
+(7, 'Hoàng Văn E', 'hoangvane', '123456', 'Hải Phòng', 'employee', 'vane@example.com', '0955555555', '1991-09-12', 'male', 'Giám đốc điều hành', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:19'),
+(8, 'Vũ Thị F', 'vuthif', '123456', 'Nha Trang', 'employee', 'thif@example.com', '0966666666', '1996-11-02', 'female', 'Chuyên viên nhân sự', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:21'),
+(9, 'Đặng Văn G', 'dangvang', '123456', 'Bắc Ninh', 'employee', 'vang@example.com', '0977777777', '1989-12-30', 'male', 'Chuyên viên nhân sự', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:22'),
+(10, 'Ngô Thị H', 'ngothih', '123456', 'Thanh Hóa', 'employee', 'thih@example.com', '0988888888', '1994-04-18', 'female', 'Lập trình viên Junior', 10000000, 'inactive', '2025-08-20 07:05:48', '2025-10-08 07:21:24'),
+(11, 'Phan Văn I', 'phanvani', '123456', 'Huế', 'employee', 'vani@example.com', '0999999999', '1997-06-22', 'male', 'Chuyên viên nhân sự', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:26'),
+(12, 'Bùi Thị J', 'buithij', '123456', 'Quảng Ninh', 'employee', 'thij@example.com', '0900000000', '1998-08-08', 'female', 'Lập trình viên Junior', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:33');
 
 --
 -- Indexes for dumped tables
@@ -337,19 +351,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `attendance`
 --
 ALTER TABLE `attendance`
-  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=78;
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=84;
 
 --
 -- AUTO_INCREMENT for table `attendance_records`
 --
 ALTER TABLE `attendance_records`
-  MODIFY `recordID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `recordID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `devices`
 --
 ALTER TABLE `devices`
-  MODIFY `device_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `device_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `face_data`

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback} from 'react';
 import StandardTable from '../../../components/StandardTable';
 import Button from '../../../components/Button';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
@@ -12,6 +12,21 @@ const DeviceManagement = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
+  // Modal xác nhận trung tâm
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    title: '',
+    message: '',
+    confirmText: 'Xác nhận',
+    cancelText: 'Hủy',
+    onConfirm: null
+  });
+  // Popup thông báo thành công trung tâm
+  const [successModal, setSuccessModal] = useState({
+    open: false,
+    title: 'Thành công',
+    message: ''
+  });
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -19,16 +34,13 @@ const DeviceManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // State cho việc bật/tắt cột - mặc định ẩn IP, Vị trí, Lần cuối
+  // State cho việc bật/tắt cột - chỉ giữ lại các cột cần thiết
   const [visibleColumns, setVisibleColumns] = useState({
     stt: true,
     deviceName: true,
     deviceType: true,
-    location: false,      // Ẩn mặc định
-    ipAddress: false,    // Ẩn mặc định
+    location: true,
     status: true,
-    connectionStatus: true,
-    lastSeen: false,     // Ẩn mặc định
     actions: true
   });
 
@@ -37,90 +49,48 @@ const DeviceManagement = () => {
     deviceName: '',
     deviceType: 'rfid',
     location: '',
-    ipAddress: '',
-    macAddress: '',
     status: 'active',
     lastSeen: '',
     description: ''
   });
-
-  // Dữ liệu mẫu cho thiết bị IoT RFID - sử dụng useMemo để tránh re-render
-  const sampleDevices = useMemo(() => [
-    {
-      id: 1,
-      deviceName: 'RFID Reader - Cổng chính',
-      deviceType: 'rfid',
-      location: 'Cổng chính - Tầng 1',
-      ipAddress: '192.168.1.100',
-      macAddress: '00:1B:44:11:3A:B7',
-      status: 'active',
-      lastSeen: '2024-01-15 14:30:25',
-      description: 'Thiết bị đọc thẻ RFID tại cổng chính, phục vụ điểm danh nhân viên',
-      connectionStatus: 'connected',
-      batteryLevel: 85,
-      signalStrength: 'strong'
-    },
-    {
-      id: 2,
-      deviceName: 'RFID Reader - Phòng làm việc',
-      deviceType: 'rfid',
-      location: 'Phòng làm việc - Tầng 2',
-      ipAddress: '192.168.1.101',
-      macAddress: '00:1B:44:11:3A:B8',
-      status: 'active',
-      lastSeen: '2024-01-15 14:28:15',
-      description: 'Thiết bị đọc thẻ RFID tại phòng làm việc, hỗ trợ điểm danh nội bộ',
-      connectionStatus: 'connected',
-      batteryLevel: 92,
-      signalStrength: 'strong'
-    },
-    {
-      id: 3,
-      deviceName: 'RFID Reader - Canteen',
-      deviceType: 'rfid',
-      location: 'Canteen - Tầng 1',
-      ipAddress: '192.168.1.102',
-      macAddress: '00:1B:44:11:3A:B9',
-      status: 'inactive',
-      lastSeen: '2024-01-15 12:15:30',
-      description: 'Thiết bị đọc thẻ RFID tại canteen, quản lý giờ ăn trưa',
-      connectionStatus: 'disconnected',
-      batteryLevel: 45,
-      signalStrength: 'weak'
-    },
-    {
-      id: 4,
-      deviceName: 'RFID Reader - Bãi xe',
-      deviceType: 'rfid',
-      location: 'Bãi xe - Tầng hầm',
-      ipAddress: '192.168.1.103',
-      macAddress: '00:1B:44:11:3A:BA',
-      status: 'maintenance',
-      lastSeen: '2024-01-15 10:45:12',
-      description: 'Thiết bị đọc thẻ RFID tại bãi xe, quản lý ra vào xe',
-      connectionStatus: 'maintenance',
-      batteryLevel: 78,
-      signalStrength: 'medium'
-    }
-  ], []);
 
   const fetchDevices = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // Giả lập delay API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Sử dụng dữ liệu mẫu
-      setDevices(sampleDevices);
+      // Xác định API base URL đồng bộ với AdminHome
+      const envBase = process.env.REACT_APP_API_BASE_URL;
+      const origin = window.location.origin;
+      const API_BASE = (envBase ? envBase.replace(/\/$/, '') : (origin.includes(':3000') ? origin.replace(':3000', ':3001') : origin));
+
+      const res = await fetch(`${API_BASE}/api/devices`);
+      const data = await res.json();
+      if (data?.success && Array.isArray(data?.devices)) {
+        // Map dữ liệu DB -> view model cho bảng
+        const mapped = data.devices.map(d => ({
+          id: d.device_id,
+          deviceName: d.device_name || d.device_code,
+          deviceCode: d.device_code,
+          deviceType: 'rfid', // chưa có cột type trong DB -> mặc định
+          location: d.location || '',
+          ipAddress: '',
+          macAddress: '',
+          status: d.is_active === 1 ? 'active' : 'inactive',
+          lastSeen: '',
+          description: ''
+        }));
+        setDevices(mapped);
+      } else {
+        setDevices([]);
+      }
     } catch (err) {
       setError('Lỗi khi tải danh sách thiết bị');
       console.error('Lỗi fetch devices:', err);
     } finally {
       setLoading(false);
     }
-  }, [sampleDevices]);
+  }, []);
 
   useEffect(() => {
     // Giả lập API call
@@ -147,8 +117,6 @@ const DeviceManagement = () => {
       deviceName: device.deviceName,
       deviceType: device.deviceType,
       location: device.location,
-      ipAddress: device.ipAddress,
-      macAddress: device.macAddress,
       status: device.status,
       lastSeen: device.lastSeen,
       description: device.description
@@ -157,44 +125,97 @@ const DeviceManagement = () => {
   };
 
   const handleDeleteDevice = async (deviceId) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa thiết bị này?')) {
-      try {
-        // Giả lập API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        setDevices(devices.filter(device => device.id !== deviceId));
-      } catch (err) {
-        console.error('Lỗi xóa thiết bị:', err);
+    // Hiển thị modal xác nhận đẹp ở giữa màn hình
+    setConfirmModal({
+      open: true,
+      title: 'Xác nhận xóa thiết bị',
+      message: 'Bạn có chắc chắn muốn xóa thiết bị này? Hành động này không thể hoàn tác.',
+      confirmText: 'Xóa thiết bị',
+      cancelText: 'Hủy',
+      onConfirm: async () => {
+        try {
+          const envBase = process.env.REACT_APP_API_BASE_URL;
+          const origin = window.location.origin;
+          const API_BASE = (envBase ? envBase.replace(/\/$/, '') : (origin.includes(':3000') ? origin.replace(':3000', ':3001') : origin));
+          const res = await fetch(`${API_BASE}/api/devices/${deviceId}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!res.ok || !data?.success) throw new Error(data?.message || 'Xóa thiết bị thất bại');
+          setDevices(prev => prev.filter(device => device.id !== deviceId));
+          setSuccessModal({ open: true, title: 'Đã xóa', message: 'Xóa thiết bị thành công.' });
+        } catch (err) {
+          console.error('Lỗi xóa thiết bị:', err);
+        } finally {
+          setConfirmModal(prev => ({ ...prev, open: false }));
+        }
       }
-    }
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     try {
+      const envBase = process.env.REACT_APP_API_BASE_URL;
+      const origin = window.location.origin;
+      const API_BASE = (envBase ? envBase.replace(/\/$/, '') : (origin.includes(':3000') ? origin.replace(':3000', ':3001') : origin));
+
       if (showAddModal) {
-        // Thêm thiết bị mới
-        const newDevice = {
-          id: Date.now(),
-          ...formData,
-          lastSeen: new Date().toLocaleString('vi-VN'),
-          connectionStatus: 'connected',
-          batteryLevel: 100,
-          signalStrength: 'strong'
+        // Thêm thiết bị mới -> POST /api/devices
+        // Tự sinh device_code từ tên thiết bị để đảm bảo duy nhất
+        const normalizedName = (formData.deviceName || '').toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const generatedCode = `${normalizedName || 'device'}-${Date.now()}`;
+        const payload = {
+          device_code: generatedCode,
+          device_name: formData.deviceName,
+          location: formData.location,
+          is_active: formData.status === 'active' ? 1 : 0
         };
-        
-        setDevices([...devices, newDevice]);
+        const res = await fetch(`${API_BASE}/api/devices`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.success) throw new Error(data?.message || 'Tạo thiết bị thất bại');
+
         setShowAddModal(false);
+        await fetchDevices();
+        setSuccessModal({ open: true, title: 'Thành công', message: 'Thêm thiết bị mới thành công.' });
       } else {
-        // Cập nhật thiết bị
-        const updatedDevices = devices.map(device => 
-          device.id === selectedDevice.id ? { ...device, ...formData } : device
-        );
-        
-        setDevices(updatedDevices);
-        setShowEditModal(false);
-        setSelectedDevice(null);
+        // Cập nhật thiết bị -> PUT /api/devices/:id
+        const payload = {
+          device_code: selectedDevice.deviceCode, // giữ nguyên device_code
+          device_name: formData.deviceName,
+          location: formData.location,
+          is_active: formData.status === 'active' ? 1 : 0
+        };
+        // Hiển thị xác nhận chỉnh sửa trước khi gọi API
+        setConfirmModal({
+          open: true,
+          title: 'Xác nhận cập nhật',
+          message: 'Bạn có muốn lưu thay đổi cho thiết bị này?',
+          confirmText: 'Lưu thay đổi',
+          cancelText: 'Hủy',
+          onConfirm: async () => {
+            try {
+              const res = await fetch(`${API_BASE}/api/devices/${selectedDevice.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+              const data = await res.json();
+              if (!res.ok || !data?.success) throw new Error(data?.message || 'Cập nhật thiết bị thất bại');
+              setShowEditModal(false);
+              setSelectedDevice(null);
+              await fetchDevices();
+              setSuccessModal({ open: true, title: 'Đã lưu', message: 'Cập nhật thiết bị thành công.' });
+            } catch (err) {
+              console.error('Lỗi lưu thiết bị:', err);
+            } finally {
+              setConfirmModal(prev => ({ ...prev, open: false }));
+            }
+          }
+        });
       }
       
       // Reset form
@@ -229,8 +250,6 @@ const DeviceManagement = () => {
       deviceName: '',
       deviceType: 'rfid',
       location: '',
-      ipAddress: '',
-      macAddress: '',
       status: 'active',
       lastSeen: '',
       description: ''
@@ -294,16 +313,13 @@ const DeviceManagement = () => {
     }
   };
 
-  // Định nghĩa các cột có thể ẩn/hiện
+  // Định nghĩa các cột có thể ẩn/hiện (đã loại bỏ IP Address, Kết nối, Lần cuối)
   const columnDefinitions = [
     { key: 'stt', label: 'STT', width: '60px' },
     { key: 'deviceName', label: 'Tên thiết bị', width: '200px' },
     { key: 'deviceType', label: 'Loại', width: '100px' },
     { key: 'location', label: 'Vị trí', width: '150px' },
-    { key: 'ipAddress', label: 'IP Address', width: '120px' },
     { key: 'status', label: 'Trạng thái', width: '120px' },
-    { key: 'connectionStatus', label: 'Kết nối', width: '120px' },
-    { key: 'lastSeen', label: 'Lần cuối', width: '150px' },
     { key: 'actions', label: 'Thao tác', width: '100px' }
   ];
 
@@ -804,30 +820,7 @@ const DeviceManagement = () => {
                   />
                 </div>
                 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>IP Address *</label>
-                    <input
-                      type="text"
-                      name="ipAddress"
-                      value={formData.ipAddress}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="192.168.1.100"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>MAC Address</label>
-                    <input
-                      type="text"
-                      name="macAddress"
-                      value={formData.macAddress}
-                      onChange={handleInputChange}
-                      placeholder="00:1B:44:11:3A:B7"
-                    />
-                  </div>
-                </div>
+                {/* Bỏ IP/MAC theo yêu cầu */}
                 
                 <div className="form-group">
                   <label>Trạng thái</label>
@@ -913,30 +906,7 @@ const DeviceManagement = () => {
                   />
                 </div>
                 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>IP Address *</label>
-                    <input
-                      type="text"
-                      name="ipAddress"
-                      value={formData.ipAddress}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="192.168.1.100"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>MAC Address</label>
-                    <input
-                      type="text"
-                      name="macAddress"
-                      value={formData.macAddress}
-                      onChange={handleInputChange}
-                      placeholder="00:1B:44:11:3A:B7"
-                    />
-                  </div>
-                </div>
+                {/* Bỏ IP/MAC theo yêu cầu */}
                 
                 <div className="form-group">
                   <label>Trạng thái</label>
@@ -971,6 +941,55 @@ const DeviceManagement = () => {
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal xác nhận trung tâm */}
+        {confirmModal.open && (
+          <div className="modal-overlay" onClick={() => setConfirmModal(prev => ({ ...prev, open: false }))}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>{confirmModal.title}</h3>
+                <button className="modal-close" onClick={() => setConfirmModal(prev => ({ ...prev, open: false }))}>×</button>
+              </div>
+              <div className="modal-body">
+                <p className="text-center text-gray-700 text-base">{confirmModal.message}</p>
+              </div>
+              <div className="modal-footer" style={{ justifyContent: 'center', gap: 12 }}>
+                <Button type="button" variant="outline" onClick={() => setConfirmModal(prev => ({ ...prev, open: false }))}>
+                  {confirmModal.cancelText || 'Hủy'}
+                </Button>
+                <Button type="button" variant="primary" onClick={() => confirmModal.onConfirm && confirmModal.onConfirm()}>
+                  {confirmModal.confirmText || 'Xác nhận'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal thông báo thành công giữa màn hình */}
+        {successModal.open && (
+          <div className="modal-overlay" onClick={() => setSuccessModal(prev => ({ ...prev, open: false }))}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>{successModal.title || 'Thành công'}</h3>
+                <button className="modal-close" onClick={() => setSuccessModal(prev => ({ ...prev, open: false }))}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="text-center">
+                  <svg className="mx-auto mb-3" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#16a34a' }}>
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                  <p className="text-gray-700 text-base">{successModal.message}</p>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ justifyContent: 'center' }}>
+                <Button type="button" variant="primary" onClick={() => setSuccessModal(prev => ({ ...prev, open: false }))}>
+                  Đóng
+                </Button>
+              </div>
             </div>
           </div>
         )}

@@ -118,7 +118,8 @@ async function enrollFace(req, res, next) {
       { userID: normalizedUserID },
       {
         $set: { userID: normalizedUserID, fullName, descriptor: vector128, updatedAt: now },
-        $setOnInsert: { createdAt: now }
+        // Chỉ set khi tạo mới để tránh ghi đè trạng thái khóa
+        $setOnInsert: { createdAt: now, is_active: true }
       },
       { upsert: true }
     );
@@ -210,7 +211,7 @@ async function faceAttendanceCurrent(req, res, next) {
     
     const template = await collection.findOne(
       { userID: normalizedUserID },
-      { projection: { userID: 1, fullName: 1, descriptor: 1 } }
+      { projection: { userID: 1, fullName: 1, descriptor: 1, is_active: 1 } }
     );
     
     console.log('🔍 Kết quả tìm kiếm template:', template ? 'Tìm thấy' : 'Không tìm thấy');
@@ -227,6 +228,14 @@ async function faceAttendanceCurrent(req, res, next) {
       return res.status(404).json({ 
         success: false, 
         message: 'Chưa có dữ liệu khuôn mặt cho tài khoản này. Vui lòng đăng ký khuôn mặt trước.' 
+      });
+    }
+
+    // Nếu template tồn tại nhưng đã bị vô hiệu hóa
+    if (template && template.is_active === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản nhận diện của bạn đã bị khóa, chi tiết vui lòng liên hệ phòng kĩ thuật!'
       });
     }
 
@@ -383,20 +392,28 @@ async function faceAttendanceCurrent(req, res, next) {
     // Lưu chấm công vào MySQL - CHỈ SỬ DỤNG BẢNG attendance
     const { pool } = require('../config/database');
 
-    // Lấy device_id của face recognition system
+    // Lấy device_id của hệ thống nhận diện khuôn mặt (không lọc trạng thái)
     console.log('🔍 Tìm kiếm device face_recognition...');
     const [devices] = await pool.execute(
-      'SELECT device_id FROM devices WHERE device_code = ? AND is_active = 1',
+      'SELECT device_id, is_active FROM devices WHERE device_code = ? LIMIT 1',
       ['face_recognition']
     );
-    
+
     let deviceId = null;
     if (devices.length > 0) {
+      // Nếu tồn tại nhưng đang bị vô hiệu hóa thì trả về thông báo theo yêu cầu
+      if (devices[0].is_active === 0) {
+        console.log('⛔ Hệ thống điểm danh bằng khuôn mặt đang bị vô hiệu hóa');
+        return res.status(403).json({
+          success: false,
+          message: 'Hệ thống điểm danh bằng khuôn mặt đã bị vô hiệu hóa, nếu có thắc mắc vui lòng liên hệ phòng kĩ thuật!'
+        });
+      }
       deviceId = devices[0].device_id;
       console.log('✅ Tìm thấy device face_recognition với ID:', deviceId);
     } else {
       console.log('⚠️ Không tìm thấy device face_recognition, sẽ tạo mới...');
-      // Tạo device mới nếu chưa có
+      // Tạo device mới nếu thực sự chưa có
       const [result] = await pool.execute(
         'INSERT INTO devices (device_code, device_name, location, is_active) VALUES (?, ?, ?, ?)',
         ['face_recognition', 'Face Recognition System', 'Web Application', 1]
@@ -843,4 +860,71 @@ async function getCheckinHistory(req, res, next) {
   }
 }
 
-module.exports = { enrollFace, getEnrollments, faceAttendance, faceAttendanceCurrent, getCheckinHistory };
+// API: cập nhật, xóa, bật/tắt template khuôn mặt
+async function updateEnrollment(req, res) {
+  try {
+    const paramId = req.params.userID;
+    const { fullName, descriptor, is_active } = req.body;
+    if (paramId === undefined || paramId === null) {
+      return res.status(400).json({ success: false, message: 'Thiếu userID' });
+    }
+    const normalizedUserID = Number.isFinite(Number(paramId)) ? Number(paramId) : String(paramId);
+    const db = await getDb();
+    const collection = db.collection('face_templates');
+    const update = { updatedAt: new Date() };
+    if (fullName !== undefined) update.fullName = fullName;
+    if (Array.isArray(descriptor)) update.descriptor = descriptor.map(Number);
+    if (is_active !== undefined) update.is_active = !!is_active;
+    const result = await collection.updateOne({ userID: normalizedUserID }, { $set: update });
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy template khuôn mặt' });
+    }
+    return res.json({ success: true, message: 'Cập nhật thành công' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message || 'Lỗi máy chủ' });
+  }
+}
+
+async function deleteEnrollment(req, res) {
+  try {
+    const { userID } = req.params;
+    if (userID === undefined || userID === null) {
+      return res.status(400).json({ success: false, message: 'Thiếu userID' });
+    }
+    const normalizedUserID = Number.isFinite(Number(userID)) ? Number(userID) : String(userID);
+    const db = await getDb();
+    const collection = db.collection('face_templates');
+    const result = await collection.deleteOne({ userID: normalizedUserID });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy template khuôn mặt' });
+    }
+    return res.json({ success: true, message: 'Xóa thành công' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message || 'Lỗi máy chủ' });
+  }
+}
+
+async function toggleEnrollment(req, res) {
+  try {
+    const { userID } = req.params;
+    const { is_active } = req.body;
+    if (userID === undefined || userID === null) {
+      return res.status(400).json({ success: false, message: 'Thiếu userID' });
+    }
+    const normalizedUserID = Number.isFinite(Number(userID)) ? Number(userID) : String(userID);
+    const db = await getDb();
+    const collection = db.collection('face_templates');
+    const result = await collection.updateOne(
+      { userID: normalizedUserID },
+      { $set: { is_active: !!is_active, updatedAt: new Date() } }
+    );
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy template khuôn mặt' });
+    }
+    return res.json({ success: true, message: !!is_active ? 'Đã kích hoạt' : 'Đã vô hiệu hóa' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message || 'Lỗi máy chủ' });
+  }
+}
+
+module.exports = { enrollFace, getEnrollments, faceAttendance, faceAttendanceCurrent, getCheckinHistory, updateEnrollment, deleteEnrollment, toggleEnrollment };

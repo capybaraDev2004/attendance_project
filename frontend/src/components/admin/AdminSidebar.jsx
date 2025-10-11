@@ -82,10 +82,17 @@ export default function AdminSidebar({
     },
     {
       id: 'payroll',
-      label: 'Tính lương',
+      label: 'Tính tổng thời làm việc',
       icon: TablerIcons.IconCalculator,
       path: '/admin/calculate',
-      description: 'Tính toán lương tháng'
+      description: 'Tính tổng thời làm việc'
+    },
+    {
+      id: 'salary-management',
+      label: 'Quản lý tính lương',
+      icon: TablerIcons.IconCurrencyDollar,
+      path: '/admin/salary-management',
+      description: 'Quản lý và tính toán lương nhân viên'
     }
   ];
 

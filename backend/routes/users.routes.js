@@ -1,11 +1,39 @@
 // backend/routes/users.routes.js
 const express = require('express');
-const { getUsers, getByUID, testRfidData, debugUsers } = require('../controllers/users.controller');
+
+const {
+    getUsers,
+    createUser,
+    updateUser,
+    deleteUser,
+    createAccount,
+    resetPassword,
+    debugUsers
+} = require('../controllers/users.controller');
+
 
 const router = express.Router();
 
+// Lấy danh sách người dùng
 router.get('/', getUsers);
-router.get('/by-uid/:uid', getByUID);
-router.get('/test/rfid', testRfidData); // Test endpoint
-router.get('/debug', debugUsers); // Debug endpoint
+
+// Thêm người dùng mới
+router.post('/', createUser);
+
+// Cập nhật thông tin người dùng
+router.put('/:userID', updateUser);
+
+// Xóa người dùng
+router.delete('/:userID', deleteUser);
+
+// Tạo tài khoản cho người dùng
+router.post('/:userID/account', createAccount);
+
+// Cấp lại mật khẩu
+router.put('/:userID/password', resetPassword);
+
+
+// Debug endpoint
+router.get('/debug', debugUsers);
+
 module.exports = router;

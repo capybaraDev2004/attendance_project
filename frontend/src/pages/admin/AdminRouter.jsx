@@ -9,6 +9,7 @@ import Positions from './Positions/Positions';
 import ShiftManagement from './Shift-management/ShiftManagement';
 import WorkHours from './Work-hours/WorkHours';
 import PayrollCalculation from './Calculate/PayrollCalculation';
+import SalaryManagement from './Salary/SalaryManagement';
 import CardDemo from './CardDemo';
 // Đã bỏ trang Chấm công đang phát triển
 import UserManagement from '../UserManagement';
@@ -56,6 +57,8 @@ export default function AdminRouter() {
         return <WorkHours />;
       case '/admin/calculate':
         return <PayrollCalculation />;
+      case '/admin/salary-management':
+        return <SalaryManagement />;
       case '/admin/card-demo':
         return <CardDemo />;
       case '/admin/users':

@@ -11,9 +11,11 @@ import CustomerUsers from './pages/customer/User/CustomerUsers';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import CustomerHome from './pages/customer/CustomerHome';
 import CustomerAttendance from './pages/customer/History/CustomerAttendance';
-import CustomerTimekeeping from './pages/customer/Timekeeping/CustomerTimekeeping';
 import CustomerLogout from './pages/customer/CustomerLogout';
+import CustomerSalary from './pages/customer/Salary/CustomerSalary';
 import FaceScan from './pages/customer/Face-scan/FaceScan';
+import CustomerDevices from './pages/customer/Devices/CustomerDevices';
+import CustomerShifts from './pages/customer/Shifts/CustomerShifts';
 
 function App() {
   return (
@@ -41,7 +43,9 @@ function App() {
             <Route path="users" element={<CustomerUsers />} />
             <Route path="face-scan" element={<FaceScan />} />
             <Route path="attendance" element={<CustomerAttendance />} />
-            <Route path="timekeeping" element={<CustomerTimekeeping />} />
+            <Route path="salary" element={<CustomerSalary />} />
+          <Route path="devices" element={<CustomerDevices />} />
+          <Route path="shifts" element={<CustomerShifts />} />
             <Route path="logout" element={<CustomerLogout />} />
           </Route>
         </Route>

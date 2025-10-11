@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import AdminLayout from '../components/AdminLayout';
 import Card, { CardTitle, CardContent, CardActions } from '../components/Card';
 import Button from '../components/Button';
 import Pagination from '../components/Pagination';
-import { FaUsers } from 'react-icons/fa';
+import { FaUsers, FaPlus, FaEdit, FaTrash, FaUserPlus, FaKey } from 'react-icons/fa';
 
 // Trang quản lý người dùng - lấy dữ liệu từ database
 const UserManagement = () => {
@@ -18,6 +19,43 @@ const UserManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // State cho modal và form
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: 'male',
+    address: '',
+    position: '',
+    role: 'employee',
+    status: 'active',
+    salaryRank: ''
+  });
+
+  // Danh sách chức vụ từ API
+  const [positions, setPositions] = useState([]);
+
+  useEffect(() => {
+    const fetchPositions = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/positions');
+        const data = await res.json();
+        if (!res.ok) throw new Error('Không tải được chức vụ');
+        // API trả mảng trực tiếp
+        setPositions(Array.isArray(data) ? data : (data.data || []));
+      } catch (e) {
+        console.warn('Không thể tải danh sách chức vụ:', e.message);
+      }
+    };
+    fetchPositions();
+  }, []);
+
   // State cho việc bật/tắt cột - cập nhật để khớp với dữ liệu thực tế
   const [visibleColumns, setVisibleColumns] = useState({
     stt: true,
@@ -31,6 +69,7 @@ const UserManagement = () => {
     position: true,
     role: true,
     status: true,
+    actions: true,  // Thêm cột thao tác
     created_at: false  // Bật ngày tạo vì API có dữ liệu
   });
 
@@ -45,8 +84,10 @@ const UserManagement = () => {
     { key: 'gender', label: 'Giới tính', width: '110px' },
     { key: 'address', label: 'Địa chỉ', width: '200px' },
     { key: 'position', label: 'Chức vụ', width: '140px' },
+    { key: 'salaryRank', label: 'Lương cơ bản', width: '140px' },
     { key: 'role', label: 'Vai trò', width: '160px' },
     { key: 'status', label: 'Trạng thái', width: '150px' },
+    { key: 'actions', label: 'Thao tác', width: '200px' },
     { key: 'created_at', label: 'Ngày tạo', width: '110px' }
   ];
 
@@ -143,6 +184,18 @@ const UserManagement = () => {
     return a.fullName.localeCompare(b.fullName);
   });
 
+  // Kiểm tra người dùng đã có tài khoản đăng nhập chưa (ẩn nút tạo tài khoản)
+  const hasAccount = (user) => {
+    // Ưu tiên cờ từ backend (đảm bảo chính xác, không cần username/password)
+    if (user.hasAccount === 1 || user.hasAccount === true) return true;
+    if (user.hasAccount === 0 || user.hasAccount === false) return false;
+
+    // Dự phòng: suy luận nếu backend cũ không gửi cờ hasAccount
+    const username = user.userName || user.username || user.accountUsername;
+    const password = user.password || user.hashedPassword || user.pass;
+    return Boolean(username && String(username).trim() && password && String(password).trim());
+  };
+
   // Xử lý thay đổi trang
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -164,8 +217,6 @@ const UserManagement = () => {
   // Tính tổng số trang
   const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
 
-
-
   // Hiện tất cả cột
   const showAllColumns = () => {
     const allVisible = {};
@@ -181,6 +232,338 @@ const UserManagement = () => {
       ...prev,
       [columnKey]: !prev[columnKey]
     }));
+  };
+
+  // Hàm format ngày tháng theo định dạng dd/mm/yyyy
+  const formatDate = (dateString) => {
+    if (!dateString) return '--';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN');
+  };
+
+  // Hàm convert từ dd/mm/yyyy sang yyyy-mm-dd cho input date
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    
+    // Nếu đã là format yyyy-mm-dd thì return luôn
+    if (dateString.includes('-') && dateString.length === 10) {
+      return dateString;
+    }
+    
+    // Nếu là format dd/mm/yyyy thì convert
+    if (dateString.includes('/')) {
+      const parts = dateString.split('/');
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+      }
+    }
+    
+    // Nếu là Date object hoặc ISO string
+    try {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      console.error('Error parsing date:', e);
+    }
+    
+    return '';
+  };
+
+  // Hàm convert từ yyyy-mm-dd sang dd/mm/yyyy cho hiển thị
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      }
+    } catch (e) {
+      console.error('Error formatting date:', e);
+    }
+    
+    return '';
+  };
+
+  // Chuyển từ dd/mm/yyyy sang yyyy-mm-dd
+  const parseDisplayDate = (display) => {
+    if (!display) return '';
+    const parts = display.split('/');
+    if (parts.length !== 3) return '';
+    const [d, m, y] = parts;
+    if (!d || !m || !y) return '';
+    return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  };
+
+
+  // ===== Inline Calendar Dropdown (đẹp, hiển thị ngay dưới ô input) =====
+  const monthNamesVi = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+  const weekNamesVi = ['T2','T3','T4','T5','T6','T7','CN'];
+  const getDaysMatrix = (year, month) => {
+    // month: 0-11
+    const first = new Date(year, month, 1);
+    const startDay = (first.getDay() + 6) % 7; // Mon=0
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < startDay; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  };
+
+  const today = new Date();
+  const [addCalOpen, setAddCalOpen] = useState(false);
+  const [addCalYear, setAddCalYear] = useState(today.getFullYear());
+  const [addCalMonth, setAddCalMonth] = useState(today.getMonth());
+  const [editCalOpen, setEditCalOpen] = useState(false);
+  const [editCalYear, setEditCalYear] = useState(today.getFullYear());
+  const [editCalMonth, setEditCalMonth] = useState(today.getMonth());
+
+  const openCalendarFor = (mode) => {
+    const iso = formData.dateOfBirth;
+    let base = today;
+    if (iso) {
+      const d = new Date(iso);
+      if (!isNaN(d.getTime())) base = d;
+    }
+    if (mode === 'add') {
+      setAddCalYear(base.getFullYear());
+      setAddCalMonth(base.getMonth());
+      setAddCalOpen(true);
+    } else {
+      setEditCalYear(base.getFullYear());
+      setEditCalMonth(base.getMonth());
+      setEditCalOpen(true);
+    }
+  };
+
+  const pickCalendarDate = (day, mode) => {
+    if (!day) return;
+    const y = mode === 'add' ? addCalYear : editCalYear;
+    const m = mode === 'add' ? addCalMonth : editCalMonth; // 0-11
+    const iso = `${y}-${String(m + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    setFormData({ ...formData, dateOfBirth: iso });
+    mode === 'add' ? setAddCalOpen(false) : setEditCalOpen(false);
+  };
+
+  // Reset form data
+  const resetFormData = () => {
+    setFormData({
+      fullName: '',
+      email: '',
+      phone: '',
+      dateOfBirth: '',
+      gender: 'male',
+      address: '',
+      position: '',
+      role: 'employee',
+      status: 'active'
+    });
+  };
+
+  // Mở modal thêm user
+  const handleAddUser = () => {
+    resetFormData();
+    setShowAddModal(true);
+  };
+
+  // Mở modal sửa user
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setFormData({
+      fullName: user.fullName || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      dateOfBirth: formatDateForInput(user.dateOfBirth) || '',
+      gender: user.gender || 'male',
+      address: user.address || '',
+      position: user.position || '',
+      salaryRank: user.salaryRank ?? '',
+      role: user.role || 'employee',
+      status: user.status || 'active'
+    });
+    setShowEditModal(true);
+  };
+
+  // Mở modal tạo tài khoản
+  const handleCreateAccount = (user) => {
+    setSelectedUser(user);
+    setShowAccountModal(true);
+  };
+
+  // Mở modal cấp lại mật khẩu
+  const handleResetPassword = (user) => {
+    setSelectedUser(user);
+    setShowPasswordModal(true);
+  };
+
+  // Xóa user
+  const handleDeleteUser = async (user) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa người dùng "${user.fullName}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/users/${user.userID}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Xóa người dùng thành công');
+        fetchUsers(); // Refresh danh sách
+      } else {
+        toast.error(data.message || 'Lỗi khi xóa người dùng');
+      }
+    } catch (err) {
+      console.error('Lỗi khi xóa user:', err);
+      toast.error('Lỗi khi xóa người dùng');
+    }
+  };
+
+  // Submit form thêm user
+  const handleSubmitAdd = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const submitData = {
+        ...formData,
+        dateOfBirth: formData.dateOfBirth ? formatDateForDisplay(formData.dateOfBirth) : null
+      };
+
+      const response = await fetch('http://localhost:3001/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(submitData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Thêm người dùng thành công');
+        setShowAddModal(false);
+        fetchUsers(); // Refresh danh sách
+      } else {
+        toast.error(data.message || 'Lỗi khi thêm người dùng');
+      }
+    } catch (err) {
+      console.error('Lỗi khi thêm user:', err);
+      toast.error('Lỗi khi thêm người dùng');
+    }
+  };
+
+  // Submit form sửa user
+  const handleSubmitEdit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const submitData = {
+        ...formData,
+        dateOfBirth: formData.dateOfBirth ? formatDateForDisplay(formData.dateOfBirth) : null
+      };
+
+      const response = await fetch(`http://localhost:3001/api/users/${selectedUser.userID}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(submitData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Cập nhật người dùng thành công');
+        setShowEditModal(false);
+        fetchUsers(); // Refresh danh sách
+      } else {
+        toast.error(data.message || 'Lỗi khi cập nhật người dùng');
+      }
+    } catch (err) {
+      console.error('Lỗi khi cập nhật user:', err);
+      toast.error('Lỗi khi cập nhật người dùng');
+    }
+  };
+
+  // Submit form tạo tài khoản
+  const handleSubmitAccount = async (e) => {
+    e.preventDefault();
+    
+    const username = e.target.username.value;
+    const password = e.target.password.value;
+
+    if (!username || !password) {
+      toast.error('Vui lòng nhập đầy đủ thông tin');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/users/${selectedUser.userID}/account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Tạo tài khoản thành công');
+        setShowAccountModal(false);
+        fetchUsers(); // Refresh danh sách
+      } else {
+        toast.error(data.message || 'Lỗi khi tạo tài khoản');
+      }
+    } catch (err) {
+      console.error('Lỗi khi tạo tài khoản:', err);
+      toast.error('Lỗi khi tạo tài khoản');
+    }
+  };
+
+  // Submit form cấp lại mật khẩu
+  const handleSubmitPassword = async (e) => {
+    e.preventDefault();
+    
+    const password = e.target.password.value;
+
+    if (!password) {
+      toast.error('Vui lòng nhập mật khẩu mới');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/users/${selectedUser.userID}/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Cấp lại mật khẩu thành công');
+        setShowPasswordModal(false);
+      } else {
+        toast.error(data.message || 'Lỗi khi cấp lại mật khẩu');
+      }
+    } catch (err) {
+      console.error('Lỗi khi cấp lại mật khẩu:', err);
+      toast.error('Lỗi khi cấp lại mật khẩu');
+    }
   };
 
   // Hàm format status
@@ -200,6 +583,18 @@ const UserManagement = () => {
     return role === 'admin' ? 'QUẢN TRỊ VIÊN' : 'NHÂN VIÊN';
   };
 
+  // Định dạng tiền tệ VND cho lương cơ bản
+  const formatCurrencyVND = (value) => {
+    if (value === null || value === undefined || value === '') return '--';
+    try {
+      const num = Number(value);
+      if (isNaN(num)) return '--';
+      return num.toLocaleString('vi-VN');
+    } catch (_) {
+      return String(value);
+    }
+  };
+
   // Hàm format gender
   const formatGender = (gender) => {
     if (!gender || gender === '') {
@@ -211,13 +606,6 @@ const UserManagement = () => {
       case 'other': return 'Khác';
       default: return '--';
     }
-  };
-
-  // Hàm format ngày tháng theo định dạng dd/mm/yyyy
-  const formatDate = (dateString) => {
-    if (!dateString) return '--';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN');
   };
 
   if (loading) {
@@ -275,6 +663,7 @@ const UserManagement = () => {
           </div>
         </CardContent>
       </Card>
+
       {/* Bộ lọc và tìm kiếm */}
       <Card>
         <CardTitle level="h2" className="text-lg mb-4">Bộ lọc và tìm kiếm</CardTitle>
@@ -468,9 +857,15 @@ const UserManagement = () => {
 
       {/* Bảng dữ liệu */}
       <Card>
-        <CardTitle level="h2" className="text-lg mb-4">
-          Danh sách người dùng ({sortedUsers.length})
-        </CardTitle>
+        <div className="flex items-center justify-between mb-4">
+          <CardTitle level="h2" className="text-lg">
+            Danh sách người dùng ({sortedUsers.length})
+          </CardTitle>
+          <Button onClick={handleAddUser} variant="primary" className="flex items-center space-x-2">
+            <FaPlus className="w-4 h-4" />
+            <span>Thêm người dùng</span>
+          </Button>
+        </div>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -530,6 +925,8 @@ const UserManagement = () => {
                               );
                             case 'address':
                               return <td key={column.key} className="py-3 px-4 text-gray-700">{user.address || '--'}</td>;
+                            case 'salaryRank':
+                              return <td key={column.key} className="py-3 px-4 text-gray-700">{formatCurrencyVND(user.salaryRank)}</td>;
                             case 'position':
                               return <td key={column.key} className="py-3 px-4 text-gray-700">{user.position || '--'}</td>;
                             case 'role':
@@ -550,6 +947,55 @@ const UserManagement = () => {
                                   }`}>
                                     {formatStatus(user.status)}
                                   </span>
+                                </td>
+                              );
+                            case 'actions':
+                              return (
+                                <td key={column.key} className="py-3 px-4">
+                                  <div className="flex items-center space-x-2">
+                                    <Button 
+                                      onClick={() => handleEditUser(user)} 
+                                      variant="outline" 
+                                      size="sm"
+                                      className="flex items-center justify-center w-10 h-10 p-0"
+                                      title="Chỉnh sửa thông tin người dùng"
+                                    >
+                                      <FaEdit className="w-5 h-5" />
+                                    </Button>
+                                    {!hasAccount(user) && (
+                                      <Button 
+                                        onClick={() => handleCreateAccount(user)} 
+                                        variant="primary" 
+                                        size="sm"
+                                        className="flex items-center justify-center w-10 h-10 p-0"
+                                        title="Tạo tài khoản đăng nhập"
+                                      >
+                                        <FaUserPlus className="w-5 h-5" />
+                                      </Button>
+                                    )}
+                                    {hasAccount(user) && (
+                                      <Button 
+                                        onClick={() => handleResetPassword(user)} 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="flex items-center justify-center w-10 h-10 p-0"
+                                        title="Cấp lại mật khẩu"
+                                      >
+                                        <FaKey className="w-5 h-5" />
+                                      </Button>
+                                    )}
+                                    {user.role !== 'admin' && (
+                                      <Button 
+                                        onClick={() => handleDeleteUser(user)} 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="flex items-center justify-center w-10 h-10 p-0 text-red-600 hover:text-red-700 hover:border-red-300"
+                                        title="Xóa người dùng"
+                                      >
+                                        <FaTrash className="w-5 h-5" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 </td>
                               );
                             case 'created_at':
@@ -577,6 +1023,751 @@ const UserManagement = () => {
         totalItems={sortedUsers.length}
         itemsPerPageOptions={[5, 10, 20, 50]}
       />
+
+      {/* Modal thêm người dùng */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget) setShowAddModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onMouseDown={(e)=>e.stopPropagation()}>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 rounded-t-2xl">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+                  <FaUserPlus className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white">Thêm người dùng mới</h3>
+                  <p className="text-blue-100 mt-1">Nhập thông tin chi tiết của người dùng</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitAdd} className="p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Họ tên */}
+                <div className="space-y-2">
+                  <label htmlFor="addFullName" className="block text-sm font-semibold text-gray-700">
+                    Họ và tên <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="addFullName"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="Nhập họ và tên đầy đủ"
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <label htmlFor="addEmail" className="block text-sm font-semibold text-gray-700">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      id="addEmail"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="example@company.com"
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Số điện thoại */}
+                <div className="space-y-2">
+                  <label htmlFor="addPhone" className="block text-sm font-semibold text-gray-700">
+                    Số điện thoại
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      id="addPhone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="0123456789"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ngày sinh */}
+                <div className="space-y-2">
+                  <label htmlFor="addDateOfBirth" className="block text-sm font-semibold text-gray-700">
+                    Ngày sinh
+                  </label>
+                  <div className="relative">
+                    <div className="relative">
+                      <input
+                      type="text"
+                      inputMode="numeric"
+                      id="addDateOfBirth"
+                      value={formData.dateOfBirth ? formatDateForDisplay(formData.dateOfBirth) : ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        // Chuẩn hóa dd/mm/yyyy khi gõ
+                        const cleaned = v.replace(/[^0-9/]/g, '');
+                        // Lưu tạm ở dạng yyyy-mm-dd cho backend
+                        const iso = parseDisplayDate(cleaned);
+                        setFormData({ ...formData, dateOfBirth: iso });
+                      }}
+                      onClick={() => openCalendarFor('add')}
+                      onFocus={() => {
+                        // Mở lịch và nếu đang trống thì gợi ý bằng hôm nay
+                        openCalendarFor('add');
+                        if (!formData.dateOfBirth) {
+                          const today = new Date();
+                          const dd = String(today.getDate()).padStart(2, '0');
+                          const mm = String(today.getMonth() + 1).padStart(2, '0');
+                          const yyyy = today.getFullYear();
+                          const iso = `${yyyy}-${mm}-${dd}`;
+                          setFormData({ ...formData, dateOfBirth: iso });
+                        }
+                      }}
+                      placeholder="dd/mm/yyyy"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      />
+                      {/* Calendar dropdown for Add */}
+                      <div className={`${addCalOpen ? 'block' : 'hidden'} absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg`}
+                           onMouseDown={(e)=>e.preventDefault()}>
+                        <div className="flex items-center justify-between px-3 py-2 border-b">
+                          <button type="button" className="px-2 py-1 text-gray-600 hover:text-gray-900"
+                            onClick={() => { let m=addCalMonth-1, y=addCalYear; if(m<0){m=11;y--;} setAddCalMonth(m); setAddCalYear(y); }}>&lt;</button>
+                          <div className="text-sm font-semibold text-gray-800">{monthNamesVi[addCalMonth]} {addCalYear}</div>
+                          <button type="button" className="px-2 py-1 text-gray-600 hover:text-gray-900"
+                            onClick={() => { let m=addCalMonth+1, y=addCalYear; if(m>11){m=0;y++;} setAddCalMonth(m); setAddCalYear(y); }}>&gt;</button>
+                        </div>
+                        <div className="grid grid-cols-7 gap-1 p-2 text-center text-xs text-gray-500">
+                          {weekNamesVi.map(d => (<div key={d} className="py-1">{d}</div>))}
+                          {getDaysMatrix(addCalYear, addCalMonth).map((d, idx) => (
+                            <button key={idx} type="button" disabled={!d}
+                              className={`py-2 rounded-md ${d? 'hover:bg-blue-50' : 'opacity-40 cursor-default'}`}
+                              onClick={() => pickCalendarDate(d, 'add')}>{d || ''}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Đã bỏ dòng hiển thị để tránh trùng nội dung */}
+                </div>
+
+                {/* Giới tính */}
+                <div className="space-y-2">
+                  <label htmlFor="addGender" className="block text-sm font-semibold text-gray-700">
+                    Giới tính
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="addGender"
+                      value={formData.gender}
+                      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white appearance-none"
+                    >
+                      <option value="male">Nam</option>
+                      <option value="female">Nữ</option>
+                      <option value="other">Khác</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chức vụ - chọn từ danh sách có sẵn */}
+                <div className="space-y-2">
+                  <label htmlFor="addPosition" className="block text-sm font-semibold text-gray-700">
+                    Chức vụ
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="addPosition"
+                      value={formData.position}
+                      onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white appearance-none"
+                    >
+                      <option value="">-- Chọn chức vụ --</option>
+                      {positions.map(p => (
+                        <option key={p.id} value={p.title}>{p.title}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lương cơ bản (salaryRank) */}
+                <div className="space-y-2">
+                  <label htmlFor="addSalary" className="block text-sm font-semibold text-gray-700">
+                    Lương cơ bản
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      id="addSalary"
+                      value={formData.salaryRank}
+                      onChange={(e) => setFormData({ ...formData, salaryRank: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="Nhập lương cơ bản"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-2.21 0-4 1.343-4 3s1.79 3 4 3 4 1.343 4 3-1.79 3-4 3m0-12V4m0 16v-2" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vai trò */}
+                <div className="space-y-2">
+                  <label htmlFor="addRole" className="block text-sm font-semibold text-gray-700">
+                    Vai trò
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="addRole"
+                      value={formData.role}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white appearance-none"
+                    >
+                      <option value="employee">Nhân viên</option>
+                      <option value="admin">Quản trị viên</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trạng thái: mặc định Hoạt động, ẩn chọn trong form thêm */}
+                <input type="hidden" value={formData.status} readOnly />
+              </div>
+
+              {/* Địa chỉ */}
+              <div className="mt-6 space-y-2">
+                <label htmlFor="addAddress" className="block text-sm font-semibold text-gray-700">
+                  Địa chỉ
+                </label>
+                <div className="relative">
+                  <textarea
+                    id="addAddress"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none"
+                    placeholder="Nhập địa chỉ chi tiết"
+                  />
+                  <div className="absolute top-3 right-3">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-200">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowAddModal(false)}
+                  className="px-6 py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-all duration-200"
+                >
+                  Hủy bỏ
+                </Button>
+                <Button 
+                  type="submit"
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Thêm người dùng
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal sửa người dùng */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget) setShowEditModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onMouseDown={(e)=>e.stopPropagation()}>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-8 py-6 rounded-t-2xl">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+                  <FaEdit className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white">Chỉnh sửa thông tin</h3>
+                  <p className="text-green-100 mt-1">Cập nhật thông tin cho {selectedUser?.fullName}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitEdit} className="p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Họ tên */}
+                <div className="space-y-2">
+                  <label htmlFor="editFullName" className="block text-sm font-semibold text-gray-700">
+                    Họ và tên <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="editFullName"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="Nhập họ và tên đầy đủ"
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <label htmlFor="editEmail" className="block text-sm font-semibold text-gray-700">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      id="editEmail"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="example@company.com"
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Số điện thoại */}
+                <div className="space-y-2">
+                  <label htmlFor="editPhone" className="block text-sm font-semibold text-gray-700">
+                    Số điện thoại
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      id="editPhone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="0123456789"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ngày sinh */}
+                <div className="space-y-2">
+                  <label htmlFor="editDateOfBirth" className="block text-sm font-semibold text-gray-700">
+                    Ngày sinh
+                  </label>
+                  <div className="relative">
+                    <div className="relative">
+                      <input
+                      type="text"
+                      inputMode="numeric"
+                      id="editDateOfBirth"
+                      value={formData.dateOfBirth ? formatDateForDisplay(formData.dateOfBirth) : ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const cleaned = v.replace(/[^0-9/]/g, '');
+                        const iso = parseDisplayDate(cleaned);
+                        setFormData({ ...formData, dateOfBirth: iso });
+                      }}
+                      onFocus={() => openCalendarFor('edit')}
+                      onClick={() => openCalendarFor('edit')}
+                      placeholder="dd/mm/yyyy"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      />
+                      {/* Calendar dropdown for Edit */}
+                      <div className={`${editCalOpen ? 'block' : 'hidden'} absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg`}
+                           onMouseDown={(e)=>e.preventDefault()}>
+                        <div className="flex items-center justify-between px-3 py-2 border-b">
+                          <button type="button" className="px-2 py-1 text-gray-600 hover:text-gray-900"
+                            onClick={() => { let m=editCalMonth-1, y=editCalYear; if(m<0){m=11;y--;} setEditCalMonth(m); setEditCalYear(y); }}>&lt;</button>
+                          <div className="text-sm font-semibold text-gray-800">{monthNamesVi[editCalMonth]} {editCalYear}</div>
+                          <button type="button" className="px-2 py-1 text-gray-600 hover:text-gray-900"
+                            onClick={() => { let m=editCalMonth+1, y=editCalYear; if(m>11){m=0;y++;} setEditCalMonth(m); setEditCalYear(y); }}>&gt;</button>
+                        </div>
+                        <div className="grid grid-cols-7 gap-1 p-2 text-center text-xs text-gray-500">
+                          {weekNamesVi.map(d => (<div key={d} className="py-1">{d}</div>))}
+                          {getDaysMatrix(editCalYear, editCalMonth).map((d, idx) => (
+                            <button key={idx} type="button" disabled={!d}
+                              className={`py-2 rounded-md ${d? 'hover:bg-emerald-50' : 'opacity-40 cursor-default'}`}
+                              onClick={() => pickCalendarDate(d, 'edit')}>{d || ''}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Đã bỏ dòng hiển thị để tránh trùng nội dung */}
+                </div>
+
+                {/* Giới tính */}
+                <div className="space-y-2">
+                  <label htmlFor="editGender" className="block text-sm font-semibold text-gray-700">
+                    Giới tính
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="editGender"
+                      value={formData.gender}
+                      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white appearance-none"
+                    >
+                      <option value="male">Nam</option>
+                      <option value="female">Nữ</option>
+                      <option value="other">Khác</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chức vụ - chuyển sang dropdown lấy từ API để tránh nhập sai */}
+                <div className="space-y-2">
+                  <label htmlFor="editPosition" className="block text-sm font-semibold text-gray-700">
+                    Chức vụ
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="editPosition"
+                      value={formData.position}
+                      onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white appearance-none"
+                    >
+                      <option value="">-- Chọn chức vụ --</option>
+                      {positions.map(p => (
+                        <option key={p.id} value={p.title}>{p.title}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lương cơ bản (salaryRank) */}
+                <div className="space-y-2">
+                  <label htmlFor="editSalary" className="block text-sm font-semibold text-gray-700">
+                    Lương cơ bản
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      id="editSalary"
+                      value={formData.salaryRank}
+                      onChange={(e) => setFormData({ ...formData, salaryRank: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="Nhập lương cơ bản"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-2.21 0-4 1.343-4 3s1.79 3 4 3 4 1.343 4 3-1.79 3-4 3m0-12V4m0 16v-2" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vai trò */}
+                <div className="space-y-2">
+                  <label htmlFor="editRole" className="block text-sm font-semibold text-gray-700">
+                    Vai trò
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="editRole"
+                      value={formData.role}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white appearance-none"
+                    >
+                      <option value="employee">Nhân viên</option>
+                      <option value="admin">Quản trị viên</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trạng thái */}
+                <div className="space-y-2">
+                  <label htmlFor="editStatus" className="block text-sm font-semibold text-gray-700">
+                    Trạng thái
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="editStatus"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white appearance-none"
+                    >
+                      <option value="active">Hoạt động</option>
+                      <option value="inactive">Không hoạt động</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Địa chỉ */}
+              <div className="mt-6 space-y-2">
+                <label htmlFor="editAddress" className="block text-sm font-semibold text-gray-700">
+                  Địa chỉ
+                </label>
+                <div className="relative">
+                  <textarea
+                    id="editAddress"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none"
+                    placeholder="Nhập địa chỉ chi tiết"
+                  />
+                  <div className="absolute top-3 right-3">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-200">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowEditModal(false)}
+                  className="px-6 py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-all duration-200"
+                >
+                  Hủy bỏ
+                </Button>
+                <Button 
+                  type="submit"
+                  className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Lưu thay đổi
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal tạo tài khoản */}
+      {showAccountModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget) setShowAccountModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onMouseDown={(e)=>e.stopPropagation()}>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-6 rounded-t-2xl">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+                  <FaUserPlus className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Tạo tài khoản</h3>
+                  <p className="text-blue-100 mt-1">Cho {selectedUser?.fullName}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitAccount} className="p-8">
+              <div className="space-y-6">
+                {/* Tên đăng nhập */}
+                <div className="space-y-2">
+                  <label htmlFor="accountUsername" className="block text-sm font-semibold text-gray-700">
+                    Tên đăng nhập <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="accountUsername"
+                      name="username"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="Nhập tên đăng nhập"
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mật khẩu */}
+                <div className="space-y-2">
+                  <label htmlFor="accountPassword" className="block text-sm font-semibold text-gray-700">
+                    Mật khẩu <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      id="accountPassword"
+                      name="password"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="Nhập mật khẩu"
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-200">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowAccountModal(false)}
+                  className="px-6 py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-all duration-200"
+                >
+                  Hủy bỏ
+                </Button>
+                <Button 
+                  type="submit"
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Tạo tài khoản
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal cấp lại mật khẩu */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget) setShowPasswordModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onMouseDown={(e)=>e.stopPropagation()}>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-orange-600 to-red-600 px-8 py-6 rounded-t-2xl">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+                  <FaKey className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Cấp lại mật khẩu</h3>
+                  <p className="text-orange-100 mt-1">Cho {selectedUser?.fullName}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitPassword} className="p-8">
+              <div className="space-y-6">
+                {/* Mật khẩu mới */}
+                <div className="space-y-2">
+                  <label htmlFor="password" className="block text-sm font-semibold text-gray-700">
+                    Mật khẩu mới <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      id="password"
+                      name="password"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                      placeholder="Nhập mật khẩu mới"
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-200">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-6 py-3 rounded-xl border-2 border-gray-300 hover:border-gray-400 transition-all duration-200"
+                >
+                  Hủy bỏ
+                </Button>
+                <Button 
+                  type="submit"
+                  className="px-8 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 rounded-xl text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  Cấp lại mật khẩu
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

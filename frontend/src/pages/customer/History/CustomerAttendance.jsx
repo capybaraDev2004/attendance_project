@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+
+import React, { useEffect, useState, useCallback, useRef  } from 'react';
 import { io } from 'socket.io-client';
 import StandardTable from '../../../components/StandardTable';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
@@ -33,6 +34,63 @@ const CustomerAttendance = () => {
     } catch (error) {
       console.error('❌ Lỗi khi lấy thông tin user:', error);
       return null;
+      console.error('Lỗi khi lấy thông tin user:', error);
+    }
+    return null;
+  }, []);
+
+  // Chuyển đổi từ dd/mm/yyyy sang yyyy-mm-dd cho API
+  const convertToAPIDate = useCallback((ddmmyyyy) => {
+    if (!ddmmyyyy) return '';
+    const [day, month, year] = ddmmyyyy.split('/');
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  // Validate và format input date
+  const handleDateInputChange = useCallback((key, value) => {
+    // Chỉ cho phép nhập số và dấu /
+    const cleaned = value.replace(/[^\d/]/g, '');
+
+    // Giới hạn độ dài
+    if (cleaned.length > 10) return;
+
+    // Tự động thêm dấu /
+    let formatted = cleaned;
+    if (cleaned.length >= 2 && !cleaned.includes('/')) {
+      formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2);
+    }
+    if (cleaned.length >= 5 && cleaned.split('/').length === 2) {
+      const parts = cleaned.split('/');
+      if (parts[1].length >= 2) {
+        formatted = parts[0] + '/' + parts[1].slice(0, 2) + '/' + parts[1].slice(2);
+      }
+    }
+
+    setFilters((prev) => ({ ...prev, [key]: formatted }));
+  }, []);
+
+  // Xử lý chọn ngày từ date picker (không auto refresh)
+  const handleDatePickerSelect = useCallback((key, date) => {
+    const formatDateForDisplay = (dateObj) => {
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const year = dateObj.getFullYear();
+      return `${day}/${month}/${year}`;
+    };
+    // Giới hạn không vượt quá ngày hiện tại
+    const today = new Date();
+    const chosen = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const clamped = chosen > new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      : chosen;
+
+    setFilters((prev) => ({ ...prev, [key]: formatDateForDisplay(clamped) }));
+    
+    // Đóng date picker
+    if (key === 'startDate') {
+      setShowStartDatePicker(false);
+    } else {
+      setShowEndDatePicker(false);
     }
   }, []);
 

@@ -28,13 +28,6 @@ export default function CustomerSidebar({
       description: 'Tổng quan cá nhân'
     },
     {
-      id: 'timekeeping',
-      label: 'Chấm công',
-      icon: TablerIcons.IconClock,
-      path: '/timekeeping',
-      description: 'Chấm công vào/ra'
-    },
-    {
       id: 'face-scan',
       label: 'Quét khuôn mặt',
       icon: TablerIcons.IconFaceId,
@@ -53,11 +46,33 @@ export default function CustomerSidebar({
       description: 'Xem lịch sử chấm công'
     },
     {
+      id: 'devices',
+      label: 'Thiết bị',
+      icon: TablerIcons.IconDevices2,
+      path: '/devices',
+      description: 'Thiết bị được phép sử dụng'
+    },
+    {
+      id: 'shifts',
+      label: 'Lịch ca',
+      icon: TablerIcons.IconCalendarTime,
+      path: '/shifts',
+      description: 'Ca làm đang áp dụng'
+    },
+    {
       id: 'users',
       label: 'Quản lý người dùng',
       icon: TablerIcons.IconUsers,
       path: '/users',
       description: 'Quản lý thông tin nhân viên'
+    }
+    ,
+    {
+      id: 'salary',
+      label: 'Bảng lương',
+      icon: TablerIcons.IconCurrencyDollar,
+      path: '/salary',
+      description: 'Xem lương cá nhân theo tháng'
     }
   ];
 
