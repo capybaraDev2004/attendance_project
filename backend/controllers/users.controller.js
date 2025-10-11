@@ -17,6 +17,7 @@ async function getUsers(req, res, next) {
         gender, 
         position, 
         status, 
+        rfid_uid,
         created_at
       FROM users 
       ORDER BY userID ASC
@@ -54,4 +55,96 @@ async function getByUID(req, res) {
   }
 }
 
-module.exports = { getUsers, getByUID };
+// Test endpoint để kiểm tra dữ liệu rfid_uid
+async function testRfidData(req, res, next) {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT 
+        userID, 
+        fullName, 
+        rfid_uid,
+        position
+      FROM users 
+      ORDER BY userID ASC
+    `);
+
+    // Debug: Log từng user
+    console.log('=== DEBUG RFID DATA ===');
+    rows.forEach((user, index) => {
+      console.log(`User ${index + 1}:`, {
+        userID: user.userID,
+        fullName: user.fullName,
+        rfid_uid: user.rfid_uid,
+        rfid_uid_type: typeof user.rfid_uid,
+        rfid_uid_is_null: user.rfid_uid === null,
+        rfid_uid_is_undefined: user.rfid_uid === undefined
+      });
+    });
+
+    const usersWithoutCard = rows.filter(user =>
+      !user.rfid_uid || user.rfid_uid === null || user.rfid_uid === '' || user.rfid_uid === 'NULL'
+    );
+
+    const usersWithCard = rows.filter(user =>
+      user.rfid_uid && user.rfid_uid !== null && user.rfid_uid !== '' && user.rfid_uid !== 'NULL'
+    );
+
+    console.log('Users without card:', usersWithoutCard.length);
+    console.log('Users with card:', usersWithCard.length);
+
+    return res.json({
+      success: true,
+      users: rows,
+      count: rows.length,
+      debug: {
+        usersWithoutCard: usersWithoutCard,
+        usersWithCard: usersWithCard,
+        summary: {
+          total: rows.length,
+          withoutCard: usersWithoutCard.length,
+          withCard: usersWithCard.length
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Error in testRfidData:', err);
+    next(err);
+  }
+}
+
+// Endpoint đơn giản để test dữ liệu
+async function debugUsers(req, res, next) {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT userID, fullName, rfid_uid, position 
+      FROM users 
+      ORDER BY userID ASC
+    `);
+
+    console.log('=== BACKEND DEBUG ===');
+    console.log('Total users:', rows.length);
+
+    rows.forEach((user, index) => {
+      console.log(`${index + 1}. ${user.fullName} - rfid_uid: ${user.rfid_uid} (${typeof user.rfid_uid})`);
+    });
+
+    const withoutCard = rows.filter(u => !u.rfid_uid || u.rfid_uid === null);
+    const withCard = rows.filter(u => u.rfid_uid && u.rfid_uid !== null);
+
+    console.log('Users without card:', withoutCard.length);
+    console.log('Users with card:', withCard.length);
+
+    res.json({
+      success: true,
+      total: rows.length,
+      withoutCard: withoutCard.length,
+      withCard: withCard.length,
+      users: rows
+    });
+  } catch (err) {
+    console.error('Debug error:', err);
+    next(err);
+  }
+}
+
+module.exports = { getUsers, getByUID, testRfidData, debugUsers };

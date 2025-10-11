@@ -339,120 +339,83 @@ async function userHistory(req, res, next) {
     const [rows] = await pool.execute(query, [user_id]);
     console.log('📊 Dữ liệu attendance từ DB:', rows);
 
-    // Nhóm dữ liệu theo ngày và xử lý
-    const groupedByDate = {};
-    let actualRecordCount = 0; // Đếm số bản ghi thực tế (không tính header ngày)
+    // Helper: lấy yyyy-MM-dd theo múi giờ local
+    const toLocalYMD = (d) => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    // Biến đổi thành danh sách đầy đủ: header từng ngày + mọi lần in/out
+    let actualRecordCount = 0;
+    const processedData = [];
+    let lastDateHeader = '';
 
     rows.forEach(record => {
-      const dateKey = record.work_date;
-      if (!groupedByDate[dateKey]) {
-        groupedByDate[dateKey] = {
-          date: dateKey,
-          checkIn: null,
-          checkOut: null
-        };
-      }
+      const checkInObj = record.check_in ? new Date(record.check_in) : null;
+      const workDateObj = record.work_date ? new Date(record.work_date) : null;
+      const checkOutObj = record.check_out ? new Date(record.check_out) : null;
 
-      // Xử lý check-in
-      if (record.check_in) {
-        actualRecordCount++; // Tăng đếm cho mỗi check-in
-        const checkInTime = new Date(record.check_in);
-        const checkInTimeStr = checkInTime.toTimeString().substring(0, 5);
-        const workDate = new Date(record.work_date);
-        const expectedStartTime = new Date(workDate);
-        const [hours, minutes] = startTime.split(':');
-        expectedStartTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      const displayDate = checkInObj
+        ? toLocalYMD(checkInObj)
+        : (workDateObj ? toLocalYMD(workDateObj) : (checkOutObj ? toLocalYMD(checkOutObj) : ''));
 
-        const timeDiff = checkInTime.getTime() - expectedStartTime.getTime();
-        const minutesLate = Math.floor(timeDiff / (1000 * 60));
-
-        let status = 'Đúng giờ';
-        if (minutesLate > 0) {
-          const lateText = formatTime(minutesLate);
-          status = `Muộn ${lateText}`;
-        } else if (minutesLate < -5) {
-          status = 'Sớm';
-        }
-
-        groupedByDate[dateKey].checkIn = {
-          id: `${record.attendance_id}_in`,
-          time: checkInTimeStr,
-          type: 'Check-in',
-          status: status,
-          location: record.device_in_location || record.device_in_name || 'Văn phòng chính',
-          isLate: minutesLate > 0,
-          minutesLate: minutesLate > 0 ? minutesLate : 0
-        };
-      }
-
-      // Xử lý check-out
-      if (record.check_out) {
-        actualRecordCount++; // Tăng đếm cho mỗi check-out
-        const checkOutTime = new Date(record.check_out);
-        const checkOutTimeStr = checkOutTime.toTimeString().substring(0, 5);
-        const workDate = new Date(record.work_date);
-        const expectedEndTime = new Date(workDate);
-        const [hours, minutes] = endTime.split(':');
-        expectedEndTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-        const timeDiff = checkOutTime.getTime() - expectedEndTime.getTime();
-        const minutesLate = Math.floor(timeDiff / (1000 * 60));
-
-        let status = 'Đúng giờ';
-        if (minutesLate < -5) {
-          status = `Sớm ${Math.abs(minutesLate)} phút`;
-        } else if (minutesLate > 0) {
-          const overtimeText = formatTime(minutesLate);
-          status = `Tăng ca ${overtimeText}`;
-        }
-
-        groupedByDate[dateKey].checkOut = {
-          id: `${record.attendance_id}_out`,
-          time: checkOutTimeStr,
-          type: 'Check-out',
-          status: status,
-          location: record.device_out_location || record.device_out_name || 'Văn phòng chính',
-          isOvertime: minutesLate > 0,
-          minutesOvertime: minutesLate > 0 ? minutesLate : 0
-        };
-      }
-    });
-
-    // Chuyển đổi thành array và sắp xếp theo ngày giảm dần
-    const processedData = Object.values(groupedByDate)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .map(dateGroup => {
-        const result = [];
-
-        // Thêm header ngày
-        result.push({
-          id: `date_${dateGroup.date}`,
-          date: dateGroup.date,
+      if (displayDate && displayDate !== lastDateHeader) {
+        processedData.push({
+          id: `date_${displayDate}`,
+          date: displayDate,
           time: '',
           type: 'DATE_HEADER',
           status: '',
           location: '',
           isDateHeader: true
         });
+        lastDateHeader = displayDate;
+      }
 
-        // Thêm check-in nếu có
-        if (dateGroup.checkIn) {
-          result.push({
-            ...dateGroup.checkIn,
-            date: dateGroup.date
-          });
-        }
+      if (checkInObj) {
+        actualRecordCount++;
+        const [sh, sm] = startTime.split(':');
+        const expectedStart = new Date(checkInObj.getFullYear(), checkInObj.getMonth(), checkInObj.getDate(), parseInt(sh), parseInt(sm), 0, 0);
+        const minutesLate = Math.floor((checkInObj.getTime() - expectedStart.getTime()) / 60000);
+        let status = 'Đúng giờ';
+        if (minutesLate > 0) status = `Muộn ${formatTime(minutesLate)}`;
+        else if (minutesLate < -5) status = 'Sớm';
 
-        // Thêm check-out nếu có
-        if (dateGroup.checkOut) {
-          result.push({
-            ...dateGroup.checkOut,
-            date: dateGroup.date
-          });
-        }
+        processedData.push({
+          id: `${record.attendance_id}_in`,
+          date: displayDate,
+          time: `${String(checkInObj.getHours()).padStart(2, '0')}:${String(checkInObj.getMinutes()).padStart(2, '0')}`,
+          type: 'Check-in',
+          status,
+          location: record.device_in_location || record.device_in_name || 'Văn phòng chính',
+          isLate: minutesLate > 0,
+          minutesLate: minutesLate > 0 ? minutesLate : 0
+        });
+      }
 
-        return result;
-      }).flat();
+      if (checkOutObj) {
+        actualRecordCount++;
+        const [eh, em] = endTime.split(':');
+        const expectedEnd = new Date(checkOutObj.getFullYear(), checkOutObj.getMonth(), checkOutObj.getDate(), parseInt(eh), parseInt(em), 0, 0);
+        const minutesDelta = Math.floor((checkOutObj.getTime() - expectedEnd.getTime()) / 60000);
+        let status = 'Đúng giờ';
+        if (minutesDelta < -5) status = `Sớm ${Math.abs(minutesDelta)} phút`;
+        else if (minutesDelta > 0) status = `Tăng ca ${formatTime(minutesDelta)}`;
+
+        processedData.push({
+          id: `${record.attendance_id}_out`,
+          date: displayDate,
+          time: `${String(checkOutObj.getHours()).padStart(2, '0')}:${String(checkOutObj.getMinutes()).padStart(2, '0')}`,
+          type: 'Check-out',
+          status,
+          location: record.device_out_location || record.device_out_name || 'Văn phòng chính',
+          isOvertime: minutesDelta > 0,
+          minutesOvertime: minutesDelta > 0 ? minutesDelta : 0
+        });
+      }
+    });
 
     console.log('✅ Dữ liệu đã xử lý và nhóm theo ngày:', processedData);
     console.log('📊 Số bản ghi thực tế (không tính header):', actualRecordCount);
@@ -469,4 +432,142 @@ async function userHistory(req, res, next) {
   }
 }
 
-module.exports = { checkIn, checkOut, history, userHistory, scanRFID };
+
+/* -------------------------------------------------------
+   ESP8266 RFID: nhiều lần quét trong ngày (pairing logic)
+   - Nếu bản ghi mới nhất của hôm nay chưa có check_out -> set check_out
+   - Ngược lại -> tạo bản ghi check_in mới
+   - Sau khi ghi DB -> emit realtime bằng socket.io
+------------------------------------------------------- */
+async function scanRFID(req, res, next) {
+  try {
+    const { uid, device_id } = req.body;
+    const io = req.app.get('io');
+
+    if (!uid || !device_id) {
+      return res.status(400).json({ success: false, message: 'Thiếu uid hoặc device_id' });
+    }
+
+    // Tìm user theo UID
+    const [userRows] = await pool.execute(
+      'SELECT userID, fullName FROM users WHERE rfid_uid = ? AND status = 1 LIMIT 1',
+      [uid]
+    );
+    if (!userRows.length) {
+      return res.status(404).json({ success: false, message: 'UID không hợp lệ' });
+    }
+    const user = userRows[0];
+
+    // Lấy bản ghi mới nhất hôm nay
+    const [lastRows] = await pool.execute(
+      `SELECT * FROM attendance 
+       WHERE user_id = ? AND work_date = CURDATE()
+       ORDER BY attendance_id DESC LIMIT 1`,
+      [user.userID]
+    );
+
+    let action, recordId;
+    if (!lastRows.length || (lastRows[0].check_in && lastRows[0].check_out)) {
+      // Tạo bản ghi check-in mới
+      const [result] = await pool.execute(
+        `INSERT INTO attendance (user_id, rfid_uid, work_date, check_in, device_in_id, status)
+         VALUES (?, ?, CURDATE(), NOW(), ?, 'present')`,
+        [user.userID, uid, device_id]
+      );
+      recordId = result.insertId;
+      action = 'Check-in';
+    } else {
+      // Cập nhật check-out
+      await pool.execute(
+        `UPDATE attendance 
+           SET check_out = NOW(), device_out_id = ?, updated_at = NOW()
+         WHERE attendance_id = ?`,
+        [device_id, lastRows[0].attendance_id]
+      );
+      recordId = lastRows[0].attendance_id;
+      action = 'Check-out';
+    }
+
+    // Emit realtime payload
+    const now = new Date();
+    const payload = {
+      id: recordId,
+      date: now.toISOString().split('T')[0],
+      time: now.toTimeString().substring(0, 5),
+      type: action,
+      status: 'Đúng giờ',
+      location: 'RFID Device',
+      userName: user.fullName
+    };
+
+    if (io) {
+      io.emit('attendanceUpdate', payload);
+      console.log('📡 Emit attendanceUpdate:', payload);
+    }
+
+    return res.json({
+      success: true,
+      action,
+      message: `✅ ${user.fullName} ${action}`,
+      data: payload
+    });
+  } catch (err) {
+    console.error('❌ scanRFID error:', err);
+    next(err);
+  }
+}
+
+// API: Lấy tổng hợp attendance_records theo tháng và (tùy chọn) theo user
+// Query: month=YYYY-MM hoặc start_date, end_date; user_id=optional
+async function recordsByMonth(req, res, next) {
+  try {
+    const { month, start_date, end_date, user_id } = req.query;
+
+    // Xác định khoảng thời gian
+    let startDate = start_date;
+    let endDate = end_date;
+    if (month) {
+      // Tạo khoảng [đầu tháng, cuối tháng]
+      const [y, m] = month.split('-');
+      const first = new Date(Number(y), Number(m) - 1, 1);
+      const last = new Date(Number(y), Number(m), 0);
+      startDate = first.toISOString().slice(0, 10);
+      endDate = last.toISOString().slice(0, 10);
+    }
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'Thiếu tham số thời gian (month hoặc start_date/end_date)' });
+    }
+
+    // Tổng hợp theo userID
+    let query = `
+      SELECT ar.userID,
+             u.fullName,
+             COUNT(ar.recordID) AS working_days,
+             COALESCE(SUM(ar.work_unit), 0) AS total_work_units,
+             COALESCE(SUM(ar.total_hours), 0) AS total_hours,
+             COALESCE(SUM(ar.overtime_hours), 0) AS total_overtime_hours
+      FROM attendance_records ar
+      JOIN users u ON u.userID = ar.userID
+      WHERE ar.work_date BETWEEN ? AND ?
+    `;
+    const params = [startDate, endDate];
+    if (user_id && user_id !== 'all') {
+      query += ' AND ar.userID = ?';
+      params.push(user_id);
+    }
+    query += ' GROUP BY ar.userID, u.fullName ORDER BY u.fullName ASC';
+
+    const [rows] = await pool.execute(query, params);
+
+    return res.json({
+      success: true,
+      range: { startDate, endDate },
+      data: rows
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { checkIn, checkOut, history, userHistory, recordsByMonth, scanRFID };

@@ -113,12 +113,100 @@ const CustomerTimekeeping = () => {
     fetchAttendanceHistory();
   }, [fetchAttendanceHistory]);
 
-  // Helpers format hiển thị
-  const formatDate = useCallback((dateString) => {
-    if (!dateString) return '--';
-    const date = new Date(dateString);
-    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+  // Helpers format hiển thị (chống "Invalid Date" với nhiều định dạng khác nhau)
+  const toDate = useCallback((value) => {
+    if (!value && value !== 0) return null;
+
+    // Nếu đã là Date
+    if (value instanceof Date) {
+      return isNaN(value.getTime()) ? null : value;
+    }
+
+    // Nếu là số/epoch
+    if (typeof value === 'number') {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    // Chuỗi thời gian HH:mm hoặc HH:mm:ss → không chuyển Date, xử lý ở formatTime
+    if (typeof value === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(value.trim())) {
+      return null;
+    }
+
+    if (typeof value === 'string') {
+      const s = value.trim();
+
+      // yyyy-MM-dd (chỉ ngày, không 'T') → parse LOCAL để tránh lệch ngày
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const [y, m, d0] = s.split('-').map(n => parseInt(n, 10));
+        const d = new Date(y, m - 1, d0, 0, 0, 0, 0);
+        return isNaN(d.getTime()) ? null : d;
+      }
+
+      // ISO hoặc yyyy-MM-dd... → để Date tự parse
+      if (/^\d{4}[-\/]\d{2}[-\/]\d{2}/.test(s) || s.includes('T')) {
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+      }
+
+      // dd/MM/yyyy hoặc dd-MM-yyyy (có thể kèm HH:mm[:ss])
+      const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+      if (m) {
+        const day = parseInt(m[1], 10);
+        const month = parseInt(m[2], 10) - 1;
+        const year = parseInt(m[3], 10);
+        const hours = m[4] ? parseInt(m[4], 10) : 0;
+        const minutes = m[5] ? parseInt(m[5], 10) : 0;
+        const seconds = m[6] ? parseInt(m[6], 10) : 0;
+        const d = new Date(year, month, day, hours, minutes, seconds);
+        return isNaN(d.getTime()) ? null : d;
+      }
+
+      // Số dạng chuỗi (epoch)
+      if (/^\d+$/.test(s)) {
+        const d = new Date(parseInt(s, 10));
+        return isNaN(d.getTime()) ? null : d;
+      }
+    }
+
+    return null;
   }, []);
+
+  const formatDate = useCallback((anyDate) => {
+    const date = toDate(anyDate);
+    if (!date) return '--';
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }, [toDate]);
+
+  const formatTime = useCallback((anyTime, fallbackAnyDate = null) => {
+    if (!anyTime && anyTime !== 0) {
+      const d = toDate(fallbackAnyDate);
+      if (!d) return '--';
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mi}`;
+    }
+
+    if (typeof anyTime === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(anyTime.trim())) {
+      return anyTime.trim().slice(0, 5);
+    }
+
+    const d = toDate(anyTime);
+    if (!d) {
+      // thử dùng fallback
+      const fd = toDate(fallbackAnyDate);
+      if (!fd) return '--';
+      const hh = String(fd.getHours()).padStart(2, '0');
+      const mi = String(fd.getMinutes()).padStart(2, '0');
+      return `${hh}:${mi}`;
+    }
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mi}`;
+  }, [toDate]);
 
   const getStatusClass = useCallback((status) => {
     if (!status) return '';
@@ -198,8 +286,8 @@ const CustomerTimekeeping = () => {
             <tbody>
               {attendanceHistory.map((record) => (
                 <tr key={`${record.id}-${record.type}`} className={`attendance-row`}>
-                  <td>{formatDate(record.date)}</td>
-                  <td>{record.time}</td>
+                  <td>{formatDate(record.date || record.dateIn || record.createdAt || record.timestamp)}</td>
+                  <td>{formatTime(record.time || record.timeIn || record.datetime || record.timestamp, record.date || record.createdAt)}</td>
                   <td>
                     <span className={`type-badge ${record.type?.toLowerCase()}`}>{record.type}</span>
                   </td>

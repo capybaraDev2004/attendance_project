@@ -1,180 +1,102 @@
-
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 import StandardTable from '../../../components/StandardTable';
 import Card, { CardTitle, CardContent } from '../../../components/Card';
 import Pagination from '../../../components/Pagination';
 import { IconHistory, IconSearch, IconFileExport, IconCalendar, IconAlertCircle } from '@tabler/icons-react';
 
-const DEFAULT_HOST = typeof window !== 'undefined' && window.location && window.location.hostname
-  ? window.location.hostname
-  : 'localhost';
-const API_URL = process.env.REACT_APP_API_URL || `http://${DEFAULT_HOST}:3001`;
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 // Component lịch sử chấm công cho customer - chỉ hiển thị lịch sử của user hiện tại
 const CustomerAttendance = () => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const startPickerRef = useRef(null);
-  const endPickerRef = useRef(null);
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // State cho date picker
-  const [selectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-
-  // Bộ lọc chỉ theo ngày (ẩn filter user và device)
-  const [filters, setFilters] = useState(() => {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth(); // 0-11
-
-    // Tạo ngày 1 của tháng hiện tại
-    const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
-
-    // Format thành dd/mm/yyyy cho hiển thị
-    const formatDateForDisplay = (date) => {
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
-    };
-
-    return {
-      startDate: formatDateForDisplay(firstDayOfMonth), // Ngày 1 của tháng hiện tại
-      endDate: formatDateForDisplay(today) // Ngày hiện tại
-    };
-  });
-
-  // Lấy thông tin user hiện tại từ localStorage
+  // Lấy thông tin user hiện tại từ localStorage - theo pattern chuẩn của project
   const getCurrentUser = useCallback(() => {
     try {
-      const rawAuth = localStorage.getItem('auth');
-      if (rawAuth) {
-        const auth = JSON.parse(rawAuth);
-        return auth?.user || null;
+      const authData = localStorage.getItem('auth');
+      if (authData) {
+        const auth = JSON.parse(authData);
+        if (auth.user) return auth.user;
+        if (auth.token) {
+          const payload = JSON.parse(atob(auth.token.split('.')[1]));
+          return payload;
+        }
       }
+      return null;
     } catch (error) {
-      console.error('Lỗi khi lấy thông tin user:', error);
-    }
-    return null;
-  }, []);
-
-  // Chuyển đổi từ dd/mm/yyyy sang yyyy-mm-dd cho API
-  const convertToAPIDate = useCallback((ddmmyyyy) => {
-    if (!ddmmyyyy) return '';
-    const [day, month, year] = ddmmyyyy.split('/');
-    return `${year}-${month}-${day}`;
-  }, []);
-
-  // Validate và format input date
-  const handleDateInputChange = useCallback((key, value) => {
-    // Chỉ cho phép nhập số và dấu /
-    const cleaned = value.replace(/[^\d/]/g, '');
-
-    // Giới hạn độ dài
-    if (cleaned.length > 10) return;
-
-    // Tự động thêm dấu /
-    let formatted = cleaned;
-    if (cleaned.length >= 2 && !cleaned.includes('/')) {
-      formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2);
-    }
-    if (cleaned.length >= 5 && cleaned.split('/').length === 2) {
-      const parts = cleaned.split('/');
-      if (parts[1].length >= 2) {
-        formatted = parts[0] + '/' + parts[1].slice(0, 2) + '/' + parts[1].slice(2);
-      }
-    }
-
-    setFilters((prev) => ({ ...prev, [key]: formatted }));
-  }, []);
-
-  // Xử lý chọn ngày từ date picker (không auto refresh)
-  const handleDatePickerSelect = useCallback((key, date) => {
-    const formatDateForDisplay = (dateObj) => {
-      const day = String(dateObj.getDate()).padStart(2, '0');
-      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const year = dateObj.getFullYear();
-      return `${day}/${month}/${year}`;
-    };
-
-    // Giới hạn không vượt quá ngày hiện tại
-    const today = new Date();
-    const chosen = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const clamped = chosen > new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      : chosen;
-
-    setFilters((prev) => ({ ...prev, [key]: formatDateForDisplay(clamped) }));
-    
-    // Đóng date picker
-    if (key === 'startDate') {
-      setShowStartDatePicker(false);
-    } else {
-      setShowEndDatePicker(false);
+      console.error('❌ Lỗi khi lấy thông tin user:', error);
+      return null;
     }
   }, []);
 
-  // Tạo danh sách ngày trong tháng
-  const generateCalendarDays = useCallback((year, month) => {
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
 
-    const days = [];
-
-    // Thêm các ngày trống ở đầu tháng
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null);
-    }
-
-    // Thêm các ngày trong tháng
-    for (let day = 1; day <= daysInMonth; day++) {
-      days.push(new Date(year, month, day));
-    }
-
-    return days;
-  }, []);
-
-  // Gọi API lấy lịch sử chỉ của user hiện tại
+  // Gọi API lấy lịch sử chỉ của user hiện tại - sử dụng endpoint user-history
   const fetchAttendanceHistory = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser?.userID) {
+      console.error('❌ Không tìm thấy userID');
+      return;
+    }
 
     setLoading(true);
     try {
-      const queryParams = new URLSearchParams({
-        start_date: convertToAPIDate(filters.startDate),
-        end_date: convertToAPIDate(filters.endDate),
-        user_id: currentUser.userID, // Chỉ lấy lịch sử của user hiện tại
-        device_id: 'all' // Không filter theo device
+      console.log('🔍 Fetching attendance history for user:', currentUser.userID);
+
+      // Sử dụng endpoint user-history thay vì history với filters
+      const response = await fetch(`${API_URL}/api/attendance/user-history/${currentUser.userID}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      const response = await fetch(`${API_URL}/api/attendance/history?${queryParams}`);
-      const data = await response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Lỗi API: ${response.status} - ${errorText}`);
+      }
 
-      if (data.success) {
-        setAttendanceData(data.attendance);
+      const data = await response.json();
+      console.log('📊 API Response:', data);
+
+      if (data.success && data.data) {
+        // Chuyển đổi dữ liệu từ format user-history sang format hiện tại
+        const processedData = data.data
+          .filter(item => !item.isDateHeader) // Loại bỏ header ngày
+          .map(item => ({
+            attendance_id: item.id,
+            work_date: item.date,
+            check_in: item.type === 'Check-in' ? `${item.date}T${item.time}:00` : null,
+            check_out: item.type === 'Check-out' ? `${item.date}T${item.time}:00` : null,
+            device_in_name: item.location || '--',
+            device_out_name: item.location || '--'
+          }))
+          .filter((item, index, array) => {
+            // Loại bỏ các bản ghi trùng lặp và chỉ giữ lại bản ghi có đầy đủ thông tin
+            return item.check_in || item.check_out;
+          });
+
+        setAttendanceData(processedData);
       } else {
         setAttendanceData([]);
       }
     } catch (error) {
-      console.error('Lỗi khi lấy lịch sử attendance:', error);
+      console.error('❌ Lỗi khi lấy lịch sử attendance:', error);
       setAttendanceData([]);
     } finally {
       setLoading(false);
     }
-  }, [currentUser, filters.startDate, filters.endDate, convertToAPIDate]);
+  }, [currentUser]);
 
   // Lắng nghe realtime từ Socket.IO và tự refresh khi có quét RFID của chính user này
   useEffect(() => {
+    if (!currentUser) return;
+
     const socket = io(API_URL, {
       transports: ['websocket', 'polling'],
       withCredentials: true,
@@ -185,26 +107,30 @@ const CustomerAttendance = () => {
     });
 
     socket.on('connect', () => {
-      console.log('🔌 Socket connected (history):', socket.id);
+      console.log('🔌 Socket connected (attendance history):', socket.id);
     });
 
     socket.on('attendanceUpdate', (payload) => {
       // payload: { id, date, time, type, status, location, userName }
-      if (!currentUser) return;
       if (payload && payload.userName === currentUser.fullName) {
+        console.log('📡 Received attendance update for current user:', payload);
         // Tải lại lịch sử để đồng bộ dữ liệu bảng
         fetchAttendanceHistory();
       }
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('❌ Socket disconnected (history):', reason);
-    });
-    socket.on('connect_error', (err) => {
-      console.error('⚠️ Socket connect_error (history):', err.message);
+      console.log('❌ Socket disconnected (attendance history):', reason);
     });
 
-    return () => socket.disconnect();
+    socket.on('connect_error', (err) => {
+      console.error('⚠️ Socket connect_error (attendance history):', err.message);
+    });
+
+    return () => {
+      console.log('🔌 Disconnecting socket (attendance history)');
+      socket.disconnect();
+    };
   }, [currentUser, fetchAttendanceHistory]);
 
   useEffect(() => {
@@ -213,17 +139,17 @@ const CustomerAttendance = () => {
     setCurrentUser(user);
   }, [getCurrentUser]);
 
-  // Chỉ tự động tải 1 lần khi có currentUser (không auto theo filters)
+  // Tự động tải dữ liệu khi có currentUser
   useEffect(() => {
     if (currentUser) {
       fetchAttendanceHistory();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser]);
+  }, [currentUser, fetchAttendanceHistory]);
 
-  const handleFilter = useCallback(() => {
+  // Hàm refresh dữ liệu (không cần filter phức tạp vì user-history endpoint đã trả về tất cả dữ liệu)
+  const handleRefresh = useCallback(() => {
     fetchAttendanceHistory();
-    setCurrentPage(1); // Reset về trang đầu khi lọc
+    setCurrentPage(1); // Reset về trang đầu khi refresh
   }, [fetchAttendanceHistory]);
 
   // Xử lý thay đổi trang
@@ -333,61 +259,50 @@ const CustomerAttendance = () => {
     );
   }, []);
 
-  // Tổng hợp: tổng công (work_unit), tổng giờ OT, số ngày OFF theo bộ lọc, công chuẩn (tháng hiện tại - CN)
+  // Tính tổng hợp đơn giản từ dữ liệu attendance
   const computeTotals = useCallback(() => {
-    const FULL_DAY_MINUTES = 8 * 60 + 30; // 510
+    const FULL_DAY_MINUTES = 8 * 60 + 30; // 510 phút
     let totalUnits = 0;
     let totalOvertimeHours = 0;
-    const workingDateSet = new Set(); // các ngày có work_unit > 0
+    const workingDateSet = new Set();
 
     attendanceData.forEach((record) => {
       const checkInDate = record.check_in ? new Date(record.check_in) : null;
       const checkOutDate = record.check_out ? new Date(record.check_out) : null;
       if (!checkInDate || !checkOutDate) return;
+
       const workedMinutesRaw = Math.max(0, Math.round((checkOutDate.getTime() - checkInDate.getTime()) / 60000));
       const workedMinutes = Math.max(0, workedMinutesRaw - 60);
 
-      // work_unit bậc 0/0.25/0.5/0.75/1
+      // Tính work_unit theo bậc
       if (workedMinutes >= FULL_DAY_MINUTES) {
         totalUnits += 1;
         workingDateSet.add(record.work_date);
-      }
-      else {
+      } else {
         const ratio = workedMinutes / FULL_DAY_MINUTES;
         if (ratio >= 0.75) { totalUnits += 0.75; workingDateSet.add(record.work_date); }
         else if (ratio >= 0.5) { totalUnits += 0.5; workingDateSet.add(record.work_date); }
         else if (ratio >= 0.25) { totalUnits += 0.25; workingDateSet.add(record.work_date); }
       }
 
-      // OT giờ
+      // Tính giờ làm thêm
       if (workedMinutes > FULL_DAY_MINUTES) {
         totalOvertimeHours += (workedMinutes - FULL_DAY_MINUTES) / 60;
       }
     });
 
-    // Số ngày OFF trong khoảng lọc
-    const parseDDMMYYYY = (s) => {
-      const [d, m, y] = s.split('/').map((v) => parseInt(v, 10));
-      return new Date(y, m - 1, d);
-    };
-    const start = parseDDMMYYYY(filters.startDate);
-    const end = parseDDMMYYYY(filters.endDate);
-    const dayMs = 24 * 60 * 60 * 1000;
-    const totalDaysInRange = Math.floor((end.getTime() - start.getTime()) / dayMs) + 1;
-    // off = tổng số ngày trong range - số ngày có work_unit > 0
-    const offDays = Math.max(0, totalDaysInRange - workingDateSet.size);
-
-    // Công chuẩn tháng hiện tại = số ngày trong tháng hiện tại - số CN trong tháng
+    // Tính số ngày làm việc trong tháng hiện tại
     const now = new Date();
     const year = now.getFullYear();
-    const month = now.getMonth(); // 0-11
+    const month = now.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     let sundays = 0;
     for (let day = 1; day <= daysInMonth; day++) {
       const dt = new Date(year, month, day);
-      if (dt.getDay() === 0) sundays += 1; // 0 = Sunday
+      if (dt.getDay() === 0) sundays += 1;
     }
     const standardWorkingDays = daysInMonth - sundays;
+    const offDays = Math.max(0, standardWorkingDays - workingDateSet.size);
 
     return {
       totalUnits: parseFloat(totalUnits.toFixed(2)),
@@ -395,16 +310,40 @@ const CustomerAttendance = () => {
       offDays,
       standardWorkingDays
     };
-  }, [attendanceData, filters.startDate, filters.endDate]);
+  }, [attendanceData]);
 
   // Hàm format ngày theo định dạng dd/mm/yyyy
   const formatDateToDDMMYYYY = useCallback((dateString) => {
     if (!dateString) return '--';
+    // Nếu chỉ có yyyy-MM-dd thì parse LOCAL để không bị lùi ngày
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [y, m, d0] = dateString.split('-').map(n => parseInt(n, 10));
+      const date = new Date(y, m - 1, d0, 0, 0, 0, 0);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
     const date = new Date(dateString);
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+  }, []);
+
+  const renderTime = useCallback((dateTimeString) => {
+    if (!dateTimeString) return '--';
+    // Hỗ trợ cả 'HH:mm' thuần
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(String(dateTimeString).trim())) {
+      return String(dateTimeString).trim().slice(0, 5);
+    }
+    // Nếu check_in/out ở dạng yyyy-MM-dd thì không có giờ → '--'
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(dateTimeString))) return '--';
+    const d = new Date(dateTimeString);
+    if (isNaN(d.getTime())) return '--';
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
   }, []);
 
   // Định nghĩa cột cho bảng
@@ -425,7 +364,7 @@ const CustomerAttendance = () => {
       key: 'check_in',
       label: 'THỜI GIAN VÀO',
       visible: true,
-      render: (record) => record.check_in ? new Date(record.check_in).toLocaleTimeString('vi-VN') : '--'
+      render: (record) => renderTime(record.check_in)
     },
     {
       key: 'device_in_name',
@@ -437,7 +376,7 @@ const CustomerAttendance = () => {
       key: 'check_out',
       label: 'THỜI GIAN RA',
       visible: true,
-      render: (record) => record.check_out ? new Date(record.check_out).toLocaleTimeString('vi-VN') : '--'
+      render: (record) => renderTime(record.check_out)
     },
     {
       key: 'device_out_name',
@@ -460,87 +399,6 @@ const CustomerAttendance = () => {
 
   ];
 
-  // Component Date Picker
-  const DatePicker = ({ isOpen, onClose, onSelect, inline = false }) => {
-    if (!isOpen) return null;
-
-    const today = new Date();
-
-    const monthNames = [
-      'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
-    ];
-
-    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    const calendarDays = generateCalendarDays(selectedYear, selectedMonth);
-    
-    const content = (
-      <div className="bg-white rounded-lg shadow-lg w-80 max-w-full animate-[fadeIn_120ms_ease-out]" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between px-4 py-3 border-b">
-            <button 
-              className="px-2 py-1 rounded hover:bg-gray-100"
-              onClick={() => setSelectedMonth(prev => prev === 0 ? 11 : prev - 1)}
-            >
-              ‹
-            </button>
-            <span className="font-semibold text-gray-900">
-              {monthNames[selectedMonth]} {selectedYear}
-            </span>
-
-            <button 
-              className="px-2 py-1 rounded hover:bg-gray-100"
-              onClick={() => setSelectedMonth(prev => prev === 11 ? 0 : prev + 1)}
-            >
-              ›
-            </button>
-          </div>
-
-          
-          <div className="px-4 py-3">
-            <div className="grid grid-cols-7 gap-2 mb-2 text-xs font-medium text-gray-500">
-              {dayNames.map(day => (
-                <div key={day} className="text-center">{day}</div>
-              ))}
-            </div>
-            
-            <div className="grid grid-cols-7 gap-2">
-              {calendarDays.map((day, index) => (
-                <button
-                  key={index}
-                  className={`h-8 text-sm rounded flex items-center justify-center transition-colors ${
-                    day ? 'hover:bg-green-50' : 'opacity-0 cursor-default'
-                  } ${
-                    day && day.getDate() === today.getDate() &&
-                    day.getMonth() === today.getMonth() &&
-                    day.getFullYear() === today.getFullYear() ? 'border border-green-500 text-green-700' : ''
-                  } ${
-                    day && day > today ? 'opacity-40 cursor-not-allowed' : ''
-                  }`}
-                  onClick={() => day && day <= today && onSelect(day)}
-                  disabled={!day || (day && day > today)}
-                >
-                  {day ? day.getDate() : ''}
-                </button>
-              ))}
-            </div>
-          </div>
-      </div>
-    );
-
-    if (inline) {
-      return (
-        <div className="absolute left-0 top-full mt-2 z-50" onClick={(e) => e.stopPropagation()}>
-          {content}
-        </div>
-      );
-    }
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-20 flex items-start md:items-center justify-center z-50 p-4" onClick={onClose}>
-        {content}
-      </div>
-    );
-  };
 
   if (loading) {
     return (
@@ -607,101 +465,37 @@ const CustomerAttendance = () => {
           </div>
         </CardContent>
       </Card>
-      {/* Filters Section */}
+      {/* Action Section */}
       <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <IconSearch className="mr-2 text-green-600" size={20} />
-            Bộ lọc dữ liệu
-          </h3>
-        </div>
-
         <div className="p-6">
-          {/* Lọc theo ngày */}
-          <div className="mb-6">
-            <h4 className="text-md font-medium text-gray-900 mb-4">Lọc theo ngày</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ngày bắt đầu:</label>
-                <div className="relative" ref={startPickerRef} onBlur={(e) => {
-                  // Nếu blur ra ngoài container thì đóng picker
-                  setTimeout(() => {
-                    if (startPickerRef.current && !startPickerRef.current.contains(document.activeElement)) {
-                      setShowStartDatePicker(false);
-                    }
-                  }, 0);
-                }}>
-                  <input
-                    type="text"
-                    className="w-full pr-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="dd/mm/yyyy"
-                    value={filters.startDate}
-                    onChange={(e) => handleDateInputChange('startDate', e.target.value)}
-                    onFocus={() => setShowStartDatePicker(true)}
-                    onClick={() => setShowStartDatePicker(true)}
-                    maxLength="10"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    <IconCalendar size={16} />
-                  </span>
-                  <DatePicker
-                    isOpen={showStartDatePicker}
-                    onClose={() => setShowStartDatePicker(false)}
-                    onSelect={(date) => handleDatePickerSelect('startDate', date)}
-                    inline
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ngày kết thúc:</label>
-                <div className="relative" ref={endPickerRef} onBlur={(e) => {
-                  setTimeout(() => {
-                    if (endPickerRef.current && !endPickerRef.current.contains(document.activeElement)) {
-                      setShowEndDatePicker(false);
-                    }
-                  }, 0);
-                }}>
-                  <input
-                    type="text"
-                    className="w-full pr-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="dd/mm/yyyy"
-                    value={filters.endDate}
-                    onChange={(e) => handleDateInputChange('endDate', e.target.value)}
-                    onFocus={() => setShowEndDatePicker(true)}
-                    onClick={() => setShowEndDatePicker(true)}
-                    maxLength="10"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    <IconCalendar size={16} />
-                  </span>
-                  <DatePicker
-                    isOpen={showEndDatePicker}
-                    onClose={() => setShowEndDatePicker(false)}
-                    onSelect={(date) => handleDatePickerSelect('endDate', date)}
-                    inline
-                  />
-                </div>
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <IconHistory className="mr-2 text-green-600" size={20} />
+                Lịch sử chấm công
+              </h3>
+              <p className="text-gray-600 mt-1">
+                Hiển thị lịch sử chấm công của {currentUser.fullName}
+              </p>
             </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex space-x-3">
-            <button
-              onClick={handleFilter}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
-            >
-              <IconSearch className="mr-2" size={16} />
-              Lọc dữ liệu
-            </button>
-            <button
-              onClick={() => alert('Tính năng xuất Excel sẽ được triển khai!')}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center"
-            >
-              <IconFileExport className="mr-2" size={16} />
-              Xuất File Excel
-            </button>
+            {/* Action Buttons */}
+            <div className="flex space-x-3">
+              <button
+                onClick={handleRefresh}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+              >
+                <IconSearch className="mr-2" size={16} />
+                Làm mới
+              </button>
+              <button
+                onClick={() => alert('Tính năng xuất Excel sẽ được triển khai!')}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center"
+              >
+                <IconFileExport className="mr-2" size={16} />
+                Xuất Excel
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -713,14 +507,14 @@ const CustomerAttendance = () => {
         icon={IconHistory}
         columns={tableColumns}
         data={getPaginatedData()}
-        onRefresh={fetchAttendanceHistory}
+        onRefresh={handleRefresh}
         emptyState={
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
               <IconHistory size={48} className="mx-auto" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có dữ liệu lịch sử</h3>
-            <p className="text-gray-600">Vui lòng chọn khoảng thời gian và nhấn "Lọc dữ liệu" để xem kết quả</p>
+            <p className="text-gray-600">Chưa có dữ liệu chấm công nào được ghi nhận</p>
           </div>
         }
       />
@@ -761,8 +555,6 @@ const CustomerAttendance = () => {
         itemsPerPageOptions={[5, 10, 20, 50]}
       />
 
-      {/* Date Pickers */}
-      {/* (removed global inline pickers; now each input renders its own inline picker) */}
     </div>
   );
 };
