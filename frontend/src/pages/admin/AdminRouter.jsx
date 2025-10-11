@@ -11,6 +11,7 @@ import WorkHours from './Work-hours/WorkHours';
 import PayrollCalculation from './Calculate/PayrollCalculation';
 import SalaryManagement from './Salary/SalaryManagement';
 import CardDemo from './CardDemo';
+import RFIDManagement from './RFIDManagement';
 // Đã bỏ trang Chấm công đang phát triển
 import UserManagement from '../UserManagement';
 
@@ -61,6 +62,8 @@ export default function AdminRouter() {
         return <SalaryManagement />;
       case '/admin/card-demo':
         return <CardDemo />;
+      case '/admin/rfid-management':
+        return <RFIDManagement />;
       case '/admin/users':
         return <UserManagement />; 
       // Đã xóa route /admin/attendance

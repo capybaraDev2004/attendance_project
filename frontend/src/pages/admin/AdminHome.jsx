@@ -69,6 +69,7 @@ const AdminHome = () => {
   const handleGoFaceSetup = () => navigate('/admin/face-setup');
   const handleGoHistory = () => navigate('/admin/history');
   const handleGoCalculate = () => navigate('/admin/calculate');
+  const handleGoRfidManagement = () => navigate('/admin/rfid-management');
 
   return (
     <div className="space-y-6">
@@ -222,6 +223,25 @@ const AdminHome = () => {
             </CardContent>
             <CardActions className="justify-center">
               <Button variant="primary" className="w-full" onClick={handleGoCalculate}>
+                Truy cập
+              </Button>
+            </CardActions>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent>
+              <div className="text-center">
+                <div className="text-4xl mb-3">💳</div>
+                <CardTitle level="h3" className="text-lg mb-2">
+                  Quản lý thẻ RFID
+                </CardTitle>
+                <p className="text-gray-600 text-sm">
+                  Quản lý thẻ RFID và gán thẻ cho nhân viên
+                </p>
+              </div>
+            </CardContent>
+            <CardActions className="justify-center">
+              <Button variant="primary" className="w-full" onClick={handleGoRfidManagement}>
                 Truy cập
               </Button>
             </CardActions>

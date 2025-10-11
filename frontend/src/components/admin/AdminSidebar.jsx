@@ -93,6 +93,13 @@ export default function AdminSidebar({
       icon: TablerIcons.IconCurrencyDollar,
       path: '/admin/salary-management',
       description: 'Quản lý và tính toán lương nhân viên'
+    },
+    {
+      id: 'rfid-management',
+      label: 'Quản lý thẻ RFID',
+      icon: TablerIcons.IconCreditCard,
+      path: '/admin/rfid-management',
+      description: 'Quản lý thẻ RFID và gán thẻ cho nhân viên'
     }
   ];
 
