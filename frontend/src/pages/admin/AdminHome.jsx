@@ -1,13 +1,25 @@
+
 import React, { useEffect, useState } from 'react';
-import { FaUsers, FaHistory, FaDesktop, FaCalculator } from 'react-icons/fa';
+import { FaUsers, FaHistory, FaDesktop, FaCalculator, FaIdCard } from 'react-icons/fa';
 import Card, { CardTitle, CardContent, CardActions } from '../../components/Card';
 import Button from '../../components/Button';
 import { useNavigate } from 'react-router-dom';
+import AddCardModal from '../../components/AddCardModal';
+
+
 
 /**
  * Trang chủ admin - hiển thị tổng quan và thống kê với thiết kế Card mới
  */
 const AdminHome = () => {
+
+  const [showAddCardModal, setShowAddCardModal] = useState(false);
+
+  const handleAddCardSuccess = () => {
+    // Có thể thêm logic refresh data hoặc thông báo thành công
+    console.log('Thêm thẻ thành công');
+  };
+
   const navigate = useNavigate();
 
   // State thống kê
@@ -70,7 +82,6 @@ const AdminHome = () => {
   const handleGoHistory = () => navigate('/admin/history');
   const handleGoCalculate = () => navigate('/admin/calculate');
   const handleGoRfidManagement = () => navigate('/admin/rfid-management');
-
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
@@ -151,6 +162,29 @@ const AdminHome = () => {
         <CardTitle level="h2" className="text-2xl mb-4">
           Các chức năng chính
         </CardTitle>
+
+        {/* Thêm thẻ nhân viên - nút đặc biệt */}
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FaIdCard className="text-blue-600 text-xl" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Thêm thẻ nhân viên</h3>
+                <p className="text-gray-600 text-sm">Cấp thẻ RFID mới cho nhân viên</p>
+              </div>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => setShowAddCardModal(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Thêm thẻ mới
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="hover:shadow-md transition-shadow">
             <CardContent>
@@ -248,6 +282,13 @@ const AdminHome = () => {
           </Card>
         </div>
       </Card>
+
+      {/* Add Card Modal */}
+      <AddCardModal
+        isOpen={showAddCardModal}
+        onClose={() => setShowAddCardModal(false)}
+        onSuccess={handleAddCardSuccess}
+      />
     </div>
   );
 };

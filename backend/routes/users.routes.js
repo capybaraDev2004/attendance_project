@@ -1,14 +1,16 @@
 // backend/routes/users.routes.js
 const express = require('express');
-const { 
-  getUsers, 
-  createUser, 
-  updateUser, 
-  deleteUser, 
-  createAccount, 
-  resetPassword,
-  getByUID
+
+const {
+    getUsers,
+    createUser,
+    updateUser,
+    deleteUser,
+    createAccount,
+    resetPassword,
+    debugUsers
 } = require('../controllers/users.controller');
+
 
 const router = express.Router();
 
@@ -31,5 +33,7 @@ router.post('/:userID/account', createAccount);
 router.put('/:userID/password', resetPassword);
 
 
-router.get('/by-uid/:uid', getByUID);
+// Debug endpoint
+router.get('/debug', debugUsers);
+
 module.exports = router;

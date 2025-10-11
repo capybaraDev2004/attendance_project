@@ -18,6 +18,7 @@ async function getUsers(req, res, next) {
         position, 
         salaryRank,
         status, 
+        created_at
         created_at,
         (CASE WHEN COALESCE(userName, '') <> '' AND COALESCE(password, '') <> '' THEN 1 ELSE 0 END) AS hasAccount
       FROM users 
@@ -37,33 +38,18 @@ async function getUsers(req, res, next) {
     next(err);
   }
 }
-// Lấy theo UID RFID
-async function getByUID(req, res) {
-  try {
-    const { uid } = req.params;
-    if (!uid) return res.status(400).json({ error: 'uid required' });
-
-    const [rows] = await pool.execute('SELECT * FROM users WHERE uid = ?', [uid]);
-
-    if (!rows.length) return res.status(404).json({ error: 'not found' });
-    res.json(rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'server error' });
-  }
-}
 
 // Thêm người dùng mới (chỉ có thông tin cá nhân, chưa có tài khoản)
 async function createUser(req, res, next) {
   try {
-    const { 
-      fullName, 
-      email, 
-      phone, 
-      dateOfBirth, 
-      gender, 
-      address, 
-      position, 
+    const {
+      fullName,
+      email,
+      phone,
+      dateOfBirth,
+      gender,
+      address,
+      position,
       salaryRank,
       role = 'employee',
       status = 'active'
@@ -128,18 +114,53 @@ async function createUser(req, res, next) {
   }
 }
 
+// Endpoint đơn giản để test dữ liệu
+async function debugUsers(req, res, next) {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT userID, fullName, rfid_uid, position 
+      FROM users 
+      ORDER BY userID ASC
+    `);
+
+    console.log('=== BACKEND DEBUG ===');
+    console.log('Total users:', rows.length);
+
+    rows.forEach((user, index) => {
+      console.log(`${index + 1}. ${user.fullName} - rfid_uid: ${user.rfid_uid} (${typeof user.rfid_uid})`);
+    });
+
+    const withoutCard = rows.filter(u => !u.rfid_uid || u.rfid_uid === null);
+    const withCard = rows.filter(u => u.rfid_uid && u.rfid_uid !== null);
+
+    console.log('Users without card:', withoutCard.length);
+    console.log('Users with card:', withCard.length);
+
+    res.json({
+      success: true,
+      total: rows.length,
+      withoutCard: withoutCard.length,
+      withCard: withCard.length,
+      users: rows
+    });
+  } catch (err) {
+    console.error('Debug error:', err);
+    next(err);
+  }
+}
+
 // Cập nhật thông tin người dùng
 async function updateUser(req, res, next) {
   try {
     const { userID } = req.params;
-    const { 
-      fullName, 
-      email, 
-      phone, 
-      dateOfBirth, 
-      gender, 
-      address, 
-      position, 
+    const {
+      fullName,
+      email,
+      phone,
+      dateOfBirth,
+      gender,
+      address,
+      position,
       salaryRank,
       role,
       status
@@ -211,7 +232,7 @@ async function updateUser(req, res, next) {
         status = ?, updated_at = NOW()
       WHERE userID = ?
     `, [
-      fullName, email, phone || null, dateOfBirth || null, 
+      fullName, email, phone || null, dateOfBirth || null,
       gender || null, address || null, position || null, salaryNum,
       role, status, userID
     ]);
@@ -381,11 +402,12 @@ async function resetPassword(req, res, next) {
   }
 }
 
-module.exports = { getUsers, 
-  createUser, 
-  updateUser, 
-  deleteUser, 
-  createAccount, 
-  resetPassword,
-  getByUID };
+module.exports = {
+  getUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  createAccount,
+  resetPassword, debugUsers
+};
 

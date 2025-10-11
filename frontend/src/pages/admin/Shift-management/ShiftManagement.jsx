@@ -1,241 +1,209 @@
 import React, { useState, useEffect } from 'react';
+import { FaClock, FaPlus, FaEdit, FaTrash, FaEye } from 'react-icons/fa';
+import Card, { CardContent, CardTitle } from '../../../components/Card';
 import Button from '../../../components/Button';
-import Card, { CardTitle, CardContent } from '../../../components/Card';
-import { FaClock, FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaCalendarAlt, FaUserClock, FaExclamationTriangle } from 'react-icons/fa';
+import API_BASE_URL from '../../../config/api';
 
 const ShiftManagement = () => {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedShift, setSelectedShift] = useState(null);
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Form state cho thêm/sửa ca làm việc
   const [formData, setFormData] = useState({
     shift_name: '',
     start_time: '',
     end_time: '',
-    break_duration: 0,
-    description: ''
+    break_duration: 30,
+    is_active: true
   });
 
-  // Load danh sách ca làm việc từ API
-  const loadShifts = async () => {
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    fetchShifts();
+  }, []);
+
+  const fetchShifts = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/shifts');
-      
+      setLoading(true);
+      console.log('Fetching shifts from:', `${API_BASE_URL}/api/shifts`);
+
+      const response = await fetch(`${API_BASE_URL}/api/shifts`);
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setShifts(result.data);
+
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (data.success) {
+        setShifts(data.data || []);
       } else {
-        setError(result.message || 'Lỗi khi tải danh sách ca làm việc');
+        console.error('API returned error:', data.message);
         setShifts([]);
       }
-    } catch (err) {
-      console.error('Lỗi khi tải ca làm việc:', err);
-      setError('Không thể kết nối đến server. Vui lòng kiểm tra backend server.');
+    } catch (error) {
+      console.error('Error fetching shifts:', error);
       setShifts([]);
+      // Show user-friendly error message
+      alert(`Lỗi khi tải danh sách ca làm việc: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load dữ liệu khi component mount
-  useEffect(() => {
-    loadShifts();
-  }, []);
-
-  // Xử lý thay đổi form
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
-  // Reset form về trạng thái ban đầu
   const resetForm = () => {
     setFormData({
       shift_name: '',
       start_time: '',
       end_time: '',
-      break_duration: 0,
-      description: ''
+      break_duration: 30,
+      is_active: true
     });
-    setError(null);
   };
 
-  // Xử lý thêm ca làm việc mới
   const handleAddShift = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
     try {
-      const response = await fetch('http://localhost:3001/api/shifts', {
+      setLoading(true);
+      console.log('Adding shift:', formData);
+
+      const response = await fetch(`${API_BASE_URL}/api/shifts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
-      
+      console.log('Add shift result:', result);
+
       if (result.success) {
+        await fetchShifts();
         setShowAddModal(false);
         resetForm();
-        loadShifts(); // Reload danh sách
+        alert('Thêm ca làm việc thành công!');
       } else {
-        setError(result.message || 'Lỗi khi tạo ca làm việc');
+        throw new Error(result.message || 'Có lỗi xảy ra khi thêm ca làm việc');
       }
-    } catch (err) {
-      console.error('Lỗi khi tạo ca làm việc:', err);
-      setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối và thử lại.');
+    } catch (error) {
+      console.error('Error adding shift:', error);
+      alert(`Lỗi khi thêm ca làm việc: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Xử lý sửa ca làm việc
   const handleEditShift = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
     try {
-      const response = await fetch(`http://localhost:3001/api/shifts/${selectedShift.shift_id}`, {
+      setLoading(true);
+      console.log('Updating shift:', selectedShift.shift_id, formData);
+
+      const response = await fetch(`${API_BASE_URL}/api/shifts/${selectedShift.shift_id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
-      
+      console.log('Update shift result:', result);
+
       if (result.success) {
+        await fetchShifts();
         setShowEditModal(false);
         setSelectedShift(null);
         resetForm();
-        loadShifts(); // Reload danh sách
+        alert('Cập nhật ca làm việc thành công!');
       } else {
-        setError(result.message || 'Lỗi khi cập nhật ca làm việc');
+        throw new Error(result.message || 'Có lỗi xảy ra khi cập nhật ca làm việc');
       }
-    } catch (err) {
-      console.error('Lỗi khi cập nhật ca làm việc:', err);
-      setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối và thử lại.');
+    } catch (error) {
+      console.error('Error updating shift:', error);
+      alert(`Lỗi khi cập nhật ca làm việc: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Xử lý xóa ca làm việc
   const handleDeleteShift = async (shiftId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa ca làm việc này?')) {
-      return;
-    }
+    if (window.confirm('Bạn có chắc chắn muốn xóa ca làm việc này?')) {
+      try {
+        setLoading(true);
+        console.log('Deleting shift:', shiftId);
 
-    setLoading(true);
-    try {
-      const response = await fetch(`http://localhost:3001/api/shifts/${shiftId}`, {
-        method: 'DELETE'
-      });
+        const response = await fetch(`${API_BASE_URL}/api/shifts/${shiftId}`, {
+          method: 'DELETE',
+        });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Delete shift result:', result);
+
+        if (result.success) {
+          await fetchShifts();
+          alert('Xóa ca làm việc thành công!');
+        } else {
+          throw new Error(result.message || 'Có lỗi xảy ra khi xóa ca làm việc');
+        }
+      } catch (error) {
+        console.error('Error deleting shift:', error);
+        alert(`Lỗi khi xóa ca làm việc: ${error.message}`);
+      } finally {
+        setLoading(false);
       }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        loadShifts(); // Reload danh sách
-      } else {
-        setError(result.message || 'Lỗi khi xóa ca làm việc');
-      }
-    } catch (err) {
-      console.error('Lỗi khi xóa ca làm việc:', err);
-      setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối và thử lại.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Xử lý bật/tắt trạng thái ca làm việc
-  const handleToggleStatus = async (shiftId) => {
-    setLoading(true);
-    try {
-      const response = await fetch(`http://localhost:3001/api/shifts/${shiftId}/toggle`, {
-        method: 'PATCH'
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        loadShifts(); // Reload danh sách
-      } else {
-        setError(result.message || 'Lỗi khi thay đổi trạng thái ca làm việc');
-      }
-    } catch (err) {
-      console.error('Lỗi khi thay đổi trạng thái ca làm việc:', err);
-      setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối và thử lại.');
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Mở modal sửa với dữ liệu ca làm việc được chọn
-  const openEditModal = (shift) => {
+  const handleEditClick = (shift) => {
     setSelectedShift(shift);
     setFormData({
-      shift_name: shift.shift_name,
-      start_time: shift.start_time,
-      end_time: shift.end_time,
-      break_duration: shift.break_duration,
-      description: shift.description || ''
+      shift_name: shift.shift_name || '',
+      start_time: shift.start_time || '',
+      end_time: shift.end_time || '',
+      break_duration: shift.break_duration || 30,
+      is_active: shift.is_active !== false
     });
     setShowEditModal(true);
   };
 
-  // Lọc ca làm việc theo trạng thái và từ khóa tìm kiếm
-  const filteredShifts = shifts.filter(shift => {
-    const matchesStatus = filterStatus === 'all' || 
-      (filterStatus === 'active' && shift.is_active) ||
-      (filterStatus === 'inactive' && !shift.is_active);
-    
-    const matchesSearch = shift.shift_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (shift.description && shift.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    return matchesStatus && matchesSearch;
-  });
+  const formatTime = (time) => {
+    if (!time) return '';
+    return time.substring(0, 5); // HH:MM format
+  };
 
-  // Tính tổng số giờ làm việc (không tính nghỉ)
-  const calculateWorkHours = (startTime, endTime, breakDuration) => {
-    const start = new Date(`2000-01-01 ${startTime}`);
-    const end = new Date(`2000-01-01 ${endTime}`);
+  const calculateWorkHours = (startTime, endTime, breakDuration = 0) => {
+    if (!startTime || !endTime) return 0;
+
+    const start = new Date(`2000-01-01T${startTime}`);
+    const end = new Date(`2000-01-01T${endTime}`);
     const diffMs = end - start;
     const diffHours = diffMs / (1000 * 60 * 60);
     return Math.max(0, diffHours - (breakDuration / 60));
@@ -243,395 +211,353 @@ const ShiftManagement = () => {
 
   return (
     <div className="space-y-6">
-        {/* Header Card */}
-        <Card>
-          <CardContent>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FaClock className="text-blue-600 text-xl" />
-              </div>
-              <div>
-                <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
-                  Quản lý ca làm việc
-                </CardTitle>
-                <p className="text-gray-600 mt-1">
-                  Thiết lập và quản lý các ca làm việc trong hệ thống
-                </p>
-              </div>
+      {/* Header Card */}
+      <Card>
+        <CardContent>
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <FaClock className="text-blue-600 text-xl" />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Header và nút thêm */}
-        <Card>
-          <div className="flex items-center justify-between">
             <div>
-              <CardTitle level="h3" className="text-lg mb-1">
-                Danh sách ca làm việc
+              <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
+                Quản lý ca làm việc
               </CardTitle>
-              <CardContent className="text-sm text-gray-600">
-                Tổng cộng: {filteredShifts.length} ca làm việc
-              </CardContent>
+              <p className="text-gray-600 mt-1">
+                Thiết lập và quản lý các ca làm việc trong hệ thống
+              </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Header và nút thêm */}
+      <Card>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle level="h3" className="text-lg mb-1">
+              Danh sách ca làm việc
+            </CardTitle>
+            <p className="text-gray-600 text-sm">
+              Quản lý các ca làm việc và thời gian làm việc
+            </p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <Button
+              onClick={() => {
+                console.log('API Base URL:', API_BASE_URL);
+                console.log('Full API URL:', `${API_BASE_URL}/api/shifts`);
+                fetchShifts();
+              }}
+              variant="outline"
+              className="flex items-center space-x-2"
+            >
+              <FaEye className="text-sm" />
+              <span>Test API</span>
+            </Button>
             <Button
               onClick={() => setShowAddModal(true)}
               variant="primary"
-              icon={<FaPlus />}
+              className="flex items-center space-x-2"
             >
-              Thêm ca làm việc
+              <FaPlus className="text-sm" />
+              <span>Thêm ca làm việc</span>
             </Button>
           </div>
-        </Card>
+        </div>
+      </Card>
 
-        {/* Filters và Search */}
-        <Card>
-          <CardTitle level="h3" className="text-lg mb-4">
-            Bộ lọc và tìm kiếm
-          </CardTitle>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
+      {/* Bảng danh sách ca làm việc */}
+      <Card>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="mt-2 text-gray-600">Đang tải...</p>
+            </div>
+          ) : shifts.length === 0 ? (
+            <div className="text-center py-8">
+              <FaClock className="mx-auto text-4xl text-gray-400 mb-4" />
+              <p className="text-gray-600">Chưa có ca làm việc nào</p>
+              <Button
+                onClick={() => setShowAddModal(true)}
+                variant="primary"
+                className="mt-4"
+              >
+                Thêm ca làm việc đầu tiên
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Tên ca</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Giờ bắt đầu</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Giờ kết thúc</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Thời gian nghỉ</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Tổng giờ làm</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Trạng thái</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shifts.map((shift) => (
+                    <tr key={shift.shift_id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-gray-900">{shift.shift_name}</div>
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {formatTime(shift.start_time)}
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {formatTime(shift.end_time)}
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {shift.break_duration || 0} phút
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {calculateWorkHours(shift.start_time, shift.end_time, shift.break_duration).toFixed(1)} giờ
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${shift.is_active
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                          }`}>
+                          {shift.is_active ? 'Đang hoạt động' : 'Đã khóa'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            onClick={() => handleEditClick(shift)}
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center space-x-1"
+                          >
+                            <FaEdit className="text-xs" />
+                            <span>Sửa</span>
+                          </Button>
+                          <Button
+                            onClick={() => handleDeleteShift(shift.shift_id)}
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center space-x-1 text-red-600 hover:text-red-700 hover:border-red-300"
+                          >
+                            <FaTrash className="text-xs" />
+                            <span>Xóa</span>
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal thêm ca làm việc */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) { setShowAddModal(false); resetForm(); } }}>
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b flex items-center justify-between bg-gradient-to-r from-blue-600 to-cyan-600">
+              <h2 className="text-white text-lg font-semibold">Thêm ca làm việc mới</h2>
+              <button
+                className="text-white/80 hover:text-white text-2xl leading-none"
+                onClick={() => { setShowAddModal(false); resetForm(); }}
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleAddShift} className="p-6 space-y-4">
+              <div className="form-group">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tên ca làm việc *</label>
                 <input
                   type="text"
-                  placeholder="Tìm kiếm ca làm việc..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  name="shift_name"
+                  value={formData.shift_name}
+                  onChange={handleInputChange}
+                  placeholder="VD: Ca sáng, Ca chiều..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
                 />
               </div>
-              
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">Trạng thái:</label>
-                <select 
-                  value={filterStatus} 
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">Tất cả</option>
-                  <option value="active">Đang hoạt động</option>
-                  <option value="inactive">Không hoạt động</option>
-                </select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Error Message */}
-        {error && (
-          <Card className="border-red-200 bg-red-50">
-            <CardContent>
-              <div className="flex items-start">
-                <FaExclamationTriangle className="text-red-500 mr-3 mt-1" />
-                <div>
-                  <div className="text-red-800 font-medium">{error}</div>
-                  {error.includes('Không thể kết nối đến server') && (
-                    <div className="mt-2 text-sm text-red-700">
-                      <strong>Hướng dẫn:</strong>
-                      <ul className="mt-1 ml-4 list-disc">
-                        <li>Kiểm tra backend server đã chạy chưa</li>
-                        <li>Chạy script SQL để tạo bảng shifts</li>
-                        <li>Kiểm tra kết nối database</li>
-                      </ul>
-                    </div>
-                  )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="form-group">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Giờ bắt đầu *</label>
+                  <input
+                    type="time"
+                    name="start_time"
+                    value={formData.start_time}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Giờ kết thúc *</label>
+                  <input
+                    type="time"
+                    name="end_time"
+                    value={formData.end_time}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Loading */}
-        {loading && (
-          <Card>
-            <CardContent>
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-gray-600">Đang xử lý...</p>
+              <div className="form-group">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian nghỉ (phút)</label>
+                <input
+                  type="number"
+                  name="break_duration"
+                  value={formData.break_duration}
+                  onChange={handleInputChange}
+                  placeholder="30"
+                  min="0"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Danh sách ca làm việc */}
-        {filteredShifts.length === 0 ? (
-          <Card>
-            <CardContent>
-              <div className="text-center py-12">
-                <FaCalendarAlt className="mx-auto text-gray-400 text-4xl mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có ca làm việc nào</h3>
-                <p className="text-gray-600">Hãy thêm ca làm việc đầu tiên để bắt đầu</p>
+              <div className="form-group">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    checked={formData.is_active}
+                    onChange={handleInputChange}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-gray-700">Kích hoạt ca làm việc</span>
+                </label>
               </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredShifts.map(shift => (
-              <Card key={shift.shift_id} className={`${!shift.is_active ? 'opacity-60' : ''}`}>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <CardTitle level="h4" className="text-lg mb-1">
-                        {shift.shift_name}
-                      </CardTitle>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        shift.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {shift.is_active ? 'Đang hoạt động' : 'Không hoạt động'}
-                      </span>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleToggleStatus(shift.shift_id)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          shift.is_active 
-                            ? 'text-green-600 hover:bg-green-100' 
-                            : 'text-gray-400 hover:bg-gray-100'
-                        }`}
-                        title={shift.is_active ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                      >
-                        {shift.is_active ? <FaToggleOn /> : <FaToggleOff />}
-                      </button>
-                      <button
-                        onClick={() => openEditModal(shift)}
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                        title="Chỉnh sửa"
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteShift(shift.shift_id)}
-                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                        title="Xóa"
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </div>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FaUserClock className="mr-2" />
-                      <span className="mr-2">Bắt đầu:</span>
-                      <span className="font-medium">{shift.start_time}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FaUserClock className="mr-2" />
-                      <span className="mr-2">Kết thúc:</span>
-                      <span className="font-medium">{shift.end_time}</span>
-                    </div>
-                    
-                    <div className="border-t pt-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Giờ làm việc:</span>
-                        <span className="font-medium text-blue-600">
-                          {calculateWorkHours(shift.start_time, shift.end_time, shift.break_duration).toFixed(1)}h
-                        </span>
-                      </div>
-                      {shift.break_duration > 0 && (
-                        <div className="flex justify-between text-sm mt-1">
-                          <span className="text-gray-600">Nghỉ giữa ca:</span>
-                          <span className="font-medium">{shift.break_duration} phút</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {shift.description && (
-                      <div className="border-t pt-3">
-                        <p className="text-sm text-gray-600">{shift.description}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Modal thêm ca làm việc */}
-        {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget){ setShowAddModal(false); resetForm(); }}}>
-            <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden" onMouseDown={(e)=>e.stopPropagation()}>
-              <div className="px-6 py-4 border-b flex items-center justify-between bg-gradient-to-r from-blue-600 to-cyan-600">
-                <h2 className="text-white text-lg font-semibold">Thêm ca làm việc mới</h2>
-                <button 
-                  className="text-white/80 hover:text-white text-2xl leading-none"
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  type="button"
                   onClick={() => { setShowAddModal(false); resetForm(); }}
-                  aria-label="Đóng"
+                  variant="outline"
                 >
-                  ×
-                </button>
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={loading}
+                >
+                  {loading ? 'Đang tạo...' : 'Tạo ca làm việc'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal sửa ca làm việc */}
+      {showEditModal && selectedShift && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) { setShowEditModal(false); setSelectedShift(null); resetForm(); } }}>
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b flex items-center justify-between bg-gradient-to-r from-blue-600 to-cyan-600">
+              <h2 className="text-white text-lg font-semibold">Chỉnh sửa ca làm việc</h2>
+              <button
+                className="text-white/80 hover:text-white text-2xl leading-none"
+                onClick={() => { setShowEditModal(false); setSelectedShift(null); resetForm(); }}
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleEditShift} className="p-6 space-y-4">
+              <div className="form-group">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tên ca làm việc *</label>
+                <input
+                  type="text"
+                  name="shift_name"
+                  value={formData.shift_name}
+                  onChange={handleInputChange}
+                  placeholder="VD: Ca sáng, Ca chiều..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
               </div>
 
-              <form onSubmit={handleAddShift} className="p-6 space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên ca làm việc *</label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="form-group">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Giờ bắt đầu *</label>
                   <input
-                    type="text"
-                    name="shift_name"
-                    value={formData.shift_name}
+                    type="time"
+                    name="start_time"
+                    value={formData.start_time}
                     onChange={handleInputChange}
-                    placeholder="VD: Ca sáng, Ca chiều..."
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ bắt đầu *</label>
-                    <input
-                      type="time"
-                      name="start_time"
-                      value={formData.start_time}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ kết thúc *</label>
-                    <input
-                      type="time"
-                      name="end_time"
-                      value={formData.end_time}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian nghỉ giữa ca (phút)</label>
+                <div className="form-group">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Giờ kết thúc *</label>
                   <input
-                    type="number"
-                    name="break_duration"
-                    value={formData.break_duration}
+                    type="time"
+                    name="end_time"
+                    value={formData.end_time}
                     onChange={handleInputChange}
-                    min="0"
-                    max="120"
-                    placeholder="0"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
+              <div className="form-group">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian nghỉ (phút)</label>
+                <input
+                  type="number"
+                  name="break_duration"
+                  value={formData.break_duration}
+                  onChange={handleInputChange}
+                  placeholder="30"
+                  min="0"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    checked={formData.is_active}
                     onChange={handleInputChange}
-                    placeholder="Mô tả chi tiết về ca làm việc..."
-                    rows="3"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 resize-none"
+                    className="mr-2"
                   />
-                </div>
+                  <span className="text-sm text-gray-700">Kích hoạt ca làm việc</span>
+                </label>
+              </div>
 
-                <div className="flex items-center justify-end gap-3 pt-2 border-t">
-                  <Button type="button" variant="outline" onClick={() => { setShowAddModal(false); resetForm(); }}>
-                    Hủy
-                  </Button>
-                  <Button type="submit" variant="primary" disabled={loading}>
-                    {loading ? 'Đang tạo...' : 'Tạo ca làm việc'}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Modal sửa ca làm việc */}
-        {showEditModal && selectedShift && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onMouseDown={(e)=>{ if(e.target===e.currentTarget){ setShowEditModal(false); setSelectedShift(null); resetForm(); }}}>
-            <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden" onMouseDown={(e)=>e.stopPropagation()}>
-              <div className="px-6 py-4 border-b flex items-center justify-between bg-gradient-to-r from-emerald-600 to-green-600">
-                <h2 className="text-white text-lg font-semibold">Chỉnh sửa ca làm việc</h2>
-                <button 
-                  className="text-white/80 hover:text-white text-2xl leading-none"
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  type="button"
                   onClick={() => { setShowEditModal(false); setSelectedShift(null); resetForm(); }}
-                  aria-label="Đóng"
+                  variant="outline"
                 >
-                  ×
-                </button>
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={loading}
+                >
+                  {loading ? 'Đang cập nhật...' : 'Cập nhật'}
+                </Button>
               </div>
-
-              <form onSubmit={handleEditShift} className="p-6 space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên ca làm việc *</label>
-                  <input
-                    type="text"
-                    name="shift_name"
-                    value={formData.shift_name}
-                    onChange={handleInputChange}
-                    placeholder="VD: Ca sáng, Ca chiều..."
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ bắt đầu *</label>
-                    <input
-                      type="time"
-                      name="start_time"
-                      value={formData.start_time}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Giờ kết thúc *</label>
-                    <input
-                      type="time"
-                      name="end_time"
-                      value={formData.end_time}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian nghỉ giữa ca (phút)</label>
-                  <input
-                    type="number"
-                    name="break_duration"
-                    value={formData.break_duration}
-                    onChange={handleInputChange}
-                    min="0"
-                    max="120"
-                    placeholder="0"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    placeholder="Mô tả chi tiết về ca làm việc..."
-                    rows="3"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50 resize-none"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-2 border-t">
-                  <Button type="button" variant="outline" onClick={() => { setShowEditModal(false); setSelectedShift(null); resetForm(); }}>
-                    Hủy
-                  </Button>
-                  <Button type="submit" variant="primary" disabled={loading}>
-                    {loading ? 'Đang cập nhật...' : 'Cập nhật'}
-                  </Button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
     </div>
   );
 };

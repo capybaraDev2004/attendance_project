@@ -10,6 +10,7 @@ const faceRoutes = require('./face.routes'); // thêm nhóm route khuôn mặt
 const shiftsRoutes = require('./shifts.routes'); // thêm nhóm route ca làm việc
 const positionsRoutes = require('./positions.routes'); // nhóm route chức vụ
 const rfidRoutes = require('./rfid.routes'); // nhóm route quản lý thẻ RFID
+const cardsRoutes = require('./cards.routes'); // nhóm route thẻ RFID
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.use('/api/face', faceRoutes); // đăng ký API khuôn mặt
 router.use('/api/shifts', shiftsRoutes); // đăng ký API ca làm việc
 router.use('/api/positions', positionsRoutes); // đăng ký API chức vụ
 router.use('/api/rfid', rfidRoutes); // đăng ký API quản lý thẻ RFID
-
+router.use('/api/cards', cardsRoutes); // đăng ký API thẻ RFID
 // Non-API utilities
 router.use('/', systemRoutes);
 

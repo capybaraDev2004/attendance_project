@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 08, 2025 at 04:39 PM
+-- Generation Time: Oct 11, 2025 at 05:17 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -203,6 +203,26 @@ INSERT INTO `positions` (`ID`, `Title`, `Code`, `Description`, `Department`, `Le
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `rfid`
+--
+
+CREATE TABLE `rfid` (
+  `rfid_uid` varchar(50) NOT NULL,
+  `userID` int(11) DEFAULT NULL,
+  `cardStatus` enum('active','inactive','lost','blocked') NOT NULL DEFAULT 'inactive'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `rfid`
+--
+
+INSERT INTO `rfid` (`rfid_uid`, `userID`, `cardStatus`) VALUES
+('12421421', 2, 'active'),
+('12421421421421412', 12, 'active');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `shifts`
 --
 
@@ -223,7 +243,7 @@ CREATE TABLE `shifts` (
 --
 
 INSERT INTO `shifts` (`shift_id`, `shift_name`, `start_time`, `end_time`, `break_duration`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, 'Ca hành chính', '08:00:00', '17:30:00', 60, '', 1, '2025-09-06 16:41:43', '2025-09-26 09:20:07');
+(1, 'Ca hành chính', '08:00:00', '17:30:00', 60, '', 1, '2025-09-06 16:41:43', '2025-10-08 15:17:00');
 
 -- --------------------------------------------------------
 
@@ -234,7 +254,7 @@ INSERT INTO `shifts` (`shift_id`, `shift_name`, `start_time`, `end_time`, `break
 CREATE TABLE `users` (
   `userID` int(11) NOT NULL,
   `fullName` varchar(100) NOT NULL,
-  `userName` varchar(50) NOT NULL,
+  `userName` varchar(50) DEFAULT NULL,
   `password` varchar(255) NOT NULL,
   `address` varchar(255) DEFAULT NULL,
   `role` enum('admin','employee') NOT NULL,
@@ -255,17 +275,17 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`userID`, `fullName`, `userName`, `password`, `address`, `role`, `email`, `phone`, `dateOfBirth`, `gender`, `position`, `salaryRank`, `status`, `created_at`, `updated_at`) VALUES
 (1, 'Vũ Minh Quân', 'quandoggy', '123456', 'chuồng heo', 'employee', 'quanngu@gmail.com', '0123456789', '2004-03-16', 'female', 'Nhân viên kinh doanh', 10000000, 'active', '2025-08-19 16:16:22', '2025-10-08 07:20:59'),
-(2, 'Capybara', 'capybara', '123456', 'Từ Sơn - Bắc Ninh', 'admin', 'capybaradev2004@gmail.com', '0352135115', '2004-02-28', 'male', 'Giám đốc điều hành', 100000000, 'active', '2025-08-19 16:16:22', '2025-10-08 07:21:03'),
+(2, 'Capybara', 'capybara', '123456', 'Từ Sơn - Bắc Ninh', 'admin', 'capybaradev2004@gmail.com', '0352135115', '0000-00-00', 'male', 'Giám đốc điều hành', 100000000, 'active', '2025-08-19 16:16:22', '2025-10-08 14:51:26'),
 (3, 'Nguyễn Tiến Toán', 'toan', '123456', 'Hà Nội', 'employee', 'nguyentientoan28022004@gmail.com', '0342822004', '1990-01-15', 'male', 'Lập trình viên Junior', 100000000, 'active', '2025-08-20 07:05:48', '2025-10-08 08:02:54'),
 (4, 'Đào Văn Tâm', 'tam', '123456', 'Vĩnh Phú', 'employee', 'thib@example.com', '0922222222', '1992-05-20', 'female', 'Chuyên viên nhân sự', 25000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:12'),
-(5, 'Bùi Xuân Lộc', 'loc', '123456', 'Đà Nẵng', 'employee', 'vanc@example.com', '0933333333', '1995-03-10', 'female', 'Lập trình viên Junior', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:15'),
-(6, 'Phạm Thị D', 'phamthid', '123456', 'Cần Thơ', 'employee', 'thid@example.com', '0944444444', '1993-07-25', 'female', 'Giám đốc điều hành', 10000000, 'inactive', '2025-08-20 07:05:48', '2025-10-08 07:21:16'),
-(7, 'Hoàng Văn E', 'hoangvane', '123456', 'Hải Phòng', 'employee', 'vane@example.com', '0955555555', '1991-09-12', 'male', 'Giám đốc điều hành', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:19'),
-(8, 'Vũ Thị F', 'vuthif', '123456', 'Nha Trang', 'employee', 'thif@example.com', '0966666666', '1996-11-02', 'female', 'Chuyên viên nhân sự', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:21'),
-(9, 'Đặng Văn G', 'dangvang', '123456', 'Bắc Ninh', 'employee', 'vang@example.com', '0977777777', '1989-12-30', 'male', 'Chuyên viên nhân sự', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:22'),
-(10, 'Ngô Thị H', 'ngothih', '123456', 'Thanh Hóa', 'employee', 'thih@example.com', '0988888888', '1994-04-18', 'female', 'Lập trình viên Junior', 10000000, 'inactive', '2025-08-20 07:05:48', '2025-10-08 07:21:24'),
-(11, 'Phan Văn I', 'phanvani', '123456', 'Huế', 'employee', 'vani@example.com', '0999999999', '1997-06-22', 'male', 'Chuyên viên nhân sự', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:26'),
-(12, 'Bùi Thị J', 'buithij', '123456', 'Quảng Ninh', 'employee', 'thij@example.com', '0900000000', '1998-08-08', 'female', 'Lập trình viên Junior', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 07:21:33');
+(5, 'Bùi Xuân Lộc', 'loc', '123456', 'Đà Nẵng', 'employee', 'vanc@example.com', '0933333333', '1995-03-10', 'female', 'Lập trình viên Junior', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 15:14:19'),
+(6, 'Phạm Thị D', NULL, '', 'Cần Thơ', 'employee', 'thid@example.com', '0944444444', '1993-07-25', 'female', 'Giám đốc điều hành', 10000000, 'inactive', '2025-08-20 07:05:48', '2025-10-08 15:03:34'),
+(7, 'Hoàng Văn E', NULL, '', 'Hải Phòng', 'employee', 'vane@example.com', '0955555555', '1991-09-12', 'male', 'Giám đốc điều hành', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 15:03:32'),
+(8, 'Vũ Thị F', NULL, '', 'Nha Trang', 'employee', 'thif@example.com', '0966666666', '1996-11-02', 'female', 'Chuyên viên nhân sự', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 15:03:30'),
+(9, 'Đặng Văn G', NULL, '', 'Bắc Ninh', 'employee', 'vang@example.com', '0977777777', '1989-12-30', 'male', 'Chuyên viên nhân sự', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 15:03:29'),
+(10, 'Ngô Thị H', NULL, '', 'Thanh Hóa', 'employee', 'thih@example.com', '0988888888', '1994-04-18', 'female', 'Lập trình viên Junior', 10000000, 'inactive', '2025-08-20 07:05:48', '2025-10-08 15:03:27'),
+(11, 'Phan Văn I', NULL, '', 'Huế', 'employee', 'vani@example.com', '0999999999', '1997-06-22', 'male', 'Chuyên viên nhân sự', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 15:03:18'),
+(12, 'Bùi Thị J', '', '', 'Quảng Ninh', 'employee', 'thij@example.com', '0900000000', '1998-08-08', 'female', 'Lập trình viên Junior', 10000000, 'active', '2025-08-20 07:05:48', '2025-10-08 15:02:19');
 
 --
 -- Indexes for dumped tables
@@ -326,6 +346,13 @@ ALTER TABLE `face_recognition_settings`
 --
 ALTER TABLE `positions`
   ADD PRIMARY KEY (`ID`);
+
+--
+-- Indexes for table `rfid`
+--
+ALTER TABLE `rfid`
+  ADD PRIMARY KEY (`rfid_uid`),
+  ADD KEY `fk_user` (`userID`);
 
 --
 -- Indexes for table `shifts`
@@ -399,7 +426,7 @@ ALTER TABLE `shifts`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `userID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `userID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- Constraints for dumped tables
@@ -430,6 +457,12 @@ ALTER TABLE `face_data`
 --
 ALTER TABLE `face_recognition_logs`
   ADD CONSTRAINT `face_recognition_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`userID`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `rfid`
+--
+ALTER TABLE `rfid`
+  ADD CONSTRAINT `fk_user` FOREIGN KEY (`userID`) REFERENCES `users` (`userID`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
