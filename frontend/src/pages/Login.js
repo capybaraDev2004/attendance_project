@@ -59,7 +59,7 @@ const LoginPage = () => {
 
       // Thông báo thành công và chờ 3 giây trước khi điều hướng
       const targetPath = data.role === 'admin' ? '/admin' : '/';
-      setSuccess('Đăng nhập thành công! Đang vào trang chủ admin...');
+      setSuccess('Đăng nhập thành công! Đang vào trang chủ...');
       setIsRedirecting(true);
 
       // Đặt hẹn giờ 3 giây rồi điều hướng
@@ -114,26 +114,7 @@ const LoginPage = () => {
   return (
     <div className="login-container">
       {/* Ảnh nền với overlay */}
-      <div className="background-overlay"></div>
-      
-      {/* Tài khoản demo ở góc trái trên cùng */}
-      <motion.div 
-        className="demo-accounts-corner"
-        initial={{ opacity: 0, x: -50 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6, delay: 0.3 }}
-      >
-        <div className="demo-title-corner">Demo Accounts</div>
-        <div className="account-item-corner">
-          <span className="account-role-corner">Admin:</span>
-          <span className="account-details-corner">capybara / 123456</span>
-        </div>
-        <div className="account-item-corner">
-          <span className="account-role-corner">User:</span>
-          <span className="account-details-corner">quandoggy / 123456</span>
-        </div>
-      </motion.div>
-      
+      <div className="background-overlay"></div>  
       {/* Thông báo lỗi/thành công ở góc phải trên cùng */}
       <AnimatePresence mode="wait">
         {error && (

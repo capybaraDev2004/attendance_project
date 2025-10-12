@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import Card, { CardTitle, CardContent, CardActions, CardButton } from '../../../components/Card';
-import { FaCalculator, FaCalendarAlt, FaUsers, FaFileExport, FaFilter, FaDownload, FaInfoCircle } from 'react-icons/fa';
+import { FaCalculator, FaCalendarAlt, FaUsers, FaFileExport, FaInfoCircle } from 'react-icons/fa';
+import * as XLSX from 'xlsx';
+import { toast } from 'react-toastify';
 
 const PayrollCalculation = () => {
   // State cho form tính công
@@ -69,9 +71,353 @@ const PayrollCalculation = () => {
     }
   };
 
-  // Hàm xuất báo cáo
+  // Hàm lấy thông tin người dùng hiện tại (cập nhật để lấy chính xác)
+  const getCurrentUserInfo = () => {
+    try {
+      // Lấy thông tin từ localStorage với key 'auth'
+      const authData = localStorage.getItem('auth');
+      if (authData) {
+        const auth = JSON.parse(authData);
+        
+        // Kiểm tra cấu trúc auth.user.fullName
+        if (auth.user && auth.user.fullName) {
+          return {
+            fullName: auth.user.fullName,
+            role: auth.role || 'admin'
+          };
+        }
+        
+        // Kiểm tra các trường hợp khác
+        if (auth.user && auth.user.name) {
+          return {
+            fullName: auth.user.name,
+            role: auth.role || 'admin'
+          };
+        }
+        
+        // Nếu có token, thử decode để lấy thông tin
+        if (auth.token) {
+          try {
+            const payload = JSON.parse(atob(auth.token.split('.')[1]));
+            if (payload.fullName) {
+              return {
+                fullName: payload.fullName,
+                role: payload.role || 'admin'
+              };
+            }
+            if (payload.name) {
+              return {
+                fullName: payload.name,
+                role: payload.role || 'admin'
+              };
+            }
+          } catch (tokenError) {
+            console.warn('Không thể decode token:', tokenError);
+          }
+        }
+      }
+      
+      // Thử các key khác trong localStorage
+      const alternativeKeys = ['userInfo', 'user', 'currentUser'];
+      for (const key of alternativeKeys) {
+        const userData = localStorage.getItem(key);
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            if (user.fullName) {
+              return {
+                fullName: user.fullName,
+                role: user.role || 'admin'
+              };
+            }
+            if (user.name) {
+              return {
+                fullName: user.name,
+                role: user.role || 'admin'
+              };
+            }
+          } catch (parseError) {
+            console.warn(`Không thể parse dữ liệu từ ${key}:`, parseError);
+          }
+        }
+      }
+      
+      // Nếu không tìm thấy, hiển thị cảnh báo và yêu cầu đăng nhập lại
+      console.error('Không tìm thấy thông tin người dùng trong localStorage');
+      toast.error('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại!', {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      
+      return {
+        fullName: 'Người dùng chưa xác định',
+        role: 'admin'
+      };
+    } catch (error) {
+      console.error('Lỗi khi lấy thông tin người dùng:', error);
+      toast.error('Có lỗi khi lấy thông tin người dùng!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      
+      return {
+        fullName: 'Lỗi hệ thống',
+        role: 'admin'
+      };
+    }
+  };
+
+  // Hàm xuất báo cáo Excel (ĐỊNH DẠNG HOÀN HẢO THEO ẢNH)
+  const exportToExcel = () => {
+    if (payrollResults.length === 0) {
+      toast.error('Không có dữ liệu để xuất!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      return;
+    }
+
+    try {
+      // Lấy thông tin người dùng hiện tại
+      const currentUser = getCurrentUserInfo();
+      
+      // Kiểm tra nếu không lấy được tên thực tế
+      if (currentUser.fullName === 'Người dùng chưa xác định' || 
+          currentUser.fullName === 'Lỗi hệ thống' ||
+          currentUser.fullName === 'Người dùng hệ thống') {
+        toast.warning('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại để xuất báo cáo!', {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+        return;
+      }
+      
+      // Chuẩn bị dữ liệu cho Excel
+      const excelData = payrollResults.map((row, index) => ({
+        'STT': index + 1,
+        'Mã NV': `NV${String(row.userID).padStart(3, '0')}`,
+        'Họ tên': row.fullName,
+        'Số ngày ghi nhận': row.workingDays,
+        'Tổng công': row.totalWorkUnits,
+        'Tổng giờ': row.totalHours.toFixed(2),
+        'Giờ tăng ca': row.totalOvertimeHours.toFixed(2)
+      }));
+
+      // Tạo workbook mới
+      const workbook = XLSX.utils.book_new();
+      
+      // Tạo worksheet từ dữ liệu
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      
+      // Lấy range của worksheet
+      const range = XLSX.utils.decode_range(worksheet['!ref']);
+      
+      // Đặt độ rộng cột (tối ưu cho nội dung)
+      const columnWidths = [
+        { wch: 8 },   // STT
+        { wch: 12 },  // Mã NV
+        { wch: 25 },  // Họ tên
+        { wch: 18 },  // Số ngày ghi nhận
+        { wch: 12 },  // Tổng công
+        { wch: 12 },  // Tổng giờ
+        { wch: 15 }   // Giờ tăng ca
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      // ĐỊNH DẠNG HEADER - BÔI ĐEN, CĂN GIỮA, BORDER
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+        if (!worksheet[cellAddress]) continue;
+        
+        worksheet[cellAddress].s = {
+          font: { 
+            bold: true,
+            size: 12,
+            name: 'Times New Roman',
+            color: { rgb: 'FFFFFF' } // Chữ trắng
+          },
+          alignment: { 
+            horizontal: 'center', 
+            vertical: 'center',
+            wrapText: true
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          },
+          fill: {
+            fgColor: { rgb: '000000' } // Nền đen
+          }
+        };
+      }
+
+      // ĐỊNH DẠNG DỮ LIỆU - CĂN GIỮA, BORDER
+      for (let row = range.s.r; row <= range.e.r; row++) {
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          if (!worksheet[cellAddress]) continue;
+          
+          // Chỉ định dạng dòng dữ liệu (không phải header)
+          if (row > 0) {
+            worksheet[cellAddress].s = {
+              font: { 
+                size: 11,
+                name: 'Times New Roman',
+                color: { rgb: '000000' } // Chữ đen
+              },
+              alignment: { 
+                horizontal: 'center', 
+                vertical: 'center',
+                wrapText: true
+              },
+              border: {
+                top: { style: 'thin', color: { rgb: '000000' } },
+                bottom: { style: 'thin', color: { rgb: '000000' } },
+                left: { style: 'thin', color: { rgb: '000000' } },
+                right: { style: 'thin', color: { rgb: '000000' } }
+              },
+              fill: {
+                fgColor: { rgb: 'FFFFFF' } // Nền trắng
+              }
+            };
+          }
+        }
+      }
+
+      // THÊM THÔNG TIN CUỐI BẢNG (GIỐNG TRONG ẢNH)
+      const lastRow = range.e.r + 3; // Thêm 3 dòng trống
+      const lastCol = range.e.c; // Cột cuối cùng (G)
+      
+      // Ngày xuất báo cáo (Row 5, Column G) - CĂN PHẢI
+      const dateCellAddress = XLSX.utils.encode_cell({ r: lastRow, c: lastCol });
+      const currentDate = new Date();
+      const exportDate = currentDate.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric'
+      });
+      
+      worksheet[dateCellAddress] = { v: `Ngày xuất: ${exportDate}` };
+      worksheet[dateCellAddress].s = {
+        font: { 
+          size: 11,
+          name: 'Times New Roman',
+          color: { rgb: '000000' }
+        },
+        alignment: { 
+          horizontal: 'right', // CĂN PHẢI như trong ảnh
+          vertical: 'center'
+        }
+      };
+
+      // "Người lập báo cáo" (Row 6, Column G) - CĂN PHẢI
+      const preparerLabelCellAddress = XLSX.utils.encode_cell({ r: lastRow + 1, c: lastCol });
+      worksheet[preparerLabelCellAddress] = { v: 'Người lập báo cáo' };
+      worksheet[preparerLabelCellAddress].s = {
+        font: { 
+          size: 11,
+          name: 'Times New Roman',
+          color: { rgb: '000000' }
+        },
+        alignment: { 
+          horizontal: 'right', // CĂN PHẢI như trong ảnh
+          vertical: 'center'
+        }
+      };
+
+      // Tên người lập (Row 7, Column G) - CĂN PHẢI, TÊN THỰC TẾ
+      const nameCellAddress = XLSX.utils.encode_cell({ r: lastRow + 2, c: lastCol });
+      worksheet[nameCellAddress] = { v: currentUser.fullName };
+      worksheet[nameCellAddress].s = {
+        font: { 
+          size: 11,
+          name: 'Times New Roman',
+          color: { rgb: '000000' }
+        },
+        alignment: { 
+          horizontal: 'right', // CĂN PHẢI như trong ảnh
+          vertical: 'center'
+        }
+      };
+
+      // Cập nhật range để bao gồm các dòng mới
+      const newRange = XLSX.utils.decode_range(worksheet['!ref']);
+      newRange.e.r = lastRow + 2;
+      worksheet['!ref'] = XLSX.utils.encode_range(newRange);
+
+      // Thêm worksheet vào workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Bảng tính công');
+
+      // Xuất file
+      const fileName = `BaoCaoTinhCong_${selectedMonth}_${selectedYear}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      // Thông báo thành công với popup xanh lá
+      toast.success(
+        <div className="flex items-center">
+          <div className="flex-shrink-0">
+            <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <p className="text-sm font-medium text-green-800">
+              Xuất file Excel thành công!
+            </p>
+            <p className="text-sm text-green-600">
+              File: {fileName}
+            </p>
+            <p className="text-xs text-green-500">
+              Người thực hiện: {currentUser.fullName}
+            </p>
+          </div>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          className: "toast-success-custom"
+        }
+      );
+    } catch (error) {
+      console.error('Lỗi xuất Excel:', error);
+      toast.error('Có lỗi xảy ra khi xuất file Excel!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    }
+  };
+
+  // Hàm xuất báo cáo (chỉ còn Excel)
   const exportReport = (format) => {
-    alert(`Đang xuất báo cáo định dạng ${format}...`);
+    if (format === 'Excel') {
+      exportToExcel();
+    }
   };
 
   // Không dùng dữ liệu mẫu, bảng dưới hiển thị theo payrollResults
@@ -87,7 +433,7 @@ const PayrollCalculation = () => {
               </div>
               <div>
                 <CardTitle level="h1" className="text-2xl font-bold text-gray-900">
-                  Tính Công & Lương
+                  Tính Công làm việc
                 </CardTitle>
                 <p className="text-gray-600 mt-1">
                   Quản lý và tính toán lương tháng cho nhân viên
@@ -187,10 +533,6 @@ const PayrollCalculation = () => {
               )}
             </CardButton>
             
-            <CardButton variant="outline" className="flex items-center">
-              <FaFilter className="mr-2" />
-              Lọc dữ liệu
-            </CardButton>
           </CardActions>
         </Card>
 
@@ -208,17 +550,10 @@ const PayrollCalculation = () => {
                   variant="outline"
                   onClick={() => exportReport('Excel')}
                   className="flex items-center"
+                  disabled={isCalculating}
                 >
                   <FaFileExport className="mr-2" />
                   Xuất Excel
-                </CardButton>
-                <CardButton 
-                  variant="outline"
-                  onClick={() => exportReport('PDF')}
-                  className="flex items-center"
-                >
-                  <FaDownload className="mr-2" />
-                  Xuất PDF
                 </CardButton>
               </div>
             </div>
