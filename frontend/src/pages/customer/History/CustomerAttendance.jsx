@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useRef  } from 'react';
 import { io } from 'socket.io-client';
 import StandardTable from '../../../components/StandardTable';
@@ -131,21 +130,40 @@ const CustomerAttendance = () => {
       console.log('📊 API Response:', data);
 
       if (data.success && data.data) {
-        // Chuyển đổi dữ liệu từ format user-history sang format hiện tại
-        const processedData = data.data
-          .filter(item => !item.isDateHeader) // Loại bỏ header ngày
-          .map(item => ({
-            attendance_id: item.id,
-            work_date: item.date,
-            check_in: item.type === 'Check-in' ? `${item.date}T${item.time}:00` : null,
-            check_out: item.type === 'Check-out' ? `${item.date}T${item.time}:00` : null,
-            device_in_name: item.location || '--',
-            device_out_name: item.location || '--'
-          }))
-          .filter((item, index, array) => {
-            // Loại bỏ các bản ghi trùng lặp và chỉ giữ lại bản ghi có đầy đủ thông tin
-            return item.check_in || item.check_out;
+        // Gộp Check-in và Check-out cùng ngày vào 1 dòng; ID hiển thị là attendance ID gốc
+        const mapByPair = new Map();
+        data.data
+          .filter(item => !item.isDateHeader)
+          .forEach(item => {
+            // Tách attendance id gốc (vd: "83_in" | "83_out" → "83")
+            const baseId = String(item.id).replace(/_(in|out)$/i, '');
+            // Key gộp theo ID + ngày để đảm bảo đúng một cặp trong ngày
+            const key = `${baseId}|${item.date}`;
+
+            const rec = mapByPair.get(key) || {
+              attendance_id: baseId,
+              work_date: item.date,
+              check_in: null,
+              check_out: null,
+              device_in_name: '--',
+              device_out_name: '--'
+            };
+
+            if (item.type === 'Check-in') {
+              rec.check_in = `${item.date}T${item.time}:00`;
+              rec.device_in_name = item.location || '--';
+            } else if (item.type === 'Check-out') {
+              rec.check_out = `${item.date}T${item.time}:00`;
+              rec.device_out_name = item.location || '--';
+            }
+
+            mapByPair.set(key, rec);
           });
+
+        const processedData = Array.from(mapByPair.values())
+          .filter(r => r.check_in || r.check_out)
+          // Sắp xếp: mới nhất lên trên
+          .sort((a, b) => new Date(b.work_date) - new Date(a.work_date));
 
         setAttendanceData(processedData);
       } else {
@@ -272,7 +290,8 @@ const CustomerAttendance = () => {
     const isOvertime = overtimeMinutes > 0;
 
     if (isOvertime) {
-      return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Làm vượt giờ ({formatMinutes(overtimeMinutes)})</span>;
+      // Đổi màu tím -> vàng (theo sở thích người dùng)
+      return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">Làm vượt giờ ({formatMinutes(overtimeMinutes)})</span>;
     }
     if (isLate) {
       const diffMs = shiftStart ? (checkInDate.getTime() - shiftStart.getTime()) : 0;
@@ -594,9 +613,10 @@ const CustomerAttendance = () => {
               <p className="text-sm text-green-700">Tổng công chuẩn</p>
               <p className="text-2xl font-bold text-green-900">{totals.totalUnits} công</p>
             </div>
-            <div className="rounded-lg p-4 text-right border border-purple-200 bg-purple-50">
-              <p className="text-sm text-purple-700">Tổng giờ làm thêm</p>
-              <p className="text-2xl font-bold text-purple-900">{totals.totalOvertimeHours} h</p>
+            {/* Đổi thẻ tổng OT sang màu vàng thay vì tím */}
+            <div className="rounded-lg p-4 text-right border border-amber-200 bg-amber-50">
+              <p className="text-sm text-amber-700">Tổng giờ làm thêm</p>
+              <p className="text-2xl font-bold text-amber-900">{totals.totalOvertimeHours} h</p>
             </div>
             <div className="rounded-lg p-4 text-right border border-red-200 bg-red-50">
               <p className="text-sm text-red-700">OFF (ngày không công)</p>
@@ -626,5 +646,3 @@ const CustomerAttendance = () => {
 };
 
 export default CustomerAttendance;
-
-
