@@ -453,83 +453,119 @@ async function userHistory(req, res, next) {
    - Ngược lại -> tạo bản ghi check_in mới
    - Sau khi ghi DB -> emit realtime bằng socket.io
 ------------------------------------------------------- */
+// ESP8266 RFID: chỉ 1 cặp chấm công (in/out) trong ngày
+// attendance.controller.js
 async function scanRFID(req, res, next) {
   try {
     const { uid, device_id } = req.body;
     const io = req.app.get('io');
-
     if (!uid || !device_id) {
-      return res.status(400).json({ success: false, message: 'Thiếu uid hoặc device_id' });
+      return res.status(400).json({ success: false, message: 'Thieu uid hoac device_id' });
     }
 
-    // Tìm user theo UID
+    // Tim user theo the
     const [userRows] = await pool.execute(
       'SELECT userID, fullName FROM users WHERE rfid_uid = ? AND status = 1 LIMIT 1',
       [uid]
     );
     if (!userRows.length) {
-      return res.status(404).json({ success: false, message: 'UID không hợp lệ' });
+      return res.status(404).json({ success: false, message: 'The chua gan nguoi dung' });
     }
     const user = userRows[0];
 
-    // Lấy bản ghi mới nhất hôm nay
-    const [lastRows] = await pool.execute(
-      `SELECT * FROM attendance 
-       WHERE user_id = ? AND work_date = CURDATE()
+    // Dinh nghia ngay hom nay theo +07:00 (tranh lech CURDATE())
+    const TODAY_SQL = "DATE(CONVERT_TZ(NOW(), @@session.time_zone, '+07:00'))";
+
+    // Lay ban ghi hom nay
+    const [todayRows] = await pool.execute(
+      `SELECT * FROM attendance
+       WHERE user_id = ? AND work_date = ${TODAY_SQL}
        ORDER BY attendance_id DESC LIMIT 1`,
       [user.userID]
     );
 
     let action, recordId;
-    if (!lastRows.length || (lastRows[0].check_in && lastRows[0].check_out)) {
-      // Tạo bản ghi check-in mới
-      const [result] = await pool.execute(
-        `INSERT INTO attendance (user_id, rfid_uid, work_date, check_in, device_in_id, status)
-         VALUES (?, ?, CURDATE(), NOW(), ?, 'present')`,
-        [user.userID, uid, device_id]
-      );
-      recordId = result.insertId;
-      action = 'Check-in';
+
+    if (!todayRows.length) {
+      // CHUA co gi hom nay -> CHECK-IN
+      try {
+        const [ins] = await pool.execute(
+          `INSERT INTO attendance (user_id, rfid_uid, work_date, check_in, device_in_id, status)
+           VALUES (?, ?, ${TODAY_SQL}, NOW(), ?, 'present')`,
+          [user.userID, uid, device_id]
+        );
+        recordId = ins.insertId;
+        action = 'Check-in';
+      } catch (e) {
+        if (e && e.code === 'ER_DUP_ENTRY') {
+          return res.status(409).json({
+            success: false,
+            message: 'Da du luot cham cong hom nay',
+            limit: 'daily_once',
+            data: { user_id: user.userID, user_name: user.fullName, action: 'None' }
+          });
+        }
+        throw e;
+      }
     } else {
-      // Cập nhật check-out
-      await pool.execute(
-        `UPDATE attendance 
-           SET check_out = NOW(), device_out_id = ?, updated_at = NOW()
-         WHERE attendance_id = ?`,
-        [device_id, lastRows[0].attendance_id]
-      );
-      recordId = lastRows[0].attendance_id;
-      action = 'Check-out';
+      const last = todayRows[0];
+
+      if (last.check_in && !last.check_out) {
+        // Da check-in CHUA check-out -> CHECK-OUT
+        await pool.execute(
+          `UPDATE attendance
+             SET check_out = NOW(), device_out_id = ?, updated_at = NOW()
+           WHERE attendance_id = ?`,
+          [device_id, last.attendance_id]
+        );
+        recordId = last.attendance_id;
+        action = 'Check-out';
+      } else {
+        // Da du in/out trong ngay -> KHONG cho cham cong them
+        return res.status(409).json({
+          success: false,
+          message: 'Da du luot cham cong hom nay',
+          limit: 'daily_once',
+          data: { user_id: user.userID, user_name: user.fullName, action: 'None' }
+        });
+      }
     }
 
-    // Emit realtime payload
+    // Emit realtime (neu can)
     const now = new Date();
     const payload = {
       id: recordId,
       date: now.toISOString().split('T')[0],
       time: now.toTimeString().substring(0, 5),
       type: action,
-      status: 'Đúng giờ',
+      status: 'Dung gio',
       location: 'RFID Device',
       userName: user.fullName
     };
-
-    if (io) {
-      io.emit('attendanceUpdate', payload);
-      console.log('📡 Emit attendanceUpdate:', payload);
-    }
+    if (io) io.emit('attendanceUpdate', payload);
 
     return res.json({
       success: true,
       action,
-      message: `✅ ${user.fullName} ${action}`,
-      data: payload
+      message: action === 'Check-in' ? 'Xin chao' : 'Hen gap lai',
+      data: { ...payload, user_id: user.userID, user_name: user.fullName }
     });
   } catch (err) {
-    console.error('❌ scanRFID error:', err);
+    // Map phong truong hop khac van la duplicate
+    if (err && err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        success: false,
+        message: 'Da du luot cham cong hom nay',
+        limit: 'daily_once'
+      });
+    }
+    console.error('scanRFID error:', err);
     next(err);
   }
 }
+
+
+
 
 // API: Lấy tổng hợp attendance_records theo tháng và (tùy chọn) theo user
 // Query: month=YYYY-MM hoặc start_date, end_date; user_id=optional

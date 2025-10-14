@@ -10,14 +10,19 @@ function notFound(req, res, next) {
 
 // Error Handler mặc định
 function errorHandler(err, req, res, next) {
-  // Log lỗi server-side
-  // Lưu ý: Có thể mở rộng để phân loại lỗi (DB, Validation, Auth, ...)
+  if (err && err.code === 'ER_DUP_ENTRY') {
+    return res.status(409).json({
+      success: false,
+      message: 'Da du luot cham cong hom nay',
+      limit: 'daily_once'
+    });
+  }
   console.error(err);
-  res.status(500).json({
+  res.status(err.status || 500).json({
     success: false,
-    message: 'Lỗi máy chủ',
-    error: err?.message
+    message: err.message || 'Loi may chu'
   });
 }
+
 
 module.exports = { notFound, errorHandler };

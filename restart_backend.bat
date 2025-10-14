@@ -1,17 +1,11 @@
 @echo off
-echo Restarting Backend Server...
-echo.
+echo Restarting backend server...
+cd /d "C:\ĐỒ_ÁN_TN\attendance_project\backend"
 
-cd backend
+echo Stopping any existing Node processes...
+taskkill /f /im node.exe 2>nul
 
-echo Installing dependencies...
-call npm install
-
-echo.
 echo Starting backend server...
-echo Press Ctrl+C to stop the server
-echo.
-
-call npm start
+node server.js
 
 pause

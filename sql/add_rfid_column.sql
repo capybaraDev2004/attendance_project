@@ -1,8 +1,16 @@
--- Thêm cột rfid_uid vào bảng users
-ALTER TABLE `users` ADD COLUMN `rfid_uid` VARCHAR(50) NULL DEFAULT NULL AFTER `status`;
+-- Thêm cột rfid_uid vào bảng attendance (nếu cần)
+-- Chạy lệnh này nếu bảng attendance chưa có cột rfid_uid
 
--- Thêm index cho rfid_uid để tối ưu tìm kiếm
-ALTER TABLE `users` ADD UNIQUE INDEX `idx_rfid_uid` (`rfid_uid`);
+ALTER TABLE `attendance` 
+ADD COLUMN `rfid_uid` varchar(50) DEFAULT NULL 
+AFTER `user_id`;
 
--- Thêm comment cho cột
-ALTER TABLE `users` MODIFY COLUMN `rfid_uid` VARCHAR(50) NULL DEFAULT NULL COMMENT 'UID của thẻ RFID';
+-- Thêm index cho cột rfid_uid
+ALTER TABLE `attendance` 
+ADD INDEX `idx_attendance_rfid_uid` (`rfid_uid`);
+
+-- Thêm foreign key constraint (tùy chọn)
+-- ALTER TABLE `attendance` 
+-- ADD CONSTRAINT `fk_attendance_rfid` 
+-- FOREIGN KEY (`rfid_uid`) REFERENCES `rfid` (`rfid_uid`) 
+-- ON DELETE SET NULL ON UPDATE CASCADE;
