@@ -1,31 +1,28 @@
+// backend/routes/rfid.routes.js
 const express = require('express');
 const router = express.Router();
 const rfidController = require('../controllers/rfid.controller');
 
-/**
- * Routes quản lý thẻ RFID
- * Tương tác với bảng rfid trong database
- */
-
 // Lấy danh sách tất cả thẻ RFID
 router.get('/', rfidController.getAllRfidCards);
 
-// Lấy danh sách nhân viên chưa được gán thẻ
+// Danh sách nhân viên CHƯA được gán thẻ
 router.get('/available-users', rfidController.getAvailableUsers);
 
-// Thêm thẻ RFID mới
+// ✅ Danh sách thẻ CHƯA gán (dropdown cho admin)
+router.get('/unassigned', rfidController.listUnassigned);
+
+// Thêm thẻ RFID (tạo thủ công)
 router.post('/', rfidController.addRfidCard);
 
-// Cập nhật thông tin thẻ RFID
+// Cập nhật thông tin thẻ
 router.put('/:cardCode', rfidController.updateRfidCard);
 
-// Xóa thẻ RFID
+// Xóa thẻ
 router.delete('/:cardCode', rfidController.deleteRfidCard);
 
-// Gán thẻ cho nhân viên
+// Gán / Hủy gán thẻ cho nhân viên
 router.post('/:cardCode/assign', rfidController.assignCardToUser);
-
-// Hủy gán thẻ
 router.post('/:cardCode/unassign', rfidController.unassignCard);
 
 module.exports = router;

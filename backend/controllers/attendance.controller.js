@@ -455,44 +455,87 @@ async function userHistory(req, res, next) {
 ------------------------------------------------------- */
 // ESP8266 RFID: chỉ 1 cặp chấm công (in/out) trong ngày
 // attendance.controller.js
+
+/**
+ * Chấm công bằng RFID:
+ * - Tìm user qua bảng rfid (rfid_uid -> userID, cardStatus='active')
+ * - Nếu hôm nay chưa có bản ghi -> Check-in
+ * - Nếu đã check-in chưa check-out -> Check-out
+ * - Nếu đã đủ in/out -> trả 409 (daily_once)
+ */
+// controllers/attendance.controller.js
 async function scanRFID(req, res, next) {
   try {
     const { uid, device_id } = req.body;
     const io = req.app.get('io');
+
     if (!uid || !device_id) {
       return res.status(400).json({ success: false, message: 'Thieu uid hoac device_id' });
     }
 
-    // Tim user theo the
-    const [userRows] = await pool.execute(
-      'SELECT userID, fullName FROM users WHERE rfid_uid = ? AND status = 1 LIMIT 1',
+    // 1) Tra cứu UID trong bảng rfid
+    const [mapRows] = await pool.execute(
+      `SELECT r.rfid_uid, r.cardStatus, r.userID, u.fullName
+       FROM rfid r
+       LEFT JOIN users u ON u.userID = r.userID AND u.status = 'active'
+       WHERE r.rfid_uid = ? LIMIT 1`,
       [uid]
     );
-    if (!userRows.length) {
-      return res.status(404).json({ success: false, message: 'The chua gan nguoi dung' });
-    }
-    const user = userRows[0];
 
-    // Dinh nghia ngay hom nay theo +07:00 (tranh lech CURDATE())
+    if (!mapRows.length) {
+      // Chưa có UID -> tự lưu vào rfid (inactive, chưa gán) + emit để FE refresh
+      await pool.execute(
+        `INSERT IGNORE INTO rfid (rfid_uid, userID, cardStatus) VALUES (?, NULL, 'inactive')`,
+        [uid]
+      );
+      if (io) io.emit('rfid:refresh', { reason: 'rfid_unassigned_added', cardCode: uid });
+
+      return res.status(404).json({
+        success: false,
+        message: 'The chua gan nguoi dung',
+        rfid_uid: uid
+      });
+    }
+
+    const card = mapRows[0];
+
+    // 2) UID đã có nhưng chưa gán user
+    if (!card.userID) {
+      return res.status(404).json({
+        success: false,
+        message: 'The chua gan nguoi dung',
+        rfid_uid: uid
+      });
+    }
+
+    // 3) Thẻ không active
+    if (card.cardStatus !== 'active') {
+      return res.status(403).json({
+        success: false,
+        message: 'The khong hoat dong',
+        rfid_uid: uid
+      });
+    }
+
+    // 4) Check-in / Check-out theo ngày (+07:00)
     const TODAY_SQL = "DATE(CONVERT_TZ(NOW(), @@session.time_zone, '+07:00'))";
 
-    // Lay ban ghi hom nay
     const [todayRows] = await pool.execute(
       `SELECT * FROM attendance
        WHERE user_id = ? AND work_date = ${TODAY_SQL}
        ORDER BY attendance_id DESC LIMIT 1`,
-      [user.userID]
+      [card.userID]
     );
 
     let action, recordId;
 
     if (!todayRows.length) {
-      // CHUA co gi hom nay -> CHECK-IN
+      // CHƯA có bản ghi -> CHECK-IN
       try {
         const [ins] = await pool.execute(
-          `INSERT INTO attendance (user_id, rfid_uid, work_date, check_in, device_in_id, status)
-           VALUES (?, ?, ${TODAY_SQL}, NOW(), ?, 'present')`,
-          [user.userID, uid, device_id]
+          `INSERT INTO attendance (user_id, work_date, check_in, device_in_id)
+           VALUES (?, ${TODAY_SQL}, NOW(), ?)`,
+          [card.userID, device_id]
         );
         recordId = ins.insertId;
         action = 'Check-in';
@@ -502,16 +545,15 @@ async function scanRFID(req, res, next) {
             success: false,
             message: 'Da du luot cham cong hom nay',
             limit: 'daily_once',
-            data: { user_id: user.userID, user_name: user.fullName, action: 'None' }
+            data: { user_id: card.userID, user_name: card.fullName, action: 'None' }
           });
         }
         throw e;
       }
     } else {
       const last = todayRows[0];
-
       if (last.check_in && !last.check_out) {
-        // Da check-in CHUA check-out -> CHECK-OUT
+        // ĐÃ vào, CHƯA ra -> CHECK-OUT
         await pool.execute(
           `UPDATE attendance
              SET check_out = NOW(), device_out_id = ?, updated_at = NOW()
@@ -521,17 +563,17 @@ async function scanRFID(req, res, next) {
         recordId = last.attendance_id;
         action = 'Check-out';
       } else {
-        // Da du in/out trong ngay -> KHONG cho cham cong them
+        // Đã đủ in/out trong ngày
         return res.status(409).json({
           success: false,
           message: 'Da du luot cham cong hom nay',
           limit: 'daily_once',
-          data: { user_id: user.userID, user_name: user.fullName, action: 'None' }
+          data: { user_id: card.userID, user_name: card.fullName, action: 'None' }
         });
       }
     }
 
-    // Emit realtime (neu can)
+    // 5) Emit realtime cho FE (bảng log / dashboard)
     const now = new Date();
     const payload = {
       id: recordId,
@@ -540,7 +582,7 @@ async function scanRFID(req, res, next) {
       type: action,
       status: 'Dung gio',
       location: 'RFID Device',
-      userName: user.fullName
+      userName: card.fullName
     };
     if (io) io.emit('attendanceUpdate', payload);
 
@@ -548,10 +590,9 @@ async function scanRFID(req, res, next) {
       success: true,
       action,
       message: action === 'Check-in' ? 'Xin chao' : 'Hen gap lai',
-      data: { ...payload, user_id: user.userID, user_name: user.fullName }
+      data: { ...payload, user_id: card.userID, user_name: card.fullName }
     });
   } catch (err) {
-    // Map phong truong hop khac van la duplicate
     if (err && err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({
         success: false,
@@ -563,8 +604,6 @@ async function scanRFID(req, res, next) {
     next(err);
   }
 }
-
-
 
 
 // API: Lấy tổng hợp attendance_records theo tháng và (tùy chọn) theo user

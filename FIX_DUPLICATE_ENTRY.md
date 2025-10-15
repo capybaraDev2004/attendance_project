@@ -50,3 +50,6 @@ node server.js
 - Mỗi ca sẽ có 1 bản ghi riêng biệt
 - Index vẫn được duy trì để tối ưu hiệu suất truy vấn
 
+
+
+
